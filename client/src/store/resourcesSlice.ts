@@ -1,6 +1,6 @@
 // src/store/resourcesSlice.ts
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { RootState } from './index';
+import type { RootState } from './index';
 
 interface ResourcesState {
   wood: number;
@@ -16,22 +16,35 @@ const initialState: ResourcesState = {
   status: 'idle',
 };
 
-// thunk для получения ресурсов текущего пользователя
+// Базовый URL бэкенда
+const API = process.env.REACT_APP_API_URL || 'http://localhost:30080';
+
+// Общий helper для заголовков с Bearer
+const buildHeaders = (getState: () => RootState): Record<string, string> => {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const accessToken = getState().auth.accessToken;
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  return headers;
+};
+
+// ✅ Получить ресурсы текущего пользователя
 export const fetchResources = createAsyncThunk<
   { wood: number; stone: number; gold: number },
   void,
   { state: RootState }
 >(
   'resources/fetchResources',
-  async (_, { getState }) => {
-    const token = getState().auth.token;
-    if (!token) throw new Error('No token');
-
-    const res = await fetch('http://localhost:3000/resources/me', {
-      headers: { Authorization: `Bearer ${token}` },
-      credentials: 'include',
+  async (_, { getState, rejectWithValue }) => {
+    const res = await fetch(`${API}/resources/me`, {
+      method: 'GET',
+      headers: buildHeaders(getState),
     });
-    if (!res.ok) throw new Error('Failed to fetch resources');
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      return rejectWithValue(body?.message || `HTTP ${res.status}`);
+    }
+
     return res.json();
   }
 );

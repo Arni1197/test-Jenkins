@@ -1,126 +1,149 @@
 // src/store/authSlice.ts
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
+const API_BASE = process.env.REACT_APP_API_URL ?? 'http://localhost:5001';
+const API = `${API_BASE}/api`;
+
+interface Resources {
+  wood: number;
+  stone: number;
+  gold: number;
+}
+
 interface AuthState {
   email: string | null;
   username: string | null;
   status: 'idle' | 'loading' | 'failed';
-  resources?: {
-    wood: number;
-    stone: number;
-    gold: number;
-  };
+  forgotStatus: 'idle' | 'loading' | 'failed';
+  resetStatus: 'idle' | 'loading' | 'failed';
+  resources?: Resources;
 }
 
 const initialState: AuthState = {
   email: null,
   username: null,
   status: 'idle',
+  forgotStatus: 'idle',
+  resetStatus: 'idle',
   resources: { wood: 0, stone: 0, gold: 0 },
 };
 
-// ✅ Получить текущего пользователя (через cookie на сервере)
-export const fetchUser = createAsyncThunk('auth/fetchUser', async () => {
-  const res = await fetch('http://localhost:5001/auth/me', {
-    method: 'GET',
-    credentials: 'include', // важно, чтобы cookie ушли на сервер
-  });
-  if (!res.ok) throw new Error('Not authenticated');
-  return res.json(); // { email, username, resources }
+// Хелпер для fetch с cookie
+const json = (method: string, body?: any) => ({
+  method,
+  credentials: 'include' as const,
+  headers: { 'Content-Type': 'application/json' },
+  ...(body ? { body: JSON.stringify(body) } : {}),
 });
 
-// thunk для запроса сброса пароля
-export const forgotPassword = createAsyncThunk(
-  'auth/forgotPassword',
-  async (payload: { email: string }) => {
-    const res = await fetch('http://localhost:5001/auth/forgot-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) throw new Error('Failed to send reset email');
-    return res.json(); // { message: 'Если email зарегистрирован, письмо отправлено.' }
-  }
-);
+// ------------------- Thunks -------------------
 
-// thunk для логина
-export const loginUser = createAsyncThunk(
-  'auth/loginUser',
-  async (payload: { email: string; password: string }) => {
-    const res = await fetch('http://localhost:5001/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', // cookie будет установлена сервером
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) throw new Error('Login failed');
-    return res.json(); // { email, username, resources }
-  }
-);
-
-// thunk для регистрации
+// Регистрация
 export const registerUser = createAsyncThunk(
   'auth/registerUser',
-  async (payload: { email: string; password: string; username: string }) => {
-    const res = await fetch('http://localhost:5001/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) throw new Error('Register failed');
-    return res.json(); // { email, username, resources }
+  async (payload: { email: string; password: string; username: string }, { rejectWithValue }) => {
+    const res = await fetch(`${API}/auth/register`, json('POST', payload));
+    if (!res.ok) return rejectWithValue(await res.json());
+    return res.json();
   }
 );
 
+// Логин
+export const loginUser = createAsyncThunk(
+  'auth/loginUser',
+  async (payload: { email: string; password: string }, { rejectWithValue }) => {
+    const res = await fetch(`${API}/auth/login`, json('POST', payload));
+    if (!res.ok) return rejectWithValue(await res.json());
+    return res.json();
+  }
+);
+
+// Сброс пароля (запрос)
+export const forgotPassword = createAsyncThunk(
+  'auth/forgotPassword',
+  async (payload: { email: string }, { rejectWithValue }) => {
+    const res = await fetch(`${API}/auth/forgot-password`, json('POST', payload));
+    if (!res.ok) return rejectWithValue(await res.json());
+    return res.json();
+  }
+);
+
+// Сброс пароля (установка нового)
+export const resetPassword = createAsyncThunk(
+  'auth/resetPassword',
+  async (payload: { token: string; password: string }, { rejectWithValue }) => {
+    const res = await fetch(`${API}/auth/reset-password`, json('POST', payload));
+    if (!res.ok) return rejectWithValue(await res.json());
+    return res.json();
+  }
+);
+
+// Выход
+export const logoutUser = createAsyncThunk(
+  'auth/logoutUser',
+  async (_, { rejectWithValue }) => {
+    const res = await fetch(`${API}/auth/logout`, json('POST'));
+    if (!res.ok) return rejectWithValue(await res.json());
+    return res.json();
+  }
+);
+
+// Получение данных пользователя (сессия)
+export const fetchUser = createAsyncThunk(
+  'auth/fetchUser',
+  async (_, { rejectWithValue }) => {
+    const res = await fetch(`${API}/auth/me`, json('GET'));
+    if (!res.ok) return rejectWithValue(await res.json());
+    return res.json();
+  }
+);
+
+// ------------------- Slice -------------------
 const authSlice = createSlice({
   name: 'auth',
   initialState,
-  reducers: {
-    logout(state) {
-      state.email = null;
-      state.username = null;
-      state.resources = { wood: 0, stone: 0, gold: 0 };
-    },
-  },
+  reducers: {},
   extraReducers: (builder) => {
     builder
-      // fetchUser
-      .addCase(fetchUser.pending, (state) => { state.status = 'loading'; })
-      .addCase(fetchUser.fulfilled, (state, action) => {
-        state.status = 'idle';
-        state.email = action.payload.email;
-        state.username = action.payload.username;
-        state.resources = action.payload.resources;
-      })
-      .addCase(fetchUser.rejected, (state) => { state.status = 'failed'; })
+      // register
+      .addCase(registerUser.pending, (s) => { s.status = 'loading'; })
+      .addCase(registerUser.fulfilled, (s, a) => { s.status = 'idle'; s.email = a.payload.email; s.username = a.payload.username; })
+      .addCase(registerUser.rejected, (s) => { s.status = 'failed'; })
 
-      // loginUser
-      .addCase(loginUser.pending, (state) => { state.status = 'loading'; })
-      .addCase(loginUser.fulfilled, (state, action) => {
-        state.status = 'idle';
-        state.email = action.payload.email;
-        state.username = action.payload.username;
-        state.resources = action.payload.resources;
-      })
-      .addCase(loginUser.rejected, (state) => { state.status = 'failed'; })
+      // login
+      .addCase(loginUser.pending, (s) => { s.status = 'loading'; })
+      .addCase(loginUser.fulfilled, (s, a) => { s.status = 'idle'; s.email = a.payload.email; s.username = a.payload.username; })
+      .addCase(loginUser.rejected, (s) => { s.status = 'failed'; })
 
-      // forgotPassword
-      .addCase(forgotPassword.pending, (state) => { state.status = 'loading'; })
-      .addCase(forgotPassword.fulfilled, (state) => { state.status = 'idle'; })
-      .addCase(forgotPassword.rejected, (state) => { state.status = 'failed'; })
+      // forgot password
+      .addCase(forgotPassword.pending, (s) => { s.forgotStatus = 'loading'; })
+      .addCase(forgotPassword.fulfilled, (s) => { s.forgotStatus = 'idle'; })
+      .addCase(forgotPassword.rejected, (s) => { s.forgotStatus = 'failed'; })
 
-      // registerUser
-      .addCase(registerUser.pending, (state) => { state.status = 'loading'; })
-      .addCase(registerUser.fulfilled, (state, action) => {
-        state.status = 'idle';
-        state.email = action.payload.email;
-        state.username = action.payload.username;
-        state.resources = action.payload.resources;
+      // reset password
+      .addCase(resetPassword.pending, (s) => { s.resetStatus = 'loading'; })
+      .addCase(resetPassword.fulfilled, (s) => { s.resetStatus = 'idle'; })
+      .addCase(resetPassword.rejected, (s) => { s.resetStatus = 'failed'; })
+
+      // fetch user
+      .addCase(fetchUser.pending, (s) => { s.status = 'loading'; })
+      .addCase(fetchUser.fulfilled, (s, a) => {
+        s.status = 'idle';
+        s.email = a.payload.email ?? s.email;
+        s.username = a.payload.username ?? s.username;
       })
-      .addCase(registerUser.rejected, (state) => { state.status = 'failed'; });
+      .addCase(fetchUser.rejected, (s) => { s.status = 'failed'; })
+
+      // logout
+      .addCase(logoutUser.fulfilled, (s) => {
+        s.email = null;
+        s.username = null;
+        s.resources = { wood: 0, stone: 0, gold: 0 };
+        s.status = 'idle';
+      });
   },
 });
 
-export const { logout } = authSlice.actions;
 export default authSlice.reducer;
+
+

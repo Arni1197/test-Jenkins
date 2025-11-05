@@ -10,14 +10,14 @@ export const ProfilePage: React.FC = () => {
   const dispatch: AppDispatch = useDispatch();
   const navigate = useNavigate();
 
-  const { email, username, token } = useSelector((state: RootState) => state.auth);
+  const { email, username, accessToken } = useSelector((state: RootState) => state.auth);
   const { wood, stone, gold, status } = useSelector((state: RootState) => state.resources);
 
   useEffect(() => {
-    if (token) {
+    if (accessToken) {
       dispatch(fetchResources());
     }
-  }, [token, dispatch]);
+  }, [accessToken, dispatch]);
 
   const handleLogout = () => {
     dispatch(logout());
