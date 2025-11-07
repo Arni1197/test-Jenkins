@@ -1,23 +1,61 @@
 pipeline {
     agent any
 
+    environment {
+        // Можно задать переменные окружения, например токен
+        NODE_ENV = 'development'
+    }
+
     stages {
-        stage('Checkout') {
+
+        stage('Frontend Build') {
+            agent {
+                docker {
+                    image 'node:20' // Node.js для фронтенда
+                    args '-u root:root' // чтобы можно было писать в смонтированные тома
+                }
+            }
             steps {
-                git branch: 'main', url: 'https://github.com/Arni1197/test-Jenkins.git'
+                dir('client') {
+                    sh 'npm install'
+                    sh 'npm run build'
+                }
             }
         }
 
-        stage('Install') {
+        stage('Backend Build') {
+            agent {
+                docker {
+                    image 'node:20' // Node.js для бэкенда
+                    args '-u root:root'
+                }
+            }
             steps {
-                sh 'npm install'
+                dir('backend') {
+                    sh 'npm install'
+                    sh 'npm run build'
+                }
             }
         }
 
-        stage('Build') {
+        stage('Deploy') {
             steps {
-                sh 'npm run build'
+                echo 'Deploying to Kubernetes (or Docker) ...'
+                // Здесь можно добавить kubectl apply -f k8s или docker-compose up -d
+                sh 'echo "Deploy step placeholder"'
             }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline finished'
+        }
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed'
         }
     }
 }
