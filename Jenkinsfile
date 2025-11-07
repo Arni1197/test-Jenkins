@@ -2,60 +2,50 @@ pipeline {
     agent any
 
     environment {
-        // Можно задать переменные окружения, например токен
-        NODE_ENV = 'development'
+        REGISTRY = "localhost:5001"
+        FRONTEND_IMAGE = "${REGISTRY}/frontend:latest"
+        BACKEND_IMAGE  = "${REGISTRY}/backend:latest"
     }
 
     stages {
-
-        stage('Frontend Build') {
-            agent {
-                docker {
-                    image 'node:20' // Node.js для фронтенда
-                    args '-u root:root' // чтобы можно было писать в смонтированные тома
-                }
+        stage('Checkout') {
+            steps {
+                // Клонируем репозиторий (если Jenkins не делает это сам)
+                checkout scm
             }
+        }
+
+        stage('Build Frontend') {
             steps {
                 dir('client') {
-                    sh 'npm install'
-                    sh 'npm run build'
+                    sh 'docker build -t $FRONTEND_IMAGE .'
                 }
             }
         }
 
-        stage('Backend Build') {
-            agent {
-                docker {
-                    image 'node:20' // Node.js для бэкенда
-                    args '-u root:root'
-                }
-            }
+        stage('Build Backend') {
             steps {
                 dir('backend') {
-                    sh 'npm install'
-                    sh 'npm run build'
+                    sh 'docker build -t $BACKEND_IMAGE .'
                 }
             }
         }
 
-        stage('Deploy') {
+        stage('Push Images') {
             steps {
-                echo 'Deploying to Kubernetes (or Docker) ...'
-                // Здесь можно добавить kubectl apply -f k8s или docker-compose up -d
-                sh 'echo "Deploy step placeholder"'
+                // Для локального registry login не нужен
+                sh 'docker push $FRONTEND_IMAGE'
+                sh 'docker push $BACKEND_IMAGE'
             }
         }
     }
 
     post {
-        always {
-            echo 'Pipeline finished'
-        }
         success {
-            echo 'Pipeline completed successfully!'
+            echo 'Docker images successfully built and pushed!'
         }
         failure {
-            echo 'Pipeline failed'
+            echo 'Something went wrong!'
         }
     }
 }

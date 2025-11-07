@@ -1,6 +1,21 @@
 version: "3.9"
 
 services:
+jenkins:
+  build:
+    context: .
+    dockerfile: Dockerfile.jenkins
+  container_name: jenkins
+  user: root
+  ports:
+    - "8080:8080"
+    - "50000:50000"
+  volumes:
+    - jenkins_home:/var/jenkins_home
+    - /var/run/docker.sock:/var/run/docker.sock
+  networks:
+    - app-network
+
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
@@ -53,7 +68,7 @@ services:
       - ./backend/.env
     volumes:
       - ./backend:/app:cached
-    command: ["npm", "run", "start:dev"]
+    command: [ "npm", "run", "start:dev" ]
     depends_on:
       - mongo
       - redis
@@ -69,7 +84,7 @@ services:
       - "3002:3000"
     volumes:
       - ./client:/app:cached
-    command: ["npm", "start"]
+    command: [ "npm", "start" ]
     depends_on:
       - backend
     networks:
@@ -77,6 +92,8 @@ services:
 
 volumes:
   mongo-data:
+  jenkins_home:
+
 
 networks:
   app-network:
