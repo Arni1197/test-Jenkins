@@ -6,7 +6,10 @@ export const HomePage: React.FC = () => {
 
   return (
     <div style={{ textAlign: 'center', marginTop: '50px' }}>
+<<<<<<< HEAD
       <h1>Новый этап жизни </h1>
+=======
+>>>>>>> feature/jenkins
       <p>Выберите действие:</p>
       <button style={{ margin: '10px' }} onClick={() => navigate('/login')}>
         Войти
