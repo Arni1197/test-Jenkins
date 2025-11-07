@@ -1,9 +1,9 @@
 pipeline {
-    agent {
-        docker {
-            image 'node:20'  // образ с Node.js
-            args '-u root'    // если нужны права root
-        }
+    agent any
+
+    environment {
+        MONGO_URI = "mongodb://mongo-service:27017"
+        REDIS_URL = "redis://redis-service:6379"
     }
 
     stages {
@@ -29,6 +29,18 @@ pipeline {
             steps {
                 sh 'npm test'
             }
+        }
+    }
+
+    post {
+        always {
+            echo "Pipeline finished"
+        }
+        success {
+            echo "Build succeeded"
+        }
+        failure {
+            echo "Build failed"
         }
     }
 }
