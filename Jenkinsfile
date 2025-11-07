@@ -1,5 +1,10 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'node:20'  // образ с Node.js
+            args '-u root'    // если нужны права root
+        }
+    }
 
     stages {
         stage('Checkout') {
