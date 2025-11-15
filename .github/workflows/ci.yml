@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+
+jobs:
+  backend-and-frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1) Забираем репозиторий (аналог checkout() в Jenkins)
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2) Ставим Node.js (одну версию для всего проекта)
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # ---------- BACKEND (NestJS) ----------
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: ./backend
+
+      - name: Lint backend
+        run: npm run lint
+        working-directory: ./backend
+
+      - name: Test backend
+        run: npm test
+        working-directory: ./backend
+
+      - name: Build backend
+        run: npm run build
+        working-directory: ./backend
+
+      # ---------- FRONTEND (React CRA) ----------
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: ./client
+
+      - name: Test frontend
+        run: npm test -- --watch=false
+        working-directory: ./client
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: ./client
