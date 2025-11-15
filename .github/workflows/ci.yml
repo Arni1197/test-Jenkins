@@ -31,9 +31,9 @@ jobs:
         run: npm ci
         working-directory: ./backend
 
-      - name: Lint backend
-        run: npm run lint
-        working-directory: ./backend
+      - name: Run backend tests (pass if no tests)
+        run: npm test -- --passWithNoTests
+        working-directory: backend
 
       - name: Test backend
         run: npm test

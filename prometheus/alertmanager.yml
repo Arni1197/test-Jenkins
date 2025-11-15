@@ -7,6 +7,9 @@ route:
 receivers:
   - name: 'slack-notifications'
     slack_configs:
-      - api_url: 'https://hooks.slack.com/services/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'
+        api_url: "${SLACK_WEBHOOK_URL}"
         channel: '#alerts'
         text: "ALERT: {{ .CommonAnnotations.summary }} - {{ .CommonAnnotations.description }}"
+
+
+
