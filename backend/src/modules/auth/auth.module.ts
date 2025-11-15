@@ -8,6 +8,9 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { UsersModule } from '../users/users.module';
 import { TokenService } from './token.service';
 import { MailService } from './mail.service';
+import { EmailConfirmationService } from './email-confirmation.service';
+import { EmailVerifiedGuard } from 'src/common/guards/email-verified.guard';
+import { TwoFaService } from './two-fa.service';
 
 @Module({
   imports: [
@@ -19,7 +22,7 @@ import { MailService } from './mail.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, TokenService, MailService],
-  exports: [AuthService],
+  providers: [AuthService, TwoFaService, EmailVerifiedGuard, JwtStrategy, TokenService, MailService, EmailConfirmationService],
+  exports: [AuthService, EmailConfirmationService],
 })
 export class AuthModule {}

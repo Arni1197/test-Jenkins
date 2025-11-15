@@ -1,8 +1,0 @@
-FROM node:20-alpine
-WORKDIR /app
-# ставим зависимости один раз, остальное – через volume
-COPY package*.json ./
-RUN npm ci
-# в контейнере будет твой код через -v, поэтому COPY . . не делаем
-EXPOSE 3000
-CMD ["npx","nest","start","--watch"]

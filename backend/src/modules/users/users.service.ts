@@ -12,6 +12,11 @@ export class UsersService {
     return this.userModel.findOne({ email }).exec();
   }
 
+  // src/modules/users/users.service.ts
+async updateById(userId: string, update: Partial<User>): Promise<UserDocument | null> {
+  return this.userModel.findByIdAndUpdate(userId, update, { new: true }).exec();
+}
+
   // Находит пользователя по ID
   async findById(userId: string): Promise<UserDocument | null> {
     return this.userModel.findById(userId).exec();

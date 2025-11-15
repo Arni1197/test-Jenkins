@@ -13,6 +13,17 @@ export class User {
 
   @Prop({ required: true })
   password: string;
+
+  @Prop({ default: false })
+  emailVerified: boolean;
+
+  @Prop()
+  emailVerifiedAt?: Date;
+
+  @Prop({ default: false })
+  twoFactorEnabled: boolean;
+  @Prop()
+  twoFactorSecret?: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

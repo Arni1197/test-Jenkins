@@ -1,0 +1,100 @@
+import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
+import { Redis } from 'ioredis';
+import * as crypto from 'crypto';
+import { ConfigService } from '@nestjs/config';
+import { UsersService } from '../users/users.service';
+import { MailService } from './mail.service';
+import { REDIS } from '../redis/redis.constants';
+import { UserDocument } from '../../schemas/user.schema';
+
+@Injectable()
+export class EmailConfirmationService {
+  constructor(
+    @Inject(REDIS) private readonly redisClient: Redis,
+    private readonly config: ConfigService,
+    private readonly usersService: UsersService,
+    private readonly mailService: MailService,
+  ) {}
+
+  // 🔑 Генерация токена + запись в Redis + отправка письма
+  async sendEmailConfirmation(user: UserDocument) {
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+    const ttlMinutes = this.config.get<number>('EMAIL_CONFIRM_TTL_MINUTES', 60);
+    const ttlSeconds = ttlMinutes * 60;
+
+    await this.redisClient.set(
+      `email_confirm:${tokenHash}`,
+      String(user.id),
+      'EX',
+      ttlSeconds,
+    );
+
+    const frontendUrl = this.config.get<string>('FRONTEND_URL');
+    const confirmUrl = `${frontendUrl}/confirm-email?token=${rawToken}`;
+
+    const html = `
+      <p>Привет, ${user.username}!</p>
+      <p>Спасибо за регистрацию в нашем сервисе.</p>
+      <p>Чтобы подтвердить email, перейдите по ссылке:</p>
+      <a href="${confirmUrl}">${confirmUrl}</a>
+      <p>Если вы не регистрировались — просто проигнорируйте это письмо.</p>
+    `;
+
+    await this.mailService.sendMail(user.email, 'Подтверждение регистрации', html);
+  }
+
+  // ✅ Подтверждение email по токену
+  async confirmEmail(token: string) {
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const userId = await this.redisClient.get(`email_confirm:${tokenHash}`);
+
+    if (!userId) {
+      throw new BadRequestException('Invalid or expired token');
+    }
+
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      await this.redisClient.del(`email_confirm:${tokenHash}`);
+      throw new BadRequestException('User not found');
+    }
+
+    if (user.emailVerified) {
+      await this.redisClient.del(`email_confirm:${tokenHash}`);
+      return;
+    }
+
+    user.emailVerified = true;
+    (user as any).emailVerifiedAt = new Date();
+    await user.save();
+
+    await this.redisClient.del(`email_confirm:${tokenHash}`);
+  }
+
+  // 🔁 Повторная отправка письма
+  async resendEmailConfirmation(email: string) {
+    const user = await this.usersService.findByEmail(email);
+    if (!user) {
+      // Не палим, что юзера нет
+      return;
+    }
+
+    if (user.emailVerified) {
+      return;
+    }
+
+    await this.sendEmailConfirmation(user);
+  }
+
+  // 🛡️ Утилита (если захочешь использовать где-то ещё):
+  // Проверка, что email подтверждён, с броском 401
+  async ensureEmailVerified(email: string) {
+    const user = await this.usersService.findByEmail(email);
+    if (!user || !user.emailVerified) {
+      throw new UnauthorizedException('Email is not verified');
+    }
+    return user;
+  }
+}

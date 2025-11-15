@@ -54,4 +54,21 @@ export class TokenService {
   verifyRefreshToken(token: string) {
     return this.jwtService.verify(token, { secret: this.config.get<string>('JWT_REFRESH_SECRET')! });
   }
+
+  // src/modules/auth/token.service.ts
+generateTwoFaToken(userId: string) {
+  return this.jwtService.sign(
+    { sub: userId, type: '2fa' },
+    {
+      secret: this.config.get<string>('JWT_2FA_SECRET') ?? this.config.get<string>('JWT_ACCESS_SECRET'),
+      expiresIn: '10m',
+    },
+  );
+}
+
+verifyTwoFaToken(token: string) {
+  return this.jwtService.verify<{ sub: string; type: string }>(token, {
+    secret: this.config.get<string>('JWT_2FA_SECRET') ?? this.config.get<string>('JWT_ACCESS_SECRET'),
+  });
+}
 }

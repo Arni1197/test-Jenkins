@@ -1,4 +1,9 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+// src/modules/auth/auth.service.ts
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+} from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { Redis } from 'ioredis';
 import { Inject } from '@nestjs/common';
@@ -9,6 +14,8 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { UserDocument } from '../../schemas/user.schema';
 import { ConfigService } from '@nestjs/config';
+import { EmailConfirmationService } from './email-confirmation.service';
+import { TwoFaService } from './two-fa.service';
 
 @Injectable()
 export class AuthService {
@@ -18,49 +25,134 @@ export class AuthService {
     private readonly tokenService: TokenService,
     private readonly mailService: MailService,
     private readonly config: ConfigService,
-  ) { }
+    private readonly twoFaService: TwoFaService, // 👈 добавили
+
+    private readonly emailConfirmationService: EmailConfirmationService, // 👈 новый сервис
+  ) {}
 
   // -------------------------
   // Регистрация
   // -------------------------
-  async register(dto: { email: string; username: string; password: string }): Promise<UserDocument> {
+  async register(dto: {
+    email: string;
+    username: string;
+    password: string;
+  }): Promise<UserDocument> {
     const hashedPassword = await bcrypt.hash(dto.password, 10);
-    return this.usersService.createUser({ ...dto, password: hashedPassword });
+
+    const user = await this.usersService.createUser({
+      ...dto,
+      password: hashedPassword,
+      // emailVerified по умолчанию false из схемы
+    });
+
+    // 📨 Отправляем письмо подтверждения
+    await this.emailConfirmationService.sendEmailConfirmation(user);
+
+    return user;
   }
 
   // -------------------------
   // Логин
   // -------------------------
-  async login(dto: { email: string; password: string }) {
-    const maxAttempts = 5;
-    const blockTimeSeconds = 60 * 15;
-    const attemptsKey = `login_attempts:${dto.email}`;
-    const attempts = await this.redisClient.get(attemptsKey);
+// src/modules/auth/auth.service.ts
+async login(dto: { email: string; password: string }) {
+  const maxAttempts = 5;
+  const blockTimeSeconds = 60 * 15;
+  const attemptsKey = `login_attempts:${dto.email}`;
 
-    if (attempts && Number(attempts) >= maxAttempts) {
-      throw new UnauthorizedException('Too many login attempts');
+  const attempts = await this.redisClient.get(attemptsKey);
+  if (attempts && Number(attempts) >= maxAttempts) {
+    throw new UnauthorizedException('Too many login attempts');
+  }
+
+  const user = await this.usersService.findByEmail(dto.email);
+
+  // если пользователя нет — считаем это неуспешной попыткой
+  if (!user) {
+    await this.redisClient.incr(attemptsKey);
+    await this.redisClient.expire(attemptsKey, blockTimeSeconds);
+    throw new UnauthorizedException('Invalid credentials');
+  }
+
+  const isValid = await bcrypt.compare(dto.password, user.password);
+  if (!isValid) {
+    await this.redisClient.incr(attemptsKey);
+    await this.redisClient.expire(attemptsKey, blockTimeSeconds);
+    throw new UnauthorizedException('Invalid credentials');
+  }
+
+  // пароль ок → обнуляем счётчик
+  await this.redisClient.del(attemptsKey);
+
+  if (!user.emailVerified) {
+    throw new UnauthorizedException('Email не подтверждён');
+  }
+
+  // 2FA включена → не выдаём токены, отдаём только twoFaToken
+  if (user.twoFactorEnabled) {
+    const twoFaToken = this.tokenService.generateTwoFaToken(user.id);
+    return {
+      need2fa: true,
+      twoFaToken,
+    };
+  }
+
+  // 2FA не включена → обычный flow
+  const accessToken = this.tokenService.generateAccessToken(user.id, user.email);
+  const refreshToken = this.tokenService.generateRefreshToken(user.id);
+
+  return {
+    userId: user.id,
+    email: user.email,
+    username: user.username,
+    accessToken,
+    refreshToken,
+  };
+}
+
+
+  async completeTwoFaLogin(
+    dto: { twoFaToken: string; code: string },
+  ) {
+    // 1) проверяем twoFaToken
+    const payload = this.tokenService.verifyTwoFaToken(dto.twoFaToken);
+    if (payload.type !== '2fa') {
+      throw new UnauthorizedException('Неверный 2FA токен');
     }
 
-    const user = await this.usersService.findByEmail(dto.email);
+    const userId = payload.sub;
+
+    // 2) проверяем 2FA-код
+    const isValid = await this.twoFaService.verifyCode(userId, dto.code);
+    if (!isValid) {
+      throw new UnauthorizedException('Неверный 2FA код');
+    }
+
+    // 3) достаём пользователя
+    const user = await this.usersService.findById(userId);
     if (!user) {
-      await this.redisClient.incr(attemptsKey);
-      await this.redisClient.expire(attemptsKey, blockTimeSeconds);
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Пользователь не найден');
     }
 
-    const valid = await bcrypt.compare(dto.password, user.password);
-    if (!valid) {
-      await this.redisClient.incr(attemptsKey);
-      await this.redisClient.expire(attemptsKey, blockTimeSeconds);
-      throw new UnauthorizedException('Invalid credentials');
+    if (!user.emailVerified) {
+      throw new UnauthorizedException('Email не подтверждён');
     }
 
-    await this.redisClient.del(attemptsKey);
-
-    const accessToken = this.tokenService.generateAccessToken(user.id, user.email);
+    // 4) генерируем обычные токены
+    const accessToken = this.tokenService.generateAccessToken(
+      user.id,
+      user.email,
+    );
     const refreshToken = this.tokenService.generateRefreshToken(user.id);
 
-    return { userId: user.id, email: user.email, username: user.username, accessToken, refreshToken };
+    return {
+      userId: user.id,
+      email: user.email,
+      username: user.username,
+      accessToken,
+      refreshToken,
+    };
   }
 
   // -------------------------
@@ -68,11 +160,16 @@ export class AuthService {
   // -------------------------
   async refreshToken(token: string) {
     try {
-      const payload = this.tokenService.verifyRefreshToken(token) as { sub: string };
+      const payload = this.tokenService.verifyRefreshToken(token) as {
+        sub: string;
+      };
       const user = await this.usersService.findById(payload.sub);
       if (!user) throw new UnauthorizedException();
 
-      const accessToken = this.tokenService.generateAccessToken(user.id, user.email);
+      const accessToken = this.tokenService.generateAccessToken(
+        user.id,
+        user.email,
+      );
       return { accessToken };
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
@@ -88,11 +185,14 @@ export class AuthService {
 
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
-    const ttlSeconds = Number(this.config.get<number>('PASSWORD_RESET_TTL_MINUTES', 60)) * 60;
+    const ttlSeconds =
+      Number(this.config.get<number>('PASSWORD_RESET_TTL_MINUTES', 60)) * 60;
 
     await this.redisClient.set(`reset:${tokenHash}`, user.id, 'EX', ttlSeconds);
 
-    const resetUrl = `${this.config.get<string>('FRONTEND_URL')}/reset-password?token=${rawToken}`;
+    const resetUrl = `${this.config.get<string>(
+      'FRONTEND_URL',
+    )}/reset-password?token=${rawToken}`;
     const html = `<p>Привет, ${user.username}!</p>
                   <p>Чтобы сбросить пароль, перейдите по ссылке:</p>
                   <a href="${resetUrl}">${resetUrl}</a>

@@ -1,44 +1,54 @@
 version: "3.9"
 
 services:
-jenkins:
-  build:
-    context: .
-    dockerfile: Dockerfile.jenkins
-  container_name: jenkins
-  user: root
-  ports:
-    - "8080:8080"
-    - "50000:50000"
-  volumes:
-    - jenkins_home:/var/jenkins_home
-    - /var/run/docker.sock:/var/run/docker.sock
-  networks:
-    - app-network
-
+  # 📈 Prometheus
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
     volumes:
-      - ./prometheus:/etc/prometheus
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml
     ports:
       - "9090:9090"
+    depends_on:
+      - alertmanager
     networks:
       - app-network
 
+  # ⚡ Alertmanager
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    volumes:
+      - ./prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+    ports:
+      - "9093:9093"
+    networks:
+      - app-network
+
+  # 📊 Grafana
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
     ports:
       - "3003:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
     volumes:
-      - ./prometheus/grafana/provisioning:/etc/grafana/provisioning
+      - ./prometheus/grafana/provisioning:/etc/grafana/provisioning/datasources
+      - ./prometheus/grafana/provisioning:/etc/grafana/provisioning/dashboards
       - ./prometheus/grafana/dashboards:/var/lib/grafana/dashboards
-    networks:
-      - app-network
     depends_on:
       - prometheus
+      - loki
+    networks:
+      - app-network
 
+  # 🍃 MongoDB
   mongo:
     image: mongo:6
     container_name: mongo
@@ -49,6 +59,7 @@ jenkins:
     networks:
       - app-network
 
+  # 🔁 Redis
   redis:
     image: redis:7
     container_name: redis
@@ -57,43 +68,66 @@ jenkins:
     networks:
       - app-network
 
+  # ⚙️ Backend (NestJS)
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile.dev
-    container_name: nest-backend
+    container_name: backend
     ports:
-      - "5001:3000"
+      - "5002:3000"
     env_file:
       - ./backend/.env
     volumes:
       - ./backend:/app:cached
-    command: [ "npm", "run", "start:dev" ]
+    command: ["npm", "run", "start:dev"]
     depends_on:
       - mongo
       - redis
     networks:
       - app-network
 
+  # 💻 Frontend (React)
   frontend:
     build:
       context: ./client
-      dockerfile: Dockerfile.dev
-    container_name: react-frontend
+    container_name: frontend
     ports:
       - "3002:3000"
     volumes:
       - ./client:/app:cached
-    command: [ "npm", "start" ]
+    command: ["npm", "start"]
     depends_on:
       - backend
+    networks:
+      - app-network
+
+  # 📦 Loki
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - app-network
+
+  # 📜 Promtail (агент логов)
+  promtail:
+    image: grafana/promtail:2.9.0
+    container_name: promtail
+    volumes:
+      - /var/log:/var/log
+      - ./promtail-config.yaml:/etc/promtail/config.yaml
+      - ./backend/logs:/app/logs
+    command: -config.file=/etc/promtail/config.yaml
+    depends_on:
+      - loki
     networks:
       - app-network
 
 volumes:
   mongo-data:
   jenkins_home:
-
 
 networks:
   app-network:

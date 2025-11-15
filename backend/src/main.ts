@@ -1,6 +1,8 @@
 // main.ts
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { logger } from './logger';
+
 import {
   BadRequestException,
   ValidationPipe,
@@ -9,7 +11,7 @@ import {
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { logger });
 
   // (опционально) глобальный префикс для REST
   app.setGlobalPrefix('api'); // тогда все ручки станут /api/...
@@ -63,7 +65,7 @@ async function bootstrap() {
   }
 
   const port = process.env.PORT ? Number(process.env.PORT) : 3000;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   console.log(`🚀 Server running on http://localhost:${port}`);
   if (isDev) {
     console.log(`📘 Swagger: http://localhost:${port}/docs`);
