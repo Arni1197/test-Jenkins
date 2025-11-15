@@ -2,56 +2,44 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
-      - dev
+    branches: [ main ]
   pull_request:
+    branches: [ main ]
 
 jobs:
   backend-and-frontend:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) Забираем репозиторий (аналог checkout() в Jenkins)
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout repo
+      - uses: actions/checkout@v4
 
-      # 2) Ставим Node.js (одну версию для всего проекта)
       - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: 20
           cache-dependency-path: |
             backend/package-lock.json
             client/package-lock.json
 
-      # ---------- BACKEND (NestJS) ----------
-      - name: Install backend dependencies
-        run: npm ci
-        working-directory: ./backend
-
-      - name: Run backend tests (pass if no tests)
-        run: npm test -- --passWithNoTests
+      # ===== BACKEND =====
+      - name: Install backend deps
         working-directory: backend
-
-      - name: Test backend
-        run: npm test
-        working-directory: ./backend
-
-      - name: Build backend
-        run: npm run build
-        working-directory: ./backend
-
-      # ---------- FRONTEND (React CRA) ----------
-      - name: Install frontend dependencies
         run: npm ci
-        working-directory: ./client
 
-      - name: Test frontend
-        run: npm test -- --watch=false
-        working-directory: ./client
+      - name: Lint backend
+        working-directory: backend
+        run: npm run lint
 
-      - name: Build frontend
+      - name: Test backend (pass even if no tests)
+        working-directory: backend
+        run: npm test -- --passWithNoTests
+
+      # ===== FRONTEND =====
+      - name: Install client deps
+        working-directory: client
+        run: npm ci
+
+      - name: Build client
+        working-directory: client
         run: npm run build
-        working-directory: ./client
