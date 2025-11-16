@@ -1,0 +1,36 @@
+backend:
+  image:
+    repository: arnold2343/game-backend
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  replicaCount: 1
+
+  service:
+    port: 3000
+
+  env:
+    MONGO_URI: "mongodb://mongo:27017/game-db"
+    REDIS_URL: "redis://redis:6379"
+
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+  ingress:
+    enabled: true
+    host: game.localhost
+    path: /api
+    pathType: Prefix
+
+mongo:
+  image: mongo:6
+  port: 27017
+
+redis:
+  image: redis:7
+  port: 6379
