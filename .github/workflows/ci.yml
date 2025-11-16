@@ -68,7 +68,7 @@ jobs:
           context: ./backend              # где лежит Dockerfile бекенда
           file: ./backend/Dockerfile      # путь к Dockerfile
           push: true
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           tags: |
             arnold2343/game-backend:latest
             arnold2343/game-backend:${{ github.sha }}
@@ -80,7 +80,7 @@ jobs:
           context: ./client               # папка фронта
           file: ./client/Dockerfile       # путь к Dockerfile фронта
           push: true
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           tags: |
             arnold2343/game-frontend:latest
             arnold2343/game-frontend:${{ github.sha }}
