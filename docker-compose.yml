@@ -68,36 +68,34 @@ services:
     networks:
       - app-network
 
-  # ⚙️ Backend (NestJS)
+  # ⚙️ Backend (NestJS из Docker Hub)
   backend:
-    build:
-      context: ./backend
+    image: arnold2343/game-backend:latest
     container_name: backend
+    restart: unless-stopped
     ports:
-      - "5002:3000"
+      - "5002:3000"       # снаружи 5002, внутри контейнера 3000
     env_file:
-      - ./backend/.env
-    volumes:
-      - ./backend:/app:cached
-    command: ["npm", "run", "start:dev"]
+      - ./backend/.env    # тот же .env, что ты уже используешь для бэка
     depends_on:
       - mongo
       - redis
     networks:
       - app-network
 
-  # 💻 Frontend (React)
+  # 💻 Frontend (React из Docker Hub)
   frontend:
-    build:
-      context: ./client
+    image: arnold2343/game-frontend:latest
     container_name: frontend
-    ports:
-      - "3002:3000"
-    volumes:
-      - ./client:/app:cached
-    command: ["npm", "start"]
+    restart: unless-stopped
     depends_on:
       - backend
+    # если внутри образа фронта Nginx слушает 80:
+    ports:
+      - "3002:80"
+    # если у тебя в Dockerfile фронта dev-сервер на 3000 — поменяй на:
+    # ports:
+    #   - "3002:3000"
     networks:
       - app-network
 
