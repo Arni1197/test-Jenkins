@@ -35,7 +35,7 @@ jobs:
         working-directory: backend
         run: npm test -- --passWithNoTests
 
-      # ===== FRONTEND =====
+      # ===== FRONTEND (build JS-бандла) =====
       - name: Install client deps
         working-directory: client
         run: npm install
@@ -61,14 +61,26 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # ----- BACKEND IMAGE -----
       - name: Build and push BACKEND Docker image (multi-arch)
         uses: docker/build-push-action@v6
         with:
           context: ./backend              # где лежит Dockerfile бекенда
           file: ./backend/Dockerfile      # путь к Dockerfile
           push: true
-          # собираем под две архитектуры: сервера (amd64) и твой Mac M3 (arm64)
           platforms: linux/amd64,linux/arm64
           tags: |
             arnold2343/game-backend:latest
             arnold2343/game-backend:${{ github.sha }}
+
+      # ----- FRONTEND IMAGE -----
+      - name: Build and push FRONTEND Docker image (multi-arch)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./client               # папка фронта
+          file: ./client/Dockerfile       # путь к Dockerfile фронта
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            arnold2343/game-frontend:latest
+            arnold2343/game-frontend:${{ github.sha }}
