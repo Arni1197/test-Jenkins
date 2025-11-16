@@ -40,6 +40,29 @@ jobs:
         working-directory: client
         run: npm install
 
-      - name: Build client
+      - name: Build frontend
         working-directory: client
         run: npm run build
+
+      # ===============================
+      #         DOCKER DEPLOY
+      # ===============================
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push BACKEND Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend              # где находится Dockerfile
+          file: ./backend/Dockerfile      # путь к Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/game-backend:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/game-backend:${{ github.sha }}

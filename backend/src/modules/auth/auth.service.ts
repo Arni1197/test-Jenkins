@@ -86,7 +86,7 @@ async login(dto: { email: string; password: string }) {
   await this.redisClient.del(attemptsKey);
 
   if (!user.emailVerified) {
-    throw new UnauthorizedException('Email не подтверждён');
+    throw new UnauthorizedException('Email к великому сожалению не подтверждён');
   }
 
   // 2FA включена → не выдаём токены, отдаём только twoFaToken
