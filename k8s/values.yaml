@@ -1,7 +1,7 @@
 backend:
   image:
     repository: arnold2343/game-backend
-    tag: latest
+    tag: "1.0.0"
     pullPolicy: IfNotPresent
 
   replicaCount: 1
@@ -34,3 +34,29 @@ mongo:
 redis:
   image: redis:7
   port: 6379
+
+monitoring:
+  prometheus:
+    enabled: false
+    image: prom/prometheus:latest
+    service:
+      port: 9090
+
+  grafana:
+    enabled: false
+    image: grafana/grafana:latest
+    service:
+      port: 3000
+
+    adminUser: admin
+    adminPassword: admin
+
+    loki:
+      enabled: false
+      image: grafana/loki:2.9.0
+      service:
+        port: 3100
+
+    promtail:
+      enabled: false
+      image: grafana/promtail:2.9.0
