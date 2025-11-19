@@ -19,34 +19,31 @@ spec:
           image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
           ports:
-            - containerPort: 3000
-          env:
-            - name: MONGO_URI
-              value: {{ .Values.backend.env.MONGO_URI | quote }}
-            - name: REDIS_URL
-              value: {{ .Values.backend.env.REDIS_URL | quote }}
+            - containerPort: {{ .Values.backend.containerPort }}
 
-          # 💓 Проверка "жив ли" (если завис — перезапустить Pod)
+          envFrom:
+            - secretRef:
+                name: backend-secrets
+          # 👆 Вот этой одной строкой ты отдаёшь ВСЕ переменные из Secret в контейнер
+
           livenessProbe:
             httpGet:
               path: /health
-              port: 3000
+              port: {{ .Values.backend.containerPort }}
             initialDelaySeconds: 20
             periodSeconds: 10
             timeoutSeconds: 2
             failureThreshold: 3
 
-          # 🚦 Проверка "готов ли обслуживать трафик"
           readinessProbe:
             httpGet:
               path: /health
-              port: 3000
+              port: {{ .Values.backend.containerPort }}
             initialDelaySeconds: 10
             periodSeconds: 5
             timeoutSeconds: 1
             failureThreshold: 3
 
-          # 🧮 Ресурсы (requests/limits)
           resources:
             requests:
               cpu: {{ .Values.backend.resources.requests.cpu | quote }}
