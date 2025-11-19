@@ -5,6 +5,7 @@ backend:
     pullPolicy: IfNotPresent
 
   replicaCount: 1
+  containerPort: 3000
 
   service:
     port: 3000
