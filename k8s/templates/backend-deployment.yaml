@@ -28,7 +28,7 @@ spec:
 
           livenessProbe:
             httpGet:
-              path: /health
+              path: /api/health
               port: {{ .Values.backend.containerPort }}
             initialDelaySeconds: 20
             periodSeconds: 10
@@ -37,7 +37,7 @@ spec:
 
           readinessProbe:
             httpGet:
-              path: /health
+              path: /api/health
               port: {{ .Values.backend.containerPort }}
             initialDelaySeconds: 10
             periodSeconds: 5
