@@ -24,7 +24,7 @@ backend:
 
   ingress:
     enabled: true
-    host: game.localhost
+    host: api.game.local
     path: /api
     pathType: Prefix
 

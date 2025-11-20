@@ -4,12 +4,12 @@ kind: Ingress
 metadata:
   name: backend-ingress
   namespace: game-project
+  labels:
+    app: backend
   annotations:
-    # Если будешь использовать nginx-ingress:
-    # kubernetes.io/ingress.class: nginx
+    kubernetes.io/ingress.class: nginx
 spec:
-  # Если в кластере настроен ingressClass, можно указать:
-  # ingressClassName: nginx
+  ingressClassName: nginx
   rules:
     - host: {{ .Values.backend.ingress.host }}
       http:
