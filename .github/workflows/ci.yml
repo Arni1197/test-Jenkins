@@ -97,11 +97,6 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Debug: show tools
-        run: |
-          kubectl config current-context || echo "no kube context" &&
-          helm version || echo "no helm"
-
       - name: Ensure namespace exists
         run: kubectl get ns game-project || kubectl create ns game-project
 
