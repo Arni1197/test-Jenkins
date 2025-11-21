@@ -63,7 +63,7 @@ async login(dto: { email: string; password: string }) {
 
   const attempts = await this.redisClient.get(attemptsKey);
   if (attempts && Number(attempts) >= maxAttempts) {
-    throw new UnauthorizedException('Too really too many login attempts');
+    throw new UnauthorizedException('Too soooo to fuck beavh really too many login attempts');
   }
 
   const user = await this.usersService.findByEmail(dto.email);
