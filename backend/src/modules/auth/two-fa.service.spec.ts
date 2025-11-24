@@ -72,7 +72,7 @@ describe('TwoFaService', () => {
     });
   });
 
-  // 2. enableTwoFa — нет секрета
+  // 2. enableTwoFa — нет пользователя / нет секрета
   it('enableTwoFa — должен кидать ошибку, если секрет не установлен', async () => {
     usersService.findById.mockResolvedValue(null);
 
@@ -83,15 +83,16 @@ describe('TwoFaService', () => {
     await expect(
       service.enableTwoFa('user-id', '123456'),
     ).rejects.toThrow('2FA secret is not set');
+
+    expect(usersService.updateById).not.toHaveBeenCalled();
   });
 
   // 3. enableTwoFa — неверный код
   it('enableTwoFa — должен кидать ошибку при неверном 2FA коде', async () => {
     const fakeUser: any = {
-      _id: 'user-id',
+      id: 'user-id',
       twoFactorSecret: 'BASE32SECRET',
       twoFactorEnabled: false,
-      save: jest.fn(),
     };
 
     usersService.findById.mockResolvedValue(fakeUser);
@@ -105,16 +106,15 @@ describe('TwoFaService', () => {
       service.enableTwoFa('user-id', 'wrong-code'),
     ).rejects.toThrow('Неверный 2FA код');
 
-    expect(fakeUser.save).not.toHaveBeenCalled();
+    expect(usersService.updateById).not.toHaveBeenCalled();
   });
 
   // 4. enableTwoFa — успешный сценарий
   it('enableTwoFa — должен включать 2FA при корректном коде', async () => {
     const fakeUser: any = {
-      _id: 'user-id',
+      id: 'user-id',
       twoFactorSecret: 'BASE32SECRET',
       twoFactorEnabled: false,
-      save: jest.fn(),
     };
 
     usersService.findById.mockResolvedValue(fakeUser);
@@ -129,17 +129,17 @@ describe('TwoFaService', () => {
       window: 1,
     });
 
-    expect(fakeUser.twoFactorEnabled).toBe(true);
-    expect(fakeUser.save).toHaveBeenCalled();
+    expect(usersService.updateById).toHaveBeenCalledWith('user-id', {
+      twoFactorEnabled: true,
+    });
   });
 
   // 5. disableTwoFa — 2FA не включена
   it('disableTwoFa — должен кидать ошибку, если 2FA не включена', async () => {
     const fakeUser: any = {
-      _id: 'user-id',
+      id: 'user-id',
       twoFactorSecret: null,
       twoFactorEnabled: false,
-      save: jest.fn(),
     };
 
     usersService.findById.mockResolvedValue(fakeUser);
@@ -151,15 +151,16 @@ describe('TwoFaService', () => {
     await expect(
       service.disableTwoFa('user-id', '123456'),
     ).rejects.toThrow('2FA не включена');
+
+    expect(usersService.updateById).not.toHaveBeenCalled();
   });
 
   // 6. disableTwoFa — неверный код
   it('disableTwoFa — должен кидать ошибку при неверном 2FA коде', async () => {
     const fakeUser: any = {
-      _id: 'user-id',
+      id: 'user-id',
       twoFactorSecret: 'BASE32SECRET',
       twoFactorEnabled: true,
-      save: jest.fn(),
     };
 
     usersService.findById.mockResolvedValue(fakeUser);
@@ -173,45 +174,43 @@ describe('TwoFaService', () => {
       service.disableTwoFa('user-id', 'wrong-code'),
     ).rejects.toThrow('Неверный 2FA код');
 
-    expect(fakeUser.save).not.toHaveBeenCalled();
+    expect(usersService.updateById).not.toHaveBeenCalled();
   });
 
   // 7. disableTwoFa — успешный сценарий
   it('disableTwoFa — должен отключать 2FA при корректном коде', async () => {
     const fakeUser: any = {
-      _id: 'user-id',
+      id: 'user-id',
       twoFactorSecret: 'BASE32SECRET',
       twoFactorEnabled: true,
-      save: jest.fn(),
     };
 
     usersService.findById.mockResolvedValue(fakeUser);
     (speakeasy.totp.verify as jest.Mock).mockReturnValue(true);
 
-    // сохраняем секрет ДО вызова сервиса
     const originalSecret = fakeUser.twoFactorSecret;
 
     await service.disableTwoFa('user-id', '123456');
 
     expect(speakeasy.totp.verify).toHaveBeenCalledWith({
-      secret: originalSecret, // "BASE32SECRET"
+      secret: originalSecret,
       encoding: 'base32',
       token: '123456',
       window: 1,
     });
 
-    expect(fakeUser.twoFactorEnabled).toBe(false);
-    expect(fakeUser.twoFactorSecret).toBeUndefined();
-    expect(fakeUser.save).toHaveBeenCalled();
+    expect(usersService.updateById).toHaveBeenCalledWith('user-id', {
+      twoFactorEnabled: false,
+      twoFactorSecret: null,
+    });
   });
 
   // 8. verifyCode — 2FA не включена
   it('verifyCode — должен кидать ошибку, если 2FA не включена', async () => {
     const fakeUser: any = {
-      _id: 'user-id',
+      id: 'user-id',
       twoFactorSecret: null,
       twoFactorEnabled: false,
-      save: jest.fn(),
     };
 
     usersService.findById.mockResolvedValue(fakeUser);
@@ -228,10 +227,9 @@ describe('TwoFaService', () => {
   // 9. verifyCode — успешная верификация
   it('verifyCode — должен возвращать результат speakeasy.totp.verify, если 2FA включена', async () => {
     const fakeUser: any = {
-      _id: 'user-id',
+      id: 'user-id',
       twoFactorSecret: 'BASE32SECRET',
       twoFactorEnabled: true,
-      save: jest.fn(),
     };
 
     usersService.findById.mockResolvedValue(fakeUser);

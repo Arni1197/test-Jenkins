@@ -14,7 +14,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { logger });
 
   // (опционально) глобальный префикс для REST
-  app.setGlobalPrefix('api'); // тогда все ручки станут /api/...
+  app.setGlobalPrefix('api');
+   // тогда все ручки станут /api/...
 
   // (опционально) версионирование
   app.enableVersioning({ type: VersioningType.URI }); // /v1/..., /v2/...
@@ -82,5 +83,6 @@ async function bootstrap() {
     console.log(`📘 Swagger: http://localhost:${port}/docs`);
     console.log(`📄 OpenAPI JSON: http://localhost:${port}/openapi.json`);
   }
+  app.enableShutdownHooks()
 }
 bootstrap();

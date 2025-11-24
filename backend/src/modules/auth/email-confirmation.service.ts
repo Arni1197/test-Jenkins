@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
+// src/modules/auth/email-confirmation.service.ts
+import {
+  Injectable,
+  BadRequestException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Inject } from '@nestjs/common';
 import { Redis } from 'ioredis';
 import * as crypto from 'crypto';
@@ -6,7 +11,7 @@ import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
 import { MailService } from './mail.service';
 import { REDIS } from '../redis/redis.constants';
-import { UserDocument } from '../../schemas/user.schema';
+import { DomainUser } from '../types/user.types'; // ⬅️ доменный пользователь
 
 @Injectable()
 export class EmailConfirmationService {
@@ -18,7 +23,7 @@ export class EmailConfirmationService {
   ) {}
 
   // 🔑 Генерация токена + запись в Redis + отправка письма
-  async sendEmailConfirmation(user: UserDocument) {
+  async sendEmailConfirmation(user: DomainUser) {
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
 
@@ -35,15 +40,21 @@ export class EmailConfirmationService {
     const frontendUrl = this.config.get<string>('FRONTEND_URL');
     const confirmUrl = `${frontendUrl}/confirm-email?token=${rawToken}`;
 
+    const usernameOrEmail = user.username ?? user.email;
+
     const html = `
-      <p>Привет, ${user.username}!</p>
+      <p>Привет, ${usernameOrEmail}!</p>
       <p>Спасибо за регистрацию в нашем сервисе.</p>
       <p>Чтобы подтвердить email, перейдите по ссылке:</p>
       <a href="${confirmUrl}">${confirmUrl}</a>
       <p>Если вы не регистрировались — просто проигнорируйте это письмо.</p>
     `;
 
-    await this.mailService.sendMail(user.email, 'Подтверждение регистрации', html);
+    await this.mailService.sendMail(
+      user.email,
+      'Подтверждение регистрации',
+      html,
+    );
   }
 
   // ✅ Подтверждение email по токену
@@ -62,13 +73,15 @@ export class EmailConfirmationService {
     }
 
     if (user.emailVerified) {
+      // уже подтверждён → просто чистим токен
       await this.redisClient.del(`email_confirm:${tokenHash}`);
       return;
     }
 
-    user.emailVerified = true;
-    (user as any).emailVerifiedAt = new Date();
-    await user.save();
+    // обновляем флаг подтверждения email через UsersService (Prisma)
+    await this.usersService.updateById(user.id, {
+      isEmailConfirmed: true,
+    });
 
     await this.redisClient.del(`email_confirm:${tokenHash}`);
   }
@@ -88,9 +101,8 @@ export class EmailConfirmationService {
     await this.sendEmailConfirmation(user);
   }
 
-  // 🛡️ Утилита (если захочешь использовать где-то ещё):
-  // Проверка, что email подтверждён, с броском 401
-  async ensureEmailVerified(email: string) {
+  // 🛡️ Утилита: проверка, что email подтверждён
+  async ensureEmailVerified(email: string): Promise<DomainUser> {
     const user = await this.usersService.findByEmail(email);
     if (!user || !user.emailVerified) {
       throw new UnauthorizedException('Email is not verified');

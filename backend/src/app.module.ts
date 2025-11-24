@@ -12,7 +12,7 @@ import { envValidationSchema } from './config/env.validation';
 import { ValidationExceptionFilter } from './common/filters/validation-exception.filter';
 import { MongoExceptionFilter } from './common/filters/mongo-exception.filter';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
-import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { PrismaModule } from './prisma/prisma.module';
 
 
 
@@ -38,6 +38,8 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     RedisModule,
     AuthModule,
     UsersModule,
+    PrismaModule,
+    
   ],
   providers: [
     // порядок: от более специфичных к самому общему

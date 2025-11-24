@@ -1,68 +1,65 @@
 // src/modules/auth/two-fa.service.int-spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
-import { MongooseModule } from '@nestjs/mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import * as speakeasy from 'speakeasy';
 
 import { TwoFaService } from './two-fa.service';
 import { UsersModule } from '../users/users.module';
 import { UsersService } from '../users/users.service';
-import { UserDocument } from '../../schemas/user.schema';
+import { PrismaModule } from '../../prisma/prisma.module';
+import { PrismaService } from '../../prisma/prisma.service';
 
-describe('TwoFaService (integration)', () => {
+describe('TwoFaService (integration, Prisma)', () => {
   let moduleRef: TestingModule;
   let twoFaService: TwoFaService;
   let usersService: UsersService;
-  let mongoServer: MongoMemoryServer;
+  let prisma: PrismaService;
 
   beforeAll(async () => {
-    // 1. Поднимаем in-memory Mongo
-    mongoServer = await MongoMemoryServer.create();
-    const mongoUri = mongoServer.getUri();
-
-    // 2. Собираем настоящий Nest-модуль с Mongoose и UsersModule
     moduleRef = await Test.createTestingModule({
       imports: [
-        MongooseModule.forRoot(mongoUri),
-        UsersModule, // здесь уже подключён UserSchema и UsersService
+        PrismaModule, // даёт PrismaService
+        UsersModule,  // твой UsersService, который теперь работает через Prisma
       ],
       providers: [TwoFaService],
     }).compile();
 
     twoFaService = moduleRef.get<TwoFaService>(TwoFaService);
     usersService = moduleRef.get<UsersService>(UsersService);
+    prisma = moduleRef.get<PrismaService>(PrismaService);
+
+    // 🧹 На всякий случай чистим таблицу пользователей перед тестами
+    await prisma.user.deleteMany();
   });
 
   afterAll(async () => {
     if (moduleRef) {
       await moduleRef.close();
     }
-    if (mongoServer) {
-      await mongoServer.stop();
+    if (prisma) {
+      await prisma.$disconnect();
     }
   });
 
   it('должен сгенерировать 2FA секрет и сохранить его пользователю', async () => {
-    // 1. Создаём пользователя в тестовой Mongo
+    // 1. Создаём пользователя в тестовой БД через UsersService
     const user = await usersService.createUser({
       email: 'twofa-int@test.com',
       username: 'twofa-int-user',
-      password: 'hashed-password',
-    } as Partial<UserDocument>);
+      password: 'hashed-password', // 👈 поле под Prisma-схему (passwordHash)
+    });
 
     // 2. Вызываем реальный TwoFaService.generateSecretForUser
-    const result = await twoFaService.generateSecretForUser(String(user._id));
+    const result = await twoFaService.generateSecretForUser(user.id);
 
-    // 3. Проверяем, что вернулись данные
     expect(result.secret).toBeDefined();
     expect(result.otpauthUrl).toBeDefined();
 
-    // 4. Достаём пользователя из БД и проверяем, что секрет записан
-    const updatedUser = await usersService.findById(String(user._id));
+    // 3. Достаём пользователя из БД и проверяем, что секрет записан
+    const updatedUser = await usersService.findById(user.id);
 
     expect(updatedUser).not.toBeNull();
-    expect(updatedUser.twoFactorSecret).toBe(result.secret);
-    expect(updatedUser.twoFactorEnabled).toBe(false);
+    expect(updatedUser!.twoFactorSecret).toBe(result.secret);
+    expect(updatedUser!.twoFactorEnabled).toBe(false);
   });
 
   it('должен успешно включать 2FA при корректном коде', async () => {
@@ -71,25 +68,25 @@ describe('TwoFaService (integration)', () => {
       email: 'enable-twofa@test.com',
       username: 'enable-twofa-user',
       password: 'hashed-password',
-    } as Partial<UserDocument>);
+    });
 
     // 2. Генерируем секрет для этого пользователя
-    const { secret } = await twoFaService.generateSecretForUser(String(user._id));
+    const { secret } = await twoFaService.generateSecretForUser(user.id);
 
-    // 3. Генерируем корректный TOTP-код через speakeasy по этому secret
+    // 3. Генерируем корректный TOTP-код через speakeasy по этому секрету
     const code = speakeasy.totp({
       secret,
       encoding: 'base32',
     });
 
     // 4. Вызываем реальный enableTwoFa
-    await twoFaService.enableTwoFa(String(user._id), code);
+    await twoFaService.enableTwoFa(user.id, code);
 
     // 5. Проверяем, что в БД 2FA включена
-    const updatedUser = await usersService.findById(String(user._id));
+    const updatedUser = await usersService.findById(user.id);
 
     expect(updatedUser).not.toBeNull();
-    expect(updatedUser.twoFactorEnabled).toBe(true);
-    expect(updatedUser.twoFactorSecret).toBe(secret);
+    expect(updatedUser!.twoFactorEnabled).toBe(true);
+    expect(updatedUser!.twoFactorSecret).toBe(secret);
   });
 });

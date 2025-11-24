@@ -114,7 +114,7 @@ async twoFaLogin(
   async register(@Body() dto: RegisterDto) {
     const user = await this.authService.register(dto);
     return {
-      userId: user._id,
+      userId: user.id,           // ⬅️ вместо _id
       email: user.email,
       username: user.username,
       emailVerified: user.emailVerified,
