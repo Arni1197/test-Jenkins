@@ -1,7 +1,7 @@
 backend:
   image:
     repository: arnold2343/game-backend
-    tag: "1.0.0"
+    tag: "1.0.0"          # дефолтный тег, можно переопределять в values.local.yaml / values.prod.yaml
     pullPolicy: IfNotPresent
 
   replicaCount: 1
@@ -10,9 +10,19 @@ backend:
   service:
     port: 3000
 
+  # Только НЕсекретные значения
   env:
     MONGO_URI: "mongodb://mongo:27017/game-db"
     REDIS_URL: "redis://redis:6379"
+
+    # Для Postgres — только host/port/name/user, без пароля
+    POSTGRES_HOST: "postgres"
+    POSTGRES_PORT: "5432"
+    POSTGRES_DB: "game_db"
+    POSTGRES_USER: "game_user"
+
+  # Какой Secret использовать для backend-а
+  secretName: backend-secret
 
   resources:
     requests:
@@ -61,3 +71,22 @@ monitoring:
     promtail:
       enabled: false
       image: grafana/promtail:2.9.0
+
+postgres:
+  enabled: true
+
+  image:
+    repository: postgres
+    tag: "16-alpine"
+    pullPolicy: IfNotPresent
+
+  # Без пароля — он будет только в Secret
+  auth:
+    username: "game_user"
+    database: "game_db"
+
+  # Имя секрета с реальными значениями
+  secretName: postgres-secret
+
+  persistence:
+    size: 5Gi
