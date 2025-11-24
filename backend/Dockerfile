@@ -2,32 +2,40 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 
-# Ставим зависимости для сборки
+# 1. Кладём package*.json
 COPY package*.json ./
+
+# 2. Кладём Prisma-схему (ОБЯЗАТЕЛЬНО до generate)
+COPY prisma ./prisma
+
+# 3. Ставим все зависимости (включая dev, где лежит prisma CLI)
 RUN npm ci
 
-# Копируем исходники и конфиги
+# 4. Генерируем Prisma Client
+RUN npx prisma generate
+
+# 5. Кладём tsconfig и исходники
 COPY tsconfig*.json ./
 COPY src ./src
 
-# Собираем NestJS в dist/
+# 6. Собираем NestJS в dist/
 RUN npm run build
+
 
 # 🚀 Прод-образ
 FROM node:20-alpine
 WORKDIR /app
 
-# Только prod-зависимости
+# package*.json — просто чтобы были внутри образа
 COPY package*.json ./
-RUN npm ci --omit=dev
 
-# Кладём только уже собранный код
+# Берём готовые node_modules (вместе с сгенерированным Prisma Client)
+COPY --from=build /app/node_modules ./node_modules
+
+# Кладём собранный dist
 COPY --from=build /app/dist ./dist
 
-# Открываем порт (если твой Nest реально слушает 3000)
 EXPOSE 3000
 
-# Запускаем прод-режим, БЕЗ watch
-CMD ["npm", "run", "start:prod"]
-# или:
-# CMD ["node", "dist/main.js"]
+# Запуск
+CMD ["node", "dist/main.js"]
