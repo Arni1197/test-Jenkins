@@ -2,19 +2,15 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DomainUser } from '../types/user.types';
-import { User } from 'generated/prisma';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   // ==========================
   // ВСПОМОГАТЕЛЬНЫЙ МАППЕР
   // ==========================
-  // Переводим объект из Prisma (PrismaUser)
-  // в доменного пользователя (DomainUser),
-  // с которым работает AuthService и остальная логика.
-  private toDomain(user: User | null): DomainUser | null {
+  private toDomain(user: any | null): DomainUser | null {
     if (!user) return null;
 
     return {
@@ -22,10 +18,7 @@ export class UsersService {
       email: user.email,
       username: user.username ?? undefined,
 
-      // В БД поле называется passwordHash,
-      // в домене мы называем его просто password (хэш уже там)
       password: user.passwordHash,
-
       emailVerified: user.isEmailConfirmed,
 
       twoFactorEnabled: user.twoFactorEnabled,
@@ -44,9 +37,6 @@ export class UsersService {
     };
   }
 
-  // ==========================
-  // НАЙТИ ПОЛЬЗОВАТЕЛЯ ПО EMAIL
-  // ==========================
   async findByEmail(email: string): Promise<DomainUser | null> {
     const user = await this.prisma.user.findUnique({
       where: { email },
@@ -55,9 +45,6 @@ export class UsersService {
     return this.toDomain(user);
   }
 
-  // ==========================
-  // НАЙТИ ПОЛЬЗОВАТЕЛЯ ПО ID
-  // ==========================
   async findById(userId: string): Promise<DomainUser | null> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -66,10 +53,6 @@ export class UsersService {
     return this.toDomain(user);
   }
 
-  // ==========================
-  // СОЗДАТЬ НОВОГО ПОЛЬЗОВАТЕЛЯ
-  // ==========================
-  // dto: email, username, password (уже ЗАХЭШИРОВАННЫЙ)
   async createUser(data: {
     email: string;
     username: string;
@@ -101,10 +84,6 @@ export class UsersService {
     return this.toDomain(created)!;
   }
 
-  // ==========================
-  // ОБНОВИТЬ ПОЛЯ ПОЛЬЗОВАТЕЛЯ ПО ID
-  // (аналог твоего updateById с Partial<User>)
-  // ==========================
   async updateById(
     userId: string,
     update: Partial<{
@@ -120,7 +99,6 @@ export class UsersService {
       twoFactorSecret: string | null;
     }>,
   ): Promise<DomainUser | null> {
-    // маппим только те поля, которые реально есть в Prisma-модели
     const data: any = {};
 
     if (update.email !== undefined) data.email = update.email;
@@ -148,9 +126,6 @@ export class UsersService {
     return this.toDomain(user);
   }
 
-  // ==========================
-  // ОБНОВИТЬ ПАРОЛЬ
-  // ==========================
   async updatePassword(
     userId: string,
     hashedPassword: string,
@@ -159,15 +134,11 @@ export class UsersService {
       where: { id: userId },
       data: {
         passwordHash: hashedPassword,
-        passwordChangedAt: new Date(), // заодно инвалидируем старые токены
+        passwordChangedAt: new Date(),
       },
     });
   }
 
-  // ==========================
-  // ОТДЕЛЬНО ОБНОВИТЬ passwordChangedAt
-  // (если хочешь сохранять текущую логику)
-  // ==========================
   async updatePasswordChangedAt(userId: string): Promise<void> {
     await this.prisma.user.update({
       where: { id: userId },
