@@ -32,6 +32,9 @@ COPY package*.json ./
 # Берём готовые node_modules (вместе с сгенерированным Prisma Client)
 COPY --from=build /app/node_modules ./node_modules
 
+# ⚠️ ВАЖНО: кладём Prisma-схему и миграции
+COPY --from=build /app/prisma ./prisma
+
 # Кладём собранный dist
 COPY --from=build /app/dist ./dist
 
