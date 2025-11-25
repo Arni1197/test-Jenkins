@@ -145,7 +145,7 @@ export class AuthService {
     }
 
     if (!user.emailVerified) {
-      throw new UnauthorizedException('Email не подтверждён');
+      throw new UnauthorizedException('К сожалению, Email не подтверждён');
     }
 
     // 4) генерируем обычные токены
