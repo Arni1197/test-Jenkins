@@ -141,11 +141,11 @@ export class AuthService {
     // 3) достаём пользователя
     const user = await this.usersService.findById(userId);
     if (!user) {
-      throw new UnauthorizedException('Пользователь не найден');
+      throw new UnauthorizedException('Увы, Пользователь не найден');
     }
 
     if (!user.emailVerified) {
-      throw new UnauthorizedException('Email не подтверждён');
+      throw new UnauthorizedException('К сожалению, Email не подтверждён');
     }
 
     // 4) генерируем обычные токены
