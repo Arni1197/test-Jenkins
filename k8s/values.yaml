@@ -11,7 +11,7 @@ backend:
   service:
     port: 3000
   migrations:
-    enabled: true
+    enabled: false
 
   # Только НЕсекретные значения
   env:
