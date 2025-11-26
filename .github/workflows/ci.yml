@@ -46,6 +46,8 @@ jobs:
         run: npm run build
 
   build-and-push:
+    # 👉 ТОЛЬКО на push в main
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs: tests
 
@@ -90,6 +92,8 @@ jobs:
             arnold2343/game-frontend:${{ github.sha }}
 
   deploy-local-k8s:
+    # 👉 ТОЛЬКО на push в main
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: self-hosted
     needs: build-and-push
 
