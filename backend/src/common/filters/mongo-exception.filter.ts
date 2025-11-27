@@ -1,4 +1,10 @@
-import { ExceptionFilter, Catch, ArgumentsHost, HttpStatus, Logger } from '@nestjs/common';
+import {
+  ExceptionFilter,
+  Catch,
+  ArgumentsHost,
+  HttpStatus,
+  Logger,
+} from '@nestjs/common';
 import { Request, Response } from 'express';
 // В твоей версии драйвера может быть MongoServerError
 type AnyMongoError = { code?: number; message?: string; [k: string]: any };
@@ -25,9 +31,18 @@ export class MongoExceptionFilter implements ExceptionFilter {
       errors = ['Resource with unique field already exists'];
     }
 
-    const requestId = (req.headers['x-request-id'] as string) || (req.headers['x-correlation-id'] as string);
+    const requestId =
+      (req.headers['x-request-id'] as string) ||
+      (req.headers['x-correlation-id'] as string);
     this.logger.error(
-      JSON.stringify({ status, message, code: exception.code, method: req.method, path: req.originalUrl, requestId }),
+      JSON.stringify({
+        status,
+        message,
+        code: exception.code,
+        method: req.method,
+        path: req.originalUrl,
+        requestId,
+      }),
     );
 
     res.status(status).json({

@@ -1,4 +1,9 @@
-import { ExceptionFilter, Catch, ArgumentsHost, HttpException } from '@nestjs/common';
+import {
+  ExceptionFilter,
+  Catch,
+  ArgumentsHost,
+  HttpException,
+} from '@nestjs/common';
 import { Request, Response } from 'express';
 import { Logger } from '@nestjs/common';
 
@@ -34,9 +39,17 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     // лог (с requestId, если есть)
-    const requestId = (req.headers['x-request-id'] as string) || (req.headers['x-correlation-id'] as string);
+    const requestId =
+      (req.headers['x-request-id'] as string) ||
+      (req.headers['x-correlation-id'] as string);
     this.logger.error(
-      JSON.stringify({ status, message, method: req.method, path: req.originalUrl, requestId }),
+      JSON.stringify({
+        status,
+        message,
+        method: req.method,
+        path: req.originalUrl,
+        requestId,
+      }),
       exception instanceof Error ? exception.stack : undefined,
     );
 

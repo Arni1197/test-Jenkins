@@ -1,30 +1,31 @@
 backend:
-  image:
+  replicaCount: 1
 
+  image:
     repository: arnold2343/game-backend
-    tag: "1.0.0"          # дефолтный тег, можно переопределять в values.local.yaml / values.prod.yaml
+    tag: "latest"           # по умолчанию. В CI переопределяется через --set backend.image.tag=${GITHUB_SHA}
     pullPolicy: IfNotPresent
 
-  replicaCount: 1
   containerPort: 3000
 
   service:
     port: 3000
+
   migrations:
     enabled: false
 
-  # Только НЕсекретные значения
+  # Только НЕсекретные значения (секреты идут в backend-secrets)
   env:
-    MONGO_URI: "mongodb://mongo:27017/game-db"
+    # ⚠️ MONGO_URI убрали, чтобы бэкенд не лез к "mongo", если Mongo больше не используешь
     REDIS_URL: "redis://redis:6379"
 
-    # Для Postgres — только host/port/name/user, без пароля
+    # Postgres — только host/port/db/user, без пароля
     POSTGRES_HOST: "postgres"
     POSTGRES_PORT: "5432"
     POSTGRES_DB: "game_db"
     POSTGRES_USER: "game_user"
 
-  # Какой Secret использовать для backend-а
+  # Какой Secret использовать для backend
   secretName: backend-secrets
 
   resources:
@@ -41,6 +42,8 @@ backend:
     path: /api
     pathType: Prefix
 
+# Если Mongo больше не нужна — этот блок можно позже вообще удалить,
+# пока он просто значения, никому не мешает.
 mongo:
   image: mongo:6
   port: 27017
@@ -51,13 +54,13 @@ redis:
 
 monitoring:
   prometheus:
-    enabled: false
+    enabled: true
     image: prom/prometheus:latest
     service:
       port: 9090
 
   grafana:
-    enabled: false
+    enabled: true
     image: grafana/grafana:latest
     service:
       port: 3000
@@ -66,13 +69,13 @@ monitoring:
     adminPassword: admin
 
     loki:
-      enabled: false
+      enabled: true
       image: grafana/loki:2.9.0
       service:
         port: 3100
 
     promtail:
-      enabled: false
+      enabled: true
       image: grafana/promtail:2.9.0
 
 postgres:
@@ -83,12 +86,12 @@ postgres:
     tag: "16-alpine"
     pullPolicy: IfNotPresent
 
-  # Без пароля — он будет только в Secret
+  # Несекретные поля (логин/база)
   auth:
     username: "game_user"
     database: "game_db"
 
-  # Имя секрета с реальными значениями
+  # Имя секрета с реальными значениями (пароль и т.п.)
   secretName: postgres-secret
 
   persistence:

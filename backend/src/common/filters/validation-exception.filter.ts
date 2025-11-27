@@ -18,12 +18,14 @@ export class ValidationExceptionFilter implements ExceptionFilter {
         ? (res as any).message
         : 'Validation failed';
 
-        response.status(400).json({
-          success: false,
-          statusCode: 400,
-          message: 'Validation failed',
-          errors: Array.isArray(validationErrors) ? validationErrors : [String(validationErrors)],
-          timestamp: new Date().toISOString(),
-        });
+    response.status(400).json({
+      success: false,
+      statusCode: 400,
+      message: 'Validation failed',
+      errors: Array.isArray(validationErrors)
+        ? validationErrors
+        : [String(validationErrors)],
+      timestamp: new Date().toISOString(),
+    });
   }
 }

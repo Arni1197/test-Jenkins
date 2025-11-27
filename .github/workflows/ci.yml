@@ -110,6 +110,5 @@ jobs:
           helm upgrade --install game-project . \
             -n game-project \
             -f values.yaml \
-            -f values.local.yaml \
             --set backend.image.repository=arnold2343/game-backend \
             --set backend.image.tag=${{ github.sha }}
