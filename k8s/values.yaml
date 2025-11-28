@@ -41,6 +41,7 @@ redis:
   image: redis:7
   port: 6379
 monitoring:
+  namespace: monitoring
   prometheus:
     enabled: true
     image: prom/prometheus:latest
