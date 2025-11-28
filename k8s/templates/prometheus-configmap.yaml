@@ -14,7 +14,7 @@ data:
       # ===== Prometheus self-monitoring =====
       - job_name: 'prometheus'
         static_configs:
-          - targets: ['localhost:9090']
+          - targets: ['backend.GameProject.svc.cluster.local:3000']
 
       # ===== NestJS backend metrics =====
       - job_name: 'nest-backend'

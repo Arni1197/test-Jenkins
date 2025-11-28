@@ -9,16 +9,12 @@ backend:
     port: 3000
   migrations:
     enabled: false
-  # Только НЕсекретные значения (секреты идут в backend-secrets)
   env:
-    # ⚠️ MONGO_URI убрали, чтобы бэкенд не лез к "mongo", если Mongo больше не используешь
     REDIS_URL: "redis://redis:6379"
-    # Postgres — только host/port/db/user, без пароля b больше ничнго!!!
     POSTGRES_HOST: "postgres"
     POSTGRES_PORT: "5432"
     POSTGRES_DB: "game_db"
     POSTGRES_USER: "game_user"
-  # Какой Secret использовать для backend
   secretName: backend-secrets
   resources:
     requests:
@@ -32,21 +28,24 @@ backend:
     host: api.game.local
     path: /api
     pathType: Prefix
-# Если Mongo больше не нужна — этот блок можно позже вообще удалить,
-# пока он просто значения, никому не мешает.
+
 mongo:
   image: mongo:6
   port: 27017
+
 redis:
   image: redis:7
   port: 6379
+
 monitoring:
   namespace: monitoring
+
   prometheus:
     enabled: true
     image: prom/prometheus:latest
     service:
       port: 9090
+
   grafana:
     enabled: true
     image: grafana/grafana:latest
@@ -54,6 +53,9 @@ monitoring:
       port: 3000
     adminUser: admin
     adminPassword: admin
+    datasources:
+      prometheus:
+        url: http://prometheus.monitoring.svc.cluster.local:9090
     loki:
       enabled: true
       image: grafana/loki:2.9.0
@@ -62,17 +64,16 @@ monitoring:
     promtail:
       enabled: true
       image: grafana/promtail:2.9.0
+
 postgres:
   enabled: true
   image:
     repository: postgres
     tag: "16-alpine"
     pullPolicy: IfNotPresent
-  # Несекретные поля (логин/база)
   auth:
     username: "game_user"
     database: "game_db"
-  # Имя секрета с реальными значениями (пароль и т.п.)
   secretName: postgres-secret
   persistence:
     size: 5Gi
