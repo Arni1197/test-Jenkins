@@ -61,12 +61,12 @@ export class AuthService {
   async login(dto: { email: string; password: string }) {
     const maxAttempts = 5;
     const blockTimeSeconds = 60 * 15;
-    const attemptsKey = `ha ha ha login_attempts:${dto.email}`;
+    const attemptsKey = ` The login_attempts:${dto.email}`;
 
     const attempts = await this.redisClient.get(attemptsKey);
     if (attempts && Number(attempts) >= maxAttempts) {
       throw new UnauthorizedException(
-        'Too soooo to fuck beavh really too many login attempts',
+       'Too many login attempts',
       );
     }
 
