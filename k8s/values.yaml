@@ -2,7 +2,7 @@ backend:
   replicaCount: 1
   image:
     repository: arnold2343/game-backend
-    tag: "f773b9f7d59616a1d2015aed704050e23d9b2938" # по умолчанию. В CI переопределяется через --set backend.image.tag=${GITHUB_SHA}
+    tag: "d0ebc197d081881f2adddd85c3395bdc678ea147" # по умолчанию. В CI переопределяется через --set backend.image.tag=${GITHUB_SHA}
     pullPolicy: IfNotPresent
   containerPort: 3000
   service:
