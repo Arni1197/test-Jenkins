@@ -1,6 +1,6 @@
 apiVersion: v2
 name: game-project
-description: Helm chart for Game Project backend + Mongo + Redis
+description: Helm chart for Game Project backend + Postgres + Redis + Monitoring
 type: application
 version: 0.1.0
 appVersion: "1.0.0"

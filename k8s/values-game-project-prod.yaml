@@ -1,0 +1,78 @@
+backend:
+  replicaCount: 1
+  image:
+    repository: arnold2343/game-backend
+    tag: "2950f06eae06d94916ab3b014db1294ff90ec50c" # для prod позже можно обновлять отдельно
+    pullPolicy: IfNotPresent
+  containerPort: 3000
+  service:
+    port: 3000
+  migrations:
+    enabled: false
+  env:
+    REDIS_URL: "redis://redis:6379"
+    POSTGRES_HOST: "postgres"
+    POSTGRES_PORT: "5432"
+    POSTGRES_DB: "game_db"
+    POSTGRES_USER: "game_user"
+  secretName: backend-secrets
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  ingress:
+    enabled: true
+    host: api.game.local       # потом поменяешь на реальный prod-домен
+    path: /api
+    pathType: Prefix
+
+mongo:
+  image: mongo:6
+  port: 27017
+
+redis:
+  image: redis:7
+  port: 6379
+
+monitoring:
+  namespace: monitoring
+  prometheus:
+    enabled: true
+    image: prom/prometheus:latest
+    service:
+      port: 9090
+
+  grafana:
+    enabled: true
+    image: grafana/grafana:latest
+    service:
+      port: 3000
+    adminUser: admin
+    adminPassword: admin
+    datasources:
+      prometheus:
+        url: http://prometheus.monitoring.svc.cluster.local:9090
+    loki:
+      enabled: true
+      image: grafana/loki:2.9.0
+      service:
+        port: 3100
+    promtail:
+      enabled: true
+      image: grafana/promtail:2.9.0
+
+postgres:
+  enabled: true
+  image:
+    repository: postgres
+    tag: "16-alpine"
+    pullPolicy: IfNotPresent
+  auth:
+    username: "game_user"
+    database: "game_db"
+  secretName: postgres-secret
+  persistence:
+    size: 5Gi

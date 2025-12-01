@@ -13,7 +13,6 @@ permissions:
 jobs:
   tests:
     runs-on: ubuntu-latest
-    # Для pull_request тоже гоняем тесты, но для push с [skip ci] можем при желании тоже фильтровать
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -120,15 +119,15 @@ jobs:
             https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
 
-      - name: Update backend image tag in values.yaml
+      - name: Update backend image tag in STAGING values
         run: |
-          echo "Old tag in values.yaml:"
-          yq '.backend.image.tag' k8s/values.yaml || true
+          echo "Old tag in k8s/values-game-project-staging.yaml:"
+          yq '.backend.image.tag' k8s/values-game-project-staging.yaml || true
 
-          yq -i ".backend.image.tag = strenv(IMAGE_TAG)" k8s/values.yaml
+          yq -i ".backend.image.tag = strenv(IMAGE_TAG)" k8s/values-game-project-staging.yaml
 
-          echo "New tag in values.yaml:"
-          yq '.backend.image.tag' k8s/values.yaml
+          echo "New tag in k8s/values-game-project-staging.yaml:"
+          yq '.backend.image.tag' k8s/values-game-project-staging.yaml
 
       - name: Configure git user
         run: |
@@ -138,10 +137,10 @@ jobs:
       - name: Commit and push changes
         run: |
           if git diff --quiet; then
-            echo "No changes in values.yaml, nothing to commit."
+            echo "No changes in values file, nothing to commit."
             exit 0
           fi
 
-          git add k8s/values.yaml
+          git add k8s/values-game-project-staging.yaml
           git commit -m "chore: update backend image tag to ${IMAGE_TAG} [skip ci]"
           git push origin main
