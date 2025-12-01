@@ -6,21 +6,21 @@ metadata:
 spec:
   project: default
 
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: game-project-prod
-
   source:
     repoURL: https://github.com/Arni1197/test-Jenkins.git
-    targetRevision: HEAD
+    targetRevision: main            # 👈 исправили
     path: k8s
     helm:
       valueFiles:
         - values-game-project-prod.yaml
 
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: game-project-prod
+
   syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
     syncOptions:
-      - PruneLast=true
-    # automated:
-    #   prune: true
-    #   selfHeal: true
+      - CreateNamespace=true
