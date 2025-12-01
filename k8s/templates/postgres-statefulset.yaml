@@ -3,7 +3,8 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: postgres
-  namespace: game-project
+  labels:
+    app: postgres
 spec:
   serviceName: postgres
   replicas: 1
@@ -26,17 +27,17 @@ spec:
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
-                  name: postgres-secret
+                  name: {{ .Values.postgres.secretName }}
                   key: POSTGRES_USER
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: postgres-secret
+                  name: {{ .Values.postgres.secretName }}
                   key: POSTGRES_PASSWORD
             - name: POSTGRES_DB
               valueFrom:
                 secretKeyRef:
-                  name: postgres-secret
+                  name: {{ .Values.postgres.secretName }}
                   key: POSTGRES_DB
           volumeMounts:
             - name: data
