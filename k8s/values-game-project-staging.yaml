@@ -2,7 +2,7 @@ backend:
   replicaCount: 1
   image:
     repository: arnold2343/game-backend
-    tag: "2950f06eae06d94916ab3b014db1294ff90ec50c" # по умолчанию. В CI переопределяется через yq в staging
+    tag: "f84f7517a5f6955746ec6b9d9504d23498bc1402" # по умолчанию. В CI переопределяется через yq в staging
     pullPolicy: IfNotPresent
   containerPort: 3000
   service:
@@ -28,15 +28,12 @@ backend:
     host: api.game.local
     path: /api
     pathType: Prefix
-
 mongo:
   image: mongo:6
   port: 27017
-
 redis:
   image: redis:7
   port: 6379
-
 monitoring:
   namespace: monitoring
   prometheus:
@@ -44,7 +41,6 @@ monitoring:
     image: prom/prometheus:latest
     service:
       port: 9090
-
   grafana:
     enabled: true
     image: grafana/grafana:latest
@@ -63,7 +59,6 @@ monitoring:
     promtail:
       enabled: true
       image: grafana/promtail:2.9.0
-
 postgres:
   enabled: true
   image:
