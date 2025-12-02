@@ -4,7 +4,7 @@ backend:
   replicaCount: 1
   image:
     repository: arnold2343/game-backend
-    tag: "e18516cfd29ea0f40eb06774f0d31a792b77373d" # по умолчанию. В CI переопределяется через yq в staging
+    tag: "0557555df2527864bc60ff25d61a00cb0cffaf41" # по умолчанию. В CI переопределяется через yq в staging
     pullPolicy: IfNotPresent
   containerPort: 3000
   service:
