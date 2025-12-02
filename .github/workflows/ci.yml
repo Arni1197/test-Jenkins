@@ -79,7 +79,7 @@ jobs:
           context: ./backend
           file: ./backend/Dockerfile
           push: true
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64/v8
           tags: |
             arnold2343/game-backend:latest
             arnold2343/game-backend:${{ github.sha }}
@@ -91,7 +91,7 @@ jobs:
           context: ./client
           file: ./client/Dockerfile
           push: true
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64/v8
           tags: |
             arnold2343/game-frontend:latest
             arnold2343/game-frontend:${{ github.sha }}
