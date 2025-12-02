@@ -1,0 +1,11 @@
+prometheus-node-exporter:
+  hostRootFsMount: false
+  hostNetwork: false
+
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true

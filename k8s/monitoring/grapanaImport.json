@@ -1,0 +1,115 @@
+{
+  "id": null,
+  "title": "Game Project – Backend & K8s Overview",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "__inputs": [],
+  "__requires": [],
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Requests per Second (RPS)",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 4 },
+      "datasource": "prometheus",
+      "targets": [
+        {
+          "expr": "rate(http_server_requests_seconds_count{job=\"backend\"}[1m])",
+          "legendFormat": "rps"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Latency p50 / p90 / p99",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 4 },
+      "datasource": "prometheus",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{job=\"backend\"}[1m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.90, sum(rate(http_server_requests_seconds_bucket{job=\"backend\"}[1m])) by (le))",
+          "legendFormat": "p90"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=\"backend\"}[1m])) by (le))",
+          "legendFormat": "p99"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU Usage (backend pods)",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 6 },
+      "datasource": "prometheus",
+      "targets": [
+        {
+          "expr": "rate(container_cpu_usage_seconds_total{pod=~\"backend.*\", container=\"backend\"}[1m])",
+          "legendFormat": "{{pod}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Memory Usage (backend pods)",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 6 },
+      "datasource": "prometheus",
+      "targets": [
+        {
+          "expr": "container_memory_usage_bytes{pod=~\"backend.*\", container=\"backend\"}",
+          "legendFormat": "{{pod}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Error Rate (5xx)",
+      "gridPos": { "x": 0, "y": 10, "w": 12, "h": 5 },
+      "datasource": "prometheus",
+      "targets": [
+        {
+          "expr": "rate(http_server_requests_seconds_count{status=~\"5..\", job=\"backend\"}[1m])",
+          "legendFormat": "errors"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Node.js Event Loop Lag",
+      "gridPos": { "x": 12, "y": 10, "w": 12, "h": 5 },
+      "datasource": "prometheus",
+      "targets": [
+        {
+          "expr": "nodejs_eventloop_lag_p99_seconds",
+          "legendFormat": "p99 lag"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Pod Restarts",
+      "gridPos": { "x": 0, "y": 15, "w": 12, "h": 5 },
+      "datasource": "prometheus",
+      "targets": [
+        {
+          "expr": "sum(kube_pod_container_status_restarts_total{pod=~\"backend.*\"}) by (pod)",
+          "legendFormat": "{{pod}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Active Connections",
+      "gridPos": { "x": 12, "y": 15, "w": 12, "h": 5 },
+      "datasource": "prometheus",
+      "targets": [
+        {
+          "expr": "nodejs_active_handles_total",
+          "legendFormat": "handles"
+        }
+      ]
+    }
+  ]
+}
