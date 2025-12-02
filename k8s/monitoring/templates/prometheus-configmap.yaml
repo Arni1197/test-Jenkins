@@ -14,17 +14,12 @@ data:
       # ===== Prometheus self-monitoring =====
       - job_name: 'prometheus'
         static_configs:
-          - targets: ['backend.GameProject.svc.cluster.local:3000']
+          - targets: ['prometheus:9090']
 
       # ===== NestJS backend metrics =====
       - job_name: 'nest-backend'
-        metrics_path: '/api/metrics'
+        metrics_path: '{{ .Values.monitoring.prometheus.backend.metricsPath }}'
         scheme: http
         static_configs:
-          - targets: ['backend:3000']
-
-      # ===== Node exporter (if enabled) =====
-      - job_name: 'node-exporter'
-        static_configs:
-          - targets: ['node-exporter:9100']
+          - targets: ['{{ .Values.monitoring.prometheus.backend.target }}']
 {{- end }}

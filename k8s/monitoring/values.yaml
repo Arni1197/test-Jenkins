@@ -1,0 +1,23 @@
+monitoring:
+  grafana:
+    enabled: true
+    image: grafana/grafana:latest
+
+    adminUser: admin
+    adminPassword: admin
+
+    service:
+      port: 3000
+
+  prometheus:
+    enabled: true
+    image: prom/prometheus:latest
+
+    service:
+      port: 9090
+
+    # Куда ходить за метриками backend’а
+    backend:
+      # полный DNS Service backend’а в staging
+      target: "backend.game-project-staging.svc.cluster.local:3000"
+      metricsPath: "/api/metrics"

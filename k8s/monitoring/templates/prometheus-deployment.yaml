@@ -2,7 +2,6 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: {{ .Values.monitoring.namespace | default .Release.Namespace }}
   name: prometheus
   labels:
     app: prometheus
@@ -18,7 +17,7 @@ spec:
     spec:
       containers:
         - name: prometheus
-          image: {{ .Values.monitoring.prometheus.image }}
+          image: {{ .Values.monitoring.prometheus.image | quote }}
           args:
             - "--config.file=/etc/prometheus/prometheus.yml"
             - "--storage.tsdb.path=/prometheus"

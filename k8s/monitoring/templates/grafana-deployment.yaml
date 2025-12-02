@@ -2,8 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: {{ .Values.monitoring.namespace | default .Release.Namespace }}
-
+  namespace: monitoring
   name: grafana
   labels:
     app: grafana
