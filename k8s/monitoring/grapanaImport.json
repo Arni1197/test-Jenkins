@@ -1,113 +1,109 @@
 {
   "id": null,
-  "title": "Game Project – Backend & K8s Overview",
+  "uid": "nest-backend-dashboard",
+  "title": "NestJS Backend Overview",
+  "tags": [ "backend", "nestjs", "nodejs" ],
   "timezone": "browser",
-  "schemaVersion": 39,
+  "schemaVersion": 36,
   "version": 1,
-  "__inputs": [],
-  "__requires": [],
+  "refresh": "10s",
   "panels": [
     {
       "type": "stat",
-      "title": "Requests per Second (RPS)",
-      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 4 },
-      "datasource": "prometheus",
+      "title": "Requests Per Second (RPS)",
+      "gridPos": { "x": 0, "y": 0, "w": 8, "h": 4 },
       "targets": [
         {
-          "expr": "rate(http_server_requests_seconds_count{job=\"backend\"}[1m])",
+          "expr": "sum(rate(http_requests_total{job=\"nest-backend\"}[1m]))",
           "legendFormat": "rps"
         }
       ]
     },
     {
       "type": "stat",
-      "title": "Latency p50 / p90 / p99",
-      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 4 },
-      "datasource": "prometheus",
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{job=\"backend\"}[1m])) by (le))",
-          "legendFormat": "p50"
-        },
-        {
-          "expr": "histogram_quantile(0.90, sum(rate(http_server_requests_seconds_bucket{job=\"backend\"}[1m])) by (le))",
-          "legendFormat": "p90"
-        },
-        {
-          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=\"backend\"}[1m])) by (le))",
-          "legendFormat": "p99"
-        }
-      ]
-    },
-    {
-      "type": "timeseries",
-      "title": "CPU Usage (backend pods)",
-      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 6 },
-      "datasource": "prometheus",
-      "targets": [
-        {
-          "expr": "rate(container_cpu_usage_seconds_total{pod=~\"backend.*\", container=\"backend\"}[1m])",
-          "legendFormat": "{{pod}}"
-        }
-      ]
-    },
-    {
-      "type": "timeseries",
-      "title": "Memory Usage (backend pods)",
-      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 6 },
-      "datasource": "prometheus",
-      "targets": [
-        {
-          "expr": "container_memory_usage_bytes{pod=~\"backend.*\", container=\"backend\"}",
-          "legendFormat": "{{pod}}"
-        }
-      ]
-    },
-    {
-      "type": "timeseries",
       "title": "Error Rate (5xx)",
-      "gridPos": { "x": 0, "y": 10, "w": 12, "h": 5 },
-      "datasource": "prometheus",
+      "gridPos": { "x": 8, "y": 0, "w": 8, "h": 4 },
       "targets": [
         {
-          "expr": "rate(http_server_requests_seconds_count{status=~\"5..\", job=\"backend\"}[1m])",
+          "expr": "sum(rate(http_requests_total{job=\"nest-backend\", status=~\"5..\"}[2m]))",
           "legendFormat": "errors"
         }
       ]
     },
     {
-      "type": "timeseries",
-      "title": "Node.js Event Loop Lag",
-      "gridPos": { "x": 12, "y": 10, "w": 12, "h": 5 },
-      "datasource": "prometheus",
+      "type": "stat",
+      "title": "p99 Latency",
+      "gridPos": { "x": 16, "y": 0, "w": 8, "h": 4 },
       "targets": [
         {
-          "expr": "nodejs_eventloop_lag_p99_seconds",
-          "legendFormat": "p99 lag"
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"nest-backend\"}[5m])) by (le))",
+          "legendFormat": "p99 latency"
         }
       ]
     },
     {
       "type": "timeseries",
-      "title": "Pod Restarts",
-      "gridPos": { "x": 0, "y": 15, "w": 12, "h": 5 },
-      "datasource": "prometheus",
+      "title": "Event Loop Lag (ms)",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 6 },
       "targets": [
         {
-          "expr": "sum(kube_pod_container_status_restarts_total{pod=~\"backend.*\"}) by (pod)",
+          "expr": "nodejs_eventloop_lag_max_seconds{job=\"nest-backend\"} * 1000",
+          "legendFormat": "eventloop lag"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Active Handles",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "expr": "nodejs_active_handles{job=\"nest-backend\"}",
+          "legendFormat": "active handles"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU Usage (per pod)",
+      "gridPos": { "x": 0, "y": 10, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "expr": "rate(container_cpu_usage_seconds_total{pod=~\"backend.*\"}[2m])",
           "legendFormat": "{{pod}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Memory Usage (per pod)",
+      "gridPos": { "x": 12, "y": 10, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "expr": "container_memory_usage_bytes{pod=~\"backend.*\"}",
+          "legendFormat": "{{pod}}"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Pod Restarts",
+      "gridPos": { "x": 0, "y": 16, "w": 8, "h": 4 },
+      "targets": [
+        {
+          "expr": "sum(kube_pod_container_status_restarts_total{pod=~\"backend.*\"})",
+          "legendFormat": "restarts"
         }
       ]
     },
     {
       "type": "timeseries",
       "title": "Active Connections",
-      "gridPos": { "x": 12, "y": 15, "w": 12, "h": 5 },
-      "datasource": "prometheus",
+      "gridPos": { "x": 8, "y": 16, "w": 16, "h": 6 },
       "targets": [
         {
-          "expr": "nodejs_active_handles_total",
-          "legendFormat": "handles"
+          "expr": "nodejs_active_requests_total{job=\"nest-backend\"}",
+          "legendFormat": "active requests"
         }
       ]
     }
