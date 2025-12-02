@@ -1,3 +1,5 @@
+#values-game-project-staging
+
 backend:
   replicaCount: 1
   image:

@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: game-project-prod
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Arni1197/test-Jenkins
+    targetRevision: main
+    path: k8s/game-project
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-game-project-prod.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: game-project-prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
