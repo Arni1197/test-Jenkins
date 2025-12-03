@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: monitoring-kps
+  name: monitoring
   namespace: argocd
 spec:
   project: default
@@ -13,7 +13,7 @@ spec:
   source:
     repoURL: https://github.com/Arni1197/test-Jenkins.git   # поменяй на свой репо
     targetRevision: main
-    path: k8s/monitoring-kps
+    path: k8s/monitoring
     helm:
       valueFiles:
         - values-monitoring.yaml
