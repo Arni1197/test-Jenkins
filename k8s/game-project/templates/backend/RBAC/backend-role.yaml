@@ -1,0 +1,16 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: backend-role
+  namespace: game-project-staging
+rules:
+  - apiGroups: [""]
+    resources:
+      - secrets
+      - configmaps
+      - pods
+      - endpoints
+    verbs:
+      - get
+      - list
+      - watch
