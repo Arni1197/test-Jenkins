@@ -1,0 +1,10 @@
+apiVersion: v2
+name: monitoring-kps
+description: Production-grade monitoring stack (Prometheus + Grafana) managed via ArgoCD
+type: application
+version: 1.0.0
+
+dependencies:
+  - name: kube-prometheus-stack
+    version: "79.8.2"
+    repository: "https://prometheus-community.github.io/helm-charts"

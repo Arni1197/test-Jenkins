@@ -1,21 +1,26 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: monitoring
+  name: monitoring-kps
   namespace: argocd
 spec:
   project: default
-  source:
-    repoURL: https://github.com/Arni1197/test-Jenkins
-    targetRevision: main
-    path: k8s/monitoring
-    helm:
-      valueFiles:
-        - values.yaml
+
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
+
+  source:
+    repoURL: https://github.com/Arni1197/test-Jenkins.git   # поменяй на свой репо
+    targetRevision: main
+    path: k8s/monitoring-kps
+    helm:
+      valueFiles:
+        - values-monitoring.yaml
+
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

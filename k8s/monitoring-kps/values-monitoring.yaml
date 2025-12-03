@@ -1,0 +1,137 @@
+###
+# Production values for kube-prometheus-stack
+###
+
+fullnameOverride: "monitoring"
+
+# ===============================
+# 1. PROMETHEUS
+# ===============================
+prometheus:
+  prometheusSpec:
+    replicas: 2                    # HA — 2 реплики
+    retention: 15d                 # храним данные 15 дней
+    retentionSize: "20GiB"         # ограничиваем размер
+    scrapeInterval: 15s            # продовый интервал
+    evaluationInterval: 15s
+
+    enableAdminAPI: false
+    serviceMonitorSelectorNilUsesHelmValues: false
+
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 20Gi        # для продакшн-кластера (меняется по нуждам)
+
+    resources:
+      requests:
+        cpu: 300m
+        memory: 1Gi
+      limits:
+        cpu: 1
+        memory: 2Gi
+
+
+# ===============================
+# 2. ALERTMANAGER
+# ===============================
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    replicas: 2                    # HA
+    storage:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 5Gi
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+
+# ===============================
+# 3. GRAFANA
+# ===============================
+grafana:
+  enabled: true
+
+  adminUser: admin
+  adminPassword: changeme-please
+
+  persistence:
+    enabled: true
+    size: 5Gi
+    accessModes: ["ReadWriteOnce"]
+
+  service:
+    type: ClusterIP
+    port: 80
+
+  deploymentStrategy:
+    type: RollingUpdate
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+
+# ===============================
+# 4. NODE EXPORTER
+# ===============================
+prometheus-node-exporter:
+  resources:
+    requests:
+      cpu: 30m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+
+# ===============================
+# 5. KUBE-STATE-METRICS
+# ===============================
+kube-state-metrics:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+
+# ===============================
+# 6. DEFAULT RULES (PRODUCTION)
+# ===============================
+defaultRules:
+  create: true
+  rules:
+    alertmanager: true
+    etcd: true                 # в проде нужен
+    kubeApiserver: true
+    kubeControllerManager: true
+    kubeScheduler: true
+    kubePrometheusNodeAlerting: true
+    kubePrometheusNodeRecording: true
+    kubernetesApps: true
+    kubernetesStorage: true
+    kubernetesResources: true
+    node: true
+    network: true
+    prometheus: true
+    time: true
