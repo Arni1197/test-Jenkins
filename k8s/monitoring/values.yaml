@@ -10,7 +10,7 @@ monitoring:
       port: 3000
 
   prometheus:
-    enabled: true
+    enabled: false
     image: prom/prometheus:latest
 
     service:
