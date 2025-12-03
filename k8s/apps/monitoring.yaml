@@ -11,7 +11,7 @@ spec:
     namespace: monitoring
 
   source:
-    repoURL: https://github.com/Arni1197/test-Jenkins.git   # поменяй на свой репо
+    repoURL: https://github.com/Arni1197/test-Jenkins   # поменяй на свой репо
     targetRevision: main
     path: k8s/monitoring
     helm:
