@@ -15,6 +15,7 @@ spec:
       labels:
         app: prometheus
     spec:
+      serviceAccountName: prometheus-sa   # ✅ добавлено
       containers:
         - name: prometheus
           image: {{ .Values.monitoring.prometheus.image | quote }}
