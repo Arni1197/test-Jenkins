@@ -1,0 +1,20 @@
+-- CreateTable
+CREATE TABLE "catalog"."Item" (
+    "id" SERIAL NOT NULL,
+    "slug" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "price" INTEGER NOT NULL,
+    "currency" TEXT NOT NULL DEFAULT 'RUB',
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Item_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Item_slug_key" ON "catalog"."Item"("slug");
+
+-- CreateIndex
+CREATE INDEX "Item_isActive_idx" ON "catalog"."Item"("isActive");
