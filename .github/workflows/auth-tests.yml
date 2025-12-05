@@ -10,7 +10,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: backend
+        working-directory: auth-service
 
     steps:
       - name: Checkout repo
@@ -21,7 +21,7 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: auth-service/package-lock.json
 
       - name: Install deps
         run: npm ci
