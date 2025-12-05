@@ -1,7 +1,6 @@
 # values-game-project-staging.yaml
 
 namespace: game-project-staging
-
 # =========================
 # AUTH SERVICE (бывший backend)
 # =========================
@@ -11,13 +10,13 @@ authService:
   image:
     repository: arnold2343/game-backend
     # по умолчанию; в CI будет переопределяться через yq
-    tag: "d24a5c128dbdf7c8fd86df2497afa141cd40fd2d"
+    tag: "21be9fff3e2ecce6c299a7305904b5229bda61aa"
     pullPolicy: IfNotPresent
   containerPort: 3000
   service:
     port: 3000
   migrations:
-    enabled: false         # если включим Job с prisma migrate
+    enabled: false # если включим Job с prisma migrate
   env:
     REDIS_URL: "redis://redis:6379"
     POSTGRES_HOST: "postgres"
@@ -37,7 +36,6 @@ authService:
     host: api.game.local
     path: /api
     pathType: Prefix
-
 # =========================
 # CATALOG SERVICE
 # =========================
@@ -46,7 +44,7 @@ catalogService:
   replicaCount: 1
   image:
     repository: arnold2343/game-catalog
-    tag: "latest"           # CI потом будет менять на sha-***
+    tag: "latest" # CI потом будет менять на sha-***
     pullPolicy: IfNotPresent
   containerPort: 3001
   service:
@@ -70,7 +68,6 @@ catalogService:
     host: api.game.local
     path: /api/catalog
     pathType: Prefix
-
 # =========================
 # USER SERVICE
 # =========================
@@ -103,7 +100,6 @@ userService:
     host: api.game.local
     path: /api/users
     pathType: Prefix
-
 # =========================
 # FRONTEND (React / web)
 # =========================
@@ -114,7 +110,7 @@ frontend:
     repository: arnold2343/game-frontend
     tag: "latest"
     pullPolicy: IfNotPresent
-  containerPort: 80        # если у тебя Nginx внутри; если Node dev-server — 3000
+  containerPort: 80 # если у тебя Nginx внутри; если Node dev-server — 3000
   service:
     port: 80
   env:
@@ -131,7 +127,6 @@ frontend:
     host: shop.game.local
     path: /
     pathType: Prefix
-
 # =========================
 # REDIS (один на весь game-project)
 # =========================
@@ -143,15 +138,13 @@ redis:
     pullPolicy: IfNotPresent
   port: 6379
   persistence:
-    enabled: false        # если захочешь persistent Redis — включим и добавим PVC
-
+    enabled: false # если захочешь persistent Redis — включим и добавим PVC
 # =========================
 # LEGACY MONGO (если ещё нужен где-то)
 # =========================
 mongo:
   image: mongo:6
   port: 27017
-
 # =========================
 # POSTGRES
 # =========================
@@ -168,7 +161,6 @@ postgres:
   secretName: postgres-secret
   persistence:
     size: "5Gi"
-
 # =========================
 # MONITORING (оставляем как есть)
 # =========================
