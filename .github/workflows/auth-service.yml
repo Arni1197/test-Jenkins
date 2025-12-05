@@ -1,4 +1,4 @@
-name: backend CI-CD
+name: auth-service CI-CD
 
 on:
   push:
