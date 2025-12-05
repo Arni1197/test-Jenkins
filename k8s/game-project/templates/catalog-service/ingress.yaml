@@ -1,0 +1,24 @@
+{{- if and .Values.catalogService.enabled .Values.catalogService.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: catalog-service-ingress
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: catalog-service
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: {{ .Values.catalogService.ingress.host }}
+      http:
+        paths:
+          - path: {{ .Values.catalogService.ingress.path }}
+            pathType: {{ .Values.catalogService.ingress.pathType }}
+            backend:
+              service:
+                name: catalog-service
+                port:
+                  number: {{ .Values.catalogService.service.port }}
+{{- end }}

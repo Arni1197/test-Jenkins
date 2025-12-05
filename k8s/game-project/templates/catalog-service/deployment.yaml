@@ -1,0 +1,56 @@
+{{- if .Values.catalogService.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-service
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: catalog-service
+spec:
+  replicas: {{ .Values.catalogService.replicaCount }}
+  selector:
+    matchLabels:
+      app: catalog-service
+  template:
+    metadata:
+      labels:
+        app: catalog-service
+    spec:
+      serviceAccountName: catalog-service-sa
+      containers:
+        - name: catalog-service
+          image: "{{ .Values.catalogService.image.repository }}:{{ .Values.catalogService.image.tag }}"
+          imagePullPolicy: {{ .Values.catalogService.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.catalogService.containerPort }}
+
+          envFrom:
+            - secretRef:
+                name: catalog-service-secrets
+
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: {{ .Values.catalogService.containerPort }}
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: {{ .Values.catalogService.containerPort }}
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 1
+            failureThreshold: 3
+
+          resources:
+            requests:
+              cpu: {{ .Values.catalogService.resources.requests.cpu | quote }}
+              memory: {{ .Values.catalogService.resources.requests.memory | quote }}
+            limits:
+              cpu: {{ .Values.catalogService.resources.limits.cpu | quote }}
+              memory: {{ .Values.catalogService.resources.limits.memory | quote }}
+{{- end }}

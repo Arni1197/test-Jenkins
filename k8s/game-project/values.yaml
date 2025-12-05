@@ -1,4 +1,0 @@
-backend:
-  image:
-    repository: arnold2343/game-backend
-    tag: "dev"
