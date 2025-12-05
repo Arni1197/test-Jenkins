@@ -4,16 +4,10 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - "backend/**"
+      - "auth-service/**"
       - "k8s/game-project/**"
-      - ".github/workflows/backend-ci.yml"
-  pull_request:
-    branches: [ "main" ]
-    paths:
-      - "backend/**"
-      - "k8s/game-project/**"
+      - ".github/workflows/auth-service-ci.yml"
 
-# нужно для коммита обновлённого values-файла
 permissions:
   contents: write
 
@@ -29,25 +23,23 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: auth-service/package-lock.json
 
-      - name: Install backend deps
-        working-directory: backend
+      - name: Install deps
+        working-directory: auth-service
         run: npm ci
 
-      - name: Lint backend
-        working-directory: backend
+      - name: Lint
+        working-directory: auth-service
         run: npm run lint
 
-      - name: Test backend
-        working-directory: backend
+      - name: Test
+        working-directory: auth-service
         run: npm test
 
   build-and-push:
-    # только push в main и без [skip ci]
     if: github.event_name == 'push' &&
-        github.ref == 'refs/heads/main' &&
-        !contains(github.event.head_commit.message, '[skip ci]')
+        github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs: tests
 
@@ -64,14 +56,14 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
-      - name: Set up Docker Buildx
+      - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push BACKEND image
+      - name: Build & Push Docker image
         uses: docker/build-push-action@v6
         with:
-          context: ./backend
-          file: ./backend/Dockerfile
+          context: ./auth-service
+          file: ./auth-service/Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
@@ -80,8 +72,7 @@ jobs:
 
   update-image-tag:
     if: github.event_name == 'push' &&
-        github.ref == 'refs/heads/main' &&
-        !contains(github.event.head_commit.message, '[skip ci]')
+        github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs: build-and-push
 
@@ -90,39 +81,24 @@ jobs:
       VALUES_FILE: k8s/game-project/values-game-project-staging.yaml
 
     steps:
-      - name: Checkout repo (with push rights)
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           persist-credentials: true
 
       - name: Install yq
         run: |
-          sudo wget -qO /usr/local/bin/yq \
-            https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
 
-      - name: Update backend image tag
+      - name: Update authService image tag
         run: |
-          echo "Old tag:"
-          yq '.backend.image.tag' "$VALUES_FILE" || true
+          yq -i '.authService.image.tag = strenv(IMAGE_TAG)' "$VALUES_FILE"
 
-          yq -i '.backend.image.tag = strenv(IMAGE_TAG)' "$VALUES_FILE"
-
-          echo "New tag:"
-          yq '.backend.image.tag' "$VALUES_FILE"
-
-      - name: Configure git
+      - name: Commit and push changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Commit and push
-        run: |
-          if git diff --quiet; then
-            echo "No changes, nothing to commit"
-            exit 0
-          fi
-
           git add "$VALUES_FILE"
-          git commit -m "chore: update backend image tag to ${IMAGE_TAG} [skip ci]"
+          git commit -m "chore: update authService image tag to ${IMAGE_TAG} [skip ci]"
           git push origin main
