@@ -65,9 +65,6 @@ function Navbar() {
           <NavLink to="/login" className={navLinkClass}>
             Sign in
           </NavLink>
-          <NavLink to="/register" className={navLinkClass}>
-            Sign up
-          </NavLink>
         </div>
       </div>
     </header>

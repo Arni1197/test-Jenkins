@@ -8,14 +8,35 @@ function RegisterPage() {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState(""); // ✅ новое состояние
   const [password, setPassword] = useState("");
   const [passwordRepeat, setPasswordRepeat] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const validatePassword = (value: string) => {
+    if (value.length < 8) return "Пароль должен быть минимум 8 символов.";
+    if (!/[a-z]/.test(value)) return "Добавьте хотя бы одну строчную букву.";
+    if (!/[A-Z]/.test(value)) return "Добавьте хотя бы одну заглавную букву.";
+    if (!/[0-9]/.test(value)) return "Добавьте хотя бы одну цифру.";
+    if (!/[^A-Za-z0-9]/.test(value)) return "Добавьте хотя бы один спецсимвол.";
+    return null;
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!username.trim()) {
+      setError("Username обязателен.");
+      return;
+    }
+
+    const passError = validatePassword(password);
+    if (passError) {
+      setError(passError);
+      return;
+    }
 
     if (password !== passwordRepeat) {
       setError("Пароли не совпадают.");
@@ -24,16 +45,11 @@ function RegisterPage() {
 
     setLoading(true);
     try {
-      const result = await register({ email, password });
-
-      // TODO: положить токены в localStorage / context
+      const result = await register({ email, username, password }); // ✅ отправляем username
       console.log("Registered:", result);
-
-      // Вариант A: сразу отправляем на /login
-      navigate("/login");
-      // Вариант B (потом): сразу логинить и вести на /profile
+      navigate("/profile");
     } catch (err) {
-      setError("Не удалось зарегистрироваться. Возможно, email уже занят.");
+      setError("Не удалось зарегистрироваться. Проверь email/username и сложность пароля.");
     } finally {
       setLoading(false);
     }
@@ -61,6 +77,18 @@ function RegisterPage() {
         </label>
 
         <label style={{ fontSize: 13 }}>
+          Username
+          <input
+            className="input"
+            type="text"
+            required
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="arnold"
+          />
+        </label>
+
+        <label style={{ fontSize: 13 }}>
           Пароль
           <input
             className="input"
@@ -68,7 +96,7 @@ function RegisterPage() {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Минимум 8 символов"
+            placeholder="Минимум 8 символов, A-z, 0-9, спецсимвол"
           />
         </label>
 

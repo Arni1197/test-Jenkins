@@ -39,9 +39,6 @@ function HomePage() {
             <Link to="/catalog">
               <button className="button-primary">Открыть каталог</button>
             </Link>
-            <Link to="/profile">
-              <button className="button-ghost">Личный кабинет</button>
-            </Link>
           </div>
         </div>
       </div>

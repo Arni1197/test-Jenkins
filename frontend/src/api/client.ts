@@ -1,5 +1,8 @@
 // src/api/client.ts
-const API_BASE_URL =  "http://localhost:3000"; // сюда потом повесишь свой gateway
+
+const API_BASE_URL =
+  (process.env.REACT_APP_API_BASE_URL as string) ??
+  "http://localhost:3001/api";
 
 export async function apiFetch<T>(
   path: string,
@@ -10,6 +13,7 @@ export async function apiFetch<T>(
       "Content-Type": "application/json",
       ...(options.headers || {}),
     },
+    credentials: "include", // ✅ важно для cookie auth
     ...options,
   });
 

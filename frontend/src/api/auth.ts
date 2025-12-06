@@ -12,26 +12,24 @@ export interface AuthResponse {
   userId: string;
 }
 
-export async function login(payload: LoginPayload): Promise<AuthResponse> {
-  // TODO: путь под твой gateway: /auth/login или /api/auth/login
-  return apiFetch<AuthResponse>("/auth/login", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
-
-// 🔽 НОВОЕ: регистрация
+// 🔽 регистрация
 export interface RegisterPayload {
   email: string;
+  username: string; // ✅ добавили обязательное поле
   password: string;
-  // при желании можно добавить username, nickname и т.п.
 }
 
 export async function register(
   payload: RegisterPayload
 ): Promise<AuthResponse> {
-  // TODO: подстрой под свой backend: /auth/register или /auth/signup
   return apiFetch<AuthResponse>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function login(payload: LoginPayload): Promise<AuthResponse> {
+  return apiFetch<AuthResponse>("/auth/login", {
     method: "POST",
     body: JSON.stringify(payload),
   });
