@@ -15,7 +15,7 @@ coverage/
 # Docker
 *.pid
 *.log
-docker-compose.override.yml
+docker-compose.yml
 
 # IDE / OS
 .DS_Store
