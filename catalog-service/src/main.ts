@@ -5,6 +5,9 @@ import { ValidationPipe } from '@nestjs/common';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // ✅ ОБЯЗАТЕЛЬНО как в Auth
+  app.setGlobalPrefix('api');
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -12,8 +15,9 @@ async function bootstrap() {
     }),
   );
 
-  const port = process.env.PORT || 3003;
-  await app.listen(port);
-  console.log(`✅ catalog-service запущен на порту ${port}`);
+  const port = Number(process.env.PORT ?? 3003);
+  await app.listen(port, '0.0.0.0');
+
+  console.log(`🚀 Catalog Service running on http://localhost:${port}`);
 }
 bootstrap();

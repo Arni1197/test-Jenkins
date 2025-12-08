@@ -1,8 +1,6 @@
-// src/api/client.ts
-
 const API_BASE_URL =
   (process.env.REACT_APP_API_BASE_URL as string) ??
-  "http://localhost:3001/api";
+  "http://localhost:8081/api";
 
 export async function apiFetch<T>(
   path: string,
@@ -13,7 +11,7 @@ export async function apiFetch<T>(
       "Content-Type": "application/json",
       ...(options.headers || {}),
     },
-    credentials: "include", // ✅ важно для cookie auth
+    credentials: "include",
     ...options,
   });
 
