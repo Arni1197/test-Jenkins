@@ -1,6 +1,7 @@
-// src/app.module.ts
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { BullModule } from '@nestjs/bullmq';
+
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { HealthModule } from './health/health.module';
@@ -12,11 +13,31 @@ import { AppController } from './app.controller';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+
     PrismaModule,
     MetricsModule,
-    UsersModule,
     HealthModule,
+
+    // ✅ BullMQ root
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (cfg: ConfigService) => ({
+        connection: {
+          host: cfg.get('REDIS_HOST', 'redis'),
+          port: Number(cfg.get('REDIS_PORT', 6379)),
+          // или если используешь URL:
+          // url: cfg.get('REDIS_URL'),
+        },
+      }),
+    }),
+
+    // ✅ очередь событий пользователей
+    BullModule.registerQueue({
+      name: 'user-events',
+    }),
+
+    UsersModule,
   ],
-  controllers: [AppController]
+  controllers: [AppController],
 })
 export class AppModule {}

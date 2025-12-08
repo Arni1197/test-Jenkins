@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,26 +8,25 @@ datasource db {
 }
 
 model User {
-  id                String   @id @default(uuid())
-  email             String   @unique
-  username          String?  @unique      // из Mongo-схемы и AuthService
-  passwordHash      String              // храним хэш
+  id               String   @id @default(uuid())
 
-  firstName         String?
-  lastName          String?
-  nickname          String?  @unique
-  country           String?
-  birthDate         DateTime?
+  email            String   @unique
+  username         String?  @unique
 
-  isEmailConfirmed  Boolean   @default(false) // == emailVerified в домене
+  passwordHash     String
 
-  // 2FA
-  twoFactorEnabled  Boolean   @default(false)
-  twoFactorSecret   String?
+  // ✅ единый нейминг
+  emailVerified    Boolean  @default(false)
 
-  // инвалидируем старые токены, если пароль менялся
+  // ✅ 2FA
+  twoFactorEnabled Boolean  @default(false)
+  twoFactorSecret  String?
+
+  // ✅ инвалидируем старые токены при смене пароля
   passwordChangedAt DateTime?
 
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([emailVerified])
 }

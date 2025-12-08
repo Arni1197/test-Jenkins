@@ -1,18 +1,38 @@
-// src/users/dto/update-user-profile.dto.ts
-import { IsOptional, IsString, IsUrl, Length } from 'class-validator';
+import { IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
 
 export class UpdateUserProfileDto {
   @IsOptional()
   @IsString()
-  @Length(1, 50)
+  @MaxLength(50)
+  firstName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  lastName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  bio?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  language?: string; // например: "ru", "en", "fi"
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
   displayName?: string;
 
   @IsOptional()
   @IsUrl()
+  @MaxLength(500)
   avatarUrl?: string;
 
   @IsOptional()
   @IsString()
-  @Length(2, 50)
-  country?: string;
+  @MaxLength(5)
+  country?: string; // например: "RU"
 }

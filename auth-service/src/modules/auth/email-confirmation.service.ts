@@ -80,7 +80,7 @@ export class EmailConfirmationService {
 
     // обновляем флаг подтверждения email через UsersService (Prisma)
     await this.usersService.updateById(user.id, {
-      isEmailConfirmed: true,
+      emailVerified: true,
     });
 
     await this.redisClient.del(`email_confirm:${tokenHash}`);

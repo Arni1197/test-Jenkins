@@ -1,14 +1,13 @@
-// src/modules/users/users.service.ts
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DomainUser } from '../types/user.types';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   // ==========================
-  // ВСПОМОГАТЕЛЬНЫЙ МАППЕР
+  // МАППЕР В ДОМЕН
   // ==========================
   private toDomain(user: any | null): DomainUser | null {
     if (!user) return null;
@@ -19,16 +18,17 @@ export class UsersService {
       username: user.username ?? undefined,
 
       password: user.passwordHash,
-      emailVerified: user.isEmailConfirmed,
+      emailVerified: user.emailVerified,
 
       twoFactorEnabled: user.twoFactorEnabled,
       twoFactorSecret: user.twoFactorSecret ?? undefined,
 
-      firstName: user.firstName ?? undefined,
-      lastName: user.lastName ?? undefined,
-      nickname: user.nickname ?? undefined,
-      country: user.country ?? undefined,
-      birthDate: user.birthDate ?? undefined,
+      // профили тут не живут
+      firstName: undefined,
+      lastName: undefined,
+      nickname: undefined,
+      country: undefined,
+      birthDate: undefined,
 
       passwordChangedAt: user.passwordChangedAt ?? undefined,
 
@@ -37,64 +37,56 @@ export class UsersService {
     };
   }
 
+  // ==========================
+  // READ
+  // ==========================
   async findByEmail(email: string): Promise<DomainUser | null> {
-    const user = await this.prisma.user.findUnique({
-      where: { email },
-    });
-
+    const user = await this.prisma.user.findUnique({ where: { email } });
     return this.toDomain(user);
   }
 
   async findById(userId: string): Promise<DomainUser | null> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
     return this.toDomain(user);
   }
 
+  // ==========================
+  // CREATE (минимальный user)
+  // ==========================
   async createUser(data: {
     email: string;
-    username: string;
-    password: string; // захэшированный пароль
-    firstName?: string;
-    lastName?: string;
-    nickname?: string;
-    country?: string;
-    birthDate?: Date;
+    username?: string;
+    password: string; // уже hashed
   }): Promise<DomainUser> {
-    const created = await this.prisma.user.create({
-      data: {
-        email: data.email,
-        username: data.username,
-        passwordHash: data.password,
+    try {
+      const created = await this.prisma.user.create({
+        data: {
+          email: data.email,
+          username: data.username ?? null,
+          passwordHash: data.password,
 
-        firstName: data.firstName ?? null,
-        lastName: data.lastName ?? null,
-        nickname: data.nickname ?? null,
-        country: data.country ?? null,
-        birthDate: data.birthDate ?? null,
+          // ✅ emailVerified НЕ трогаем — берём default(false)
+          // ✅ 2FA тоже default(false)
+          twoFactorSecret: null,
+          passwordChangedAt: null,
+        },
+      });
 
-        isEmailConfirmed: false,
-        twoFactorEnabled: false,
-        twoFactorSecret: null,
-      },
-    });
-
-    return this.toDomain(created)!;
+      return this.toDomain(created)!;
+    } catch (e: any) {
+      throw new ConflictException('User already exists');
+    }
   }
 
+  // ==========================
+  // UPDATE auth-полей
+  // ==========================
   async updateById(
     userId: string,
     update: Partial<{
       email: string;
       username: string;
-      firstName: string;
-      lastName: string;
-      nickname: string;
-      country: string;
-      birthDate: Date;
-      isEmailConfirmed: boolean;
+      emailVerified: boolean;
       twoFactorEnabled: boolean;
       twoFactorSecret: string | null;
     }>,
@@ -103,20 +95,14 @@ export class UsersService {
 
     if (update.email !== undefined) data.email = update.email;
     if (update.username !== undefined) data.username = update.username;
-    if (update.firstName !== undefined) data.firstName = update.firstName;
-    if (update.lastName !== undefined) data.lastName = update.lastName;
-    if (update.nickname !== undefined) data.nickname = update.nickname;
-    if (update.country !== undefined) data.country = update.country;
-    if (update.birthDate !== undefined) data.birthDate = update.birthDate;
-    if (update.isEmailConfirmed !== undefined) {
-      data.isEmailConfirmed = update.isEmailConfirmed;
-    }
-    if (update.twoFactorEnabled !== undefined) {
+    if (update.emailVerified !== undefined)
+      data.emailVerified = update.emailVerified;
+
+    if (update.twoFactorEnabled !== undefined)
       data.twoFactorEnabled = update.twoFactorEnabled;
-    }
-    if (update.twoFactorSecret !== undefined) {
+
+    if (update.twoFactorSecret !== undefined)
       data.twoFactorSecret = update.twoFactorSecret;
-    }
 
     const user = await this.prisma.user.update({
       where: { id: userId },
@@ -126,23 +112,24 @@ export class UsersService {
     return this.toDomain(user);
   }
 
-  async updatePassword(
-    userId: string,
-    hashedPassword: string,
-  ): Promise<void> {
+  // ==========================
+  // EMAIL VERIFIED helper
+  // ==========================
+  async markEmailVerified(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { emailVerified: true },
+    });
+  }
+
+  // ==========================
+  // PASSWORD
+  // ==========================
+  async updatePassword(userId: string, hashedPassword: string): Promise<void> {
     await this.prisma.user.update({
       where: { id: userId },
       data: {
         passwordHash: hashedPassword,
-        passwordChangedAt: new Date(),
-      },
-    });
-  }
-
-  async updatePasswordChangedAt(userId: string): Promise<void> {
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
         passwordChangedAt: new Date(),
       },
     });

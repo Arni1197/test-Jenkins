@@ -1,17 +1,12 @@
-// main.ts
+// src/main.ts
 import { NestFactory } from '@nestjs/core';
+import { BadRequestException, ValidationPipe, VersioningType } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import cookieParser from 'cookie-parser';
+
 import { AppModule } from './app.module';
 import { logger } from './logger';
 
-import {
-  BadRequestException,
-  ValidationPipe,
-  VersioningType,
-} from '@nestjs/common';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-
-// main.ts
-import cookieParser from 'cookie-parser';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { logger });
 
@@ -21,7 +16,7 @@ async function bootstrap() {
   // ✅ /api/*
   app.setGlobalPrefix('api');
 
-  // (опционально) версионирование
+  // ✅ (опционально) версионирование: /v1/...
   app.enableVersioning({ type: VersioningType.URI });
 
   // ✅ CORS multi-env
@@ -32,17 +27,16 @@ async function bootstrap() {
   // FRONTEND_URLS="http://localhost:3002,https://staging.gameproject.com"
   const frontendUrls = (process.env.FRONTEND_URLS ?? frontendUrl)
     .split(',')
-    .map(s => s.trim())
+    .map((s) => s.trim())
     .filter(Boolean);
 
   app.enableCors({
     origin: (origin, callback) => {
-      // ✅ запросы без origin (health/curl)
+      // ✅ запросы без Origin (health/curl)
       if (!origin) return callback(null, true);
 
-      if (frontendUrls.includes(origin)) {
-        return callback(null, true);
-      }
+      if (frontendUrls.includes(origin)) return callback(null, true);
+
       return callback(new Error(`CORS blocked for origin: ${origin}`), false);
     },
     credentials: true,
@@ -50,10 +44,10 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
-  // ✅ health-check
-  const httpAdapter = app.getHttpAdapter();
-  httpAdapter.get('/api/health', (req, res) => {
-    res.status(200).json({ status: 'ok' });
+  // ✅ health-check (минимально и корректно для Express)
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.get('/api/health', (_req, res) => {
+    res.status(200).json({ status: 'ok', service: 'auth-service' });
   });
 
   // ✅ validation
@@ -63,7 +57,7 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
       transform: true,
       exceptionFactory: (validationErrors = []) => {
-        const msgs = validationErrors.flatMap(e =>
+        const msgs = validationErrors.flatMap((e) =>
           Object.values(e.constraints ?? {}),
         );
         return new BadRequestException(msgs.length ? msgs : 'Validation failed');
@@ -77,8 +71,8 @@ async function bootstrap() {
     const portForDocs = process.env.PORT ? Number(process.env.PORT) : 3000;
 
     const config = new DocumentBuilder()
-      .setTitle('Game API')
-      .setDescription('API для игры с ресурсами, зданиями и боями')
+      .setTitle('Auth API')
+      .setDescription('Auth-service API (registration, login, 2FA, email confirm)')
       .setVersion('1.0')
       .addBearerAuth(
         {
@@ -96,7 +90,7 @@ async function bootstrap() {
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('docs', app, document);
 
-    app.getHttpAdapter().get('/openapi.json', (req, res) => {
+    expressApp.get('/openapi.json', (_req, res) => {
       res.type('application/json').send(document);
     });
   }
@@ -106,7 +100,8 @@ async function bootstrap() {
   const port = process.env.PORT ? Number(process.env.PORT) : 3000;
   await app.listen(port, '0.0.0.0');
 
-  console.log(`🚀 Server running on http://localhost:${port}`);
+  // eslint-disable-next-line no-console
+  console.log(`🚀 Auth-service running on http://localhost:${port}`);
 }
 
 bootstrap();

@@ -1,4 +1,4 @@
-// app.module.ts
+// src/app.module.ts
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import {
@@ -7,9 +7,13 @@ import {
   makeHistogramProvider,
 } from '@willsoto/nestjs-prometheus';
 
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { BullModule } from '@nestjs/bullmq';
+
 import { AuthModule } from './modules/auth/auth.module';
-import { UsersModule } from './modules/users/users.module';
+// ✅ УБРАЛ прямой импорт UsersModule отсюда:
+// если он нужен AuthService — он должен приходить через AuthModule imports.
+// Так AppModule остаётся “чистым” для auth-service.
 import { RedisModule } from './modules/redis/redis.module';
 import { envValidationSchema } from './config/env.validation';
 import { ValidationExceptionFilter } from './common/filters/validation-exception.filter';
@@ -21,33 +25,54 @@ import { HttpMetricsMiddleware } from './metrics/http-metrics.middleware';
 
 @Module({
   imports: [
-    PrometheusModule.register({
-      defaultMetrics: {
-        enabled: true,
-      },
-      path: '/metrics', // будет доступно как /api/metrics из-за setGlobalPrefix('api')
-    }),
+    // 1) ENV
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
       validationSchema: envValidationSchema,
     }),
+
+    // 2) Metrics
+    PrometheusModule.register({
+      defaultMetrics: { enabled: true },
+      path: '/metrics',
+    }),
+
+    // 3) Redis module (как клиент/utility)
     RedisModule,
-    AuthModule,
-    UsersModule,
+
+    // 4) Prisma (auth schema)
     PrismaModule,
+
+    // 5) BullMQ (очереди поверх Redis)
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (cfg: ConfigService) => {
+        const url = cfg.get<string>('REDIS_URL');
+    
+        return {
+          connection: url
+            ? { url }
+            : {
+                host: cfg.get('REDIS_HOST', 'localhost'),
+                port: Number(cfg.get('REDIS_PORT', 6379)),
+              },
+        };
+      },
+    }),
+
+    // очередь для событий пользователей
+    BullModule.registerQueue({
+      name: 'user-events',
+    }),
+
+    // 6) Domain module
+    AuthModule,
   ],
   providers: [
-    {
-      provide: APP_FILTER,
-      useClass: ValidationExceptionFilter,
-    },
-    {
-      provide: APP_FILTER,
-      useClass: HttpExceptionFilter,
-    },
+    { provide: APP_FILTER, useClass: ValidationExceptionFilter },
+    { provide: APP_FILTER, useClass: HttpExceptionFilter },
 
-    // 👉 наши метрики:
     HttpMetricsService,
     makeCounterProvider({
       name: 'http_requests_total',
@@ -64,7 +89,6 @@ import { HttpMetricsMiddleware } from './metrics/http-metrics.middleware';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    // вешаем middleware на все маршруты (с учётом /api префикса)
     consumer.apply(HttpMetricsMiddleware).forRoutes('*');
   }
 }

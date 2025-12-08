@@ -1,24 +1,24 @@
-// src/modules/types/user.types.ts
 export interface DomainUser {
   id: string;
   email: string;
-  username?: string | null;
+  username?: string;
 
-  // пароль в домене — это то, что AuthService сравнивает через bcrypt
-  // фактически он берётся из passwordHash в базе
+  // ✅ в домене Auth
   password: string;
-
   emailVerified: boolean;
 
   twoFactorEnabled: boolean;
-  twoFactorSecret?: string | null;
+  twoFactorSecret?: string;
 
-  firstName?: string | null;
-  lastName?: string | null;
-  nickname?: string | null;
-  country?: string | null;
-  birthDate?: Date | null;
-  passwordChangedAt?: Date | null;
+  // ✅ Профильные поля формально могут существовать в общем домене,
+  // но Auth-service их НЕ заполняет.
+  firstName?: string;
+  lastName?: string;
+  nickname?: string;
+  country?: string;
+  birthDate?: Date;
+
+  passwordChangedAt?: Date;
 
   createdAt: Date;
   updatedAt: Date;

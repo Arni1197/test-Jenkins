@@ -8,13 +8,25 @@ datasource db {
 }
 
 model UserProfile {
-  id          Int      @id @default(autoincrement())
-  userId      String   @unique          // UUID из public.User.id
+  // ✅ отдельный ID профиля (НЕ обязан совпадать с auth.User.id)
+  id          String   @id @default(uuid())
+
+  // ✅ связь на auth-service пользователя
+  authUserId  String   @unique
+
+  // ✅ новые поля профиля
+  firstName   String?
+  lastName    String?
+  bio         String?
+  language    String?
+
+  // ✅ уже полезные базовые поля
   displayName String?
   avatarUrl   String?
   country     String?
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@index([userId])
+  @@index([authUserId])
 }

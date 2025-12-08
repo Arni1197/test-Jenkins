@@ -1,4 +1,3 @@
-// src/users/users.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
@@ -7,25 +6,24 @@ import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getOrCreateProfile(userId: string) {
-    let profile = await this.prisma.userProfile.findUnique({
-      where: { userId },
+  async getOrCreateProfile(authUserId: string) {
+    const existing = await this.prisma.userProfile.findUnique({
+      where: { authUserId },
     });
 
-    if (!profile) {
-      profile = await this.prisma.userProfile.create({
-        data: {
-          userId,
-        },
-      });
-    }
+    if (existing) return existing;
 
-    return profile;
+    // ✅ можно задать дефолт displayName позже из события (username)
+    return this.prisma.userProfile.create({
+      data: {
+        authUserId,
+      },
+    });
   }
 
-  async updateMyProfile(userId: string, dto: UpdateUserProfileDto) {
+  async updateMyProfile(authUserId: string, dto: UpdateUserProfileDto) {
     const existing = await this.prisma.userProfile.findUnique({
-      where: { userId },
+      where: { authUserId },
     });
 
     if (!existing) {
@@ -33,7 +31,7 @@ export class UsersService {
     }
 
     return this.prisma.userProfile.update({
-      where: { userId },
+      where: { authUserId },
       data: {
         ...dto,
       },
