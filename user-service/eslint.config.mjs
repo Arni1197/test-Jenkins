@@ -4,10 +4,13 @@ import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended'
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
-// ✅ Ограничим type-aware пресеты только src
-const typeCheckedForSrc = tseslint.configs.recommendedTypeChecked.map((cfg) => ({
+// ✅ Ограничим type-aware пресеты только для нужных сервисов
+const typeCheckedForServices = tseslint.configs.recommendedTypeChecked.map((cfg) => ({
   ...cfg,
-  files: ['src/**/*.ts'],
+  files: [
+    'user-service/src/**/*.ts',
+    'catalog-service/src/**/*.ts',
+  ],
 }));
 
 export default tseslint.config(
@@ -17,11 +20,11 @@ export default tseslint.config(
 
   eslint.configs.recommended,
 
-  // Базовые TS-правила (без type-aware) — можно оставить глобально
+  // Базовые TS-правила (без type-aware)
   ...tseslint.configs.recommended,
 
-  // ✅ Type-aware строгость — только для src
-  ...typeCheckedForSrc,
+  // ✅ Type-aware строгость — только для user/catalog src
+  ...typeCheckedForServices,
 
   eslintPluginPrettierRecommended,
 
@@ -62,9 +65,25 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/no-unsafe-return': 'off',
       '@typescript-eslint/no-unsafe-argument': 'off',
-
-      // по желанию — чтобы не шумело на моках
       '@typescript-eslint/no-floating-promises': 'off',
+    },
+  },
+
+  // ✅ ВАЖНО: этот блок должен быть ПОСЛЕДНИМ
+  // чтобы перебить type-aware no-unsafe-* в прод-коде сервисов
+  {
+    files: [
+      'user-service/src/**/*.ts',
+      'catalog-service/src/**/*.ts',
+    ],
+    rules: {
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+
+      '@typescript-eslint/no-floating-promises': 'warn',
     },
   },
 );
