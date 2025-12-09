@@ -10,10 +10,24 @@ on:
     branches: [ "main" ]
     paths:
       - "frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   tests-and-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: frontend
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -26,15 +40,19 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend deps
-        working-directory: frontend
-        run: npm install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # Если тестов нет — можешь временно удалить этот шаг
+      - name: Test
+        run: npm test
 
       - name: Build frontend
-        working-directory: frontend
         run: npm run build
 
   build-and-push:
-    # ✅ только push в main и без [skip ci]
     if: github.event_name == 'push' &&
         github.ref == 'refs/heads/main' &&
         !contains(github.event.head_commit.message, '[skip ci]')
@@ -51,6 +69,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      # multi-arch => QEMU нужен
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -67,3 +86,6 @@ jobs:
           tags: |
             arnold2343/game-frontend:latest
             arnold2343/game-frontend:${{ github.sha }}
+          # 🔥 главное ускорение multi-arch
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend

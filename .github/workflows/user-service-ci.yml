@@ -10,14 +10,51 @@ on:
     branches: [ "main" ]
     paths:
       - "user-service/**"
+      - ".github/workflows/user-service-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: user-service-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: user-service
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: user-service/package-lock.json
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+
   build-and-push:
-    # ✅ только push в main и без [skip ci]
     if: github.event_name == 'push' &&
         github.ref == 'refs/heads/main' &&
         !contains(github.event.head_commit.message, '[skip ci]')
     runs-on: ubuntu-latest
+    needs: tests
 
     steps:
       - name: Checkout repo
@@ -29,6 +66,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      # multi-arch => QEMU нужен
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -45,3 +83,6 @@ jobs:
           tags: |
             arnold2343/user-service:latest
             arnold2343/user-service:${{ github.sha }}
+          # 🔥 главный ускоритель
+          cache-from: type=gha,scope=user-service
+          cache-to: type=gha,mode=max,scope=user-service

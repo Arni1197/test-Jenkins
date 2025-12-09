@@ -2,34 +2,36 @@
     FROM node:20-alpine AS builder
     WORKDIR /app
     
-    # Устанавливаем зависимости
+    # 1) deps for cache
     COPY package*.json ./
     RUN npm ci
     
-    # Копируем исходники и Prisma schema
-    COPY . .
-    
-    # На всякий случай генерим Prisma Client внутри образа
+    # 2) prisma schema first (better cache)
+    COPY prisma ./prisma
     RUN npx prisma generate
+    
+    # 3) rest of sources
+    COPY . .
     RUN npm run build
+    
     
     # --- Stage 2: runtime ---
     FROM node:20-alpine AS runner
     WORKDIR /app
-    
     ENV NODE_ENV=production
     
-    # Только prod-зависимости
+    # only prod deps
     COPY package*.json ./
     RUN npm ci --omit=dev
     
-    # Копируем билд и Prisma client
+    # app build
     COPY --from=builder /app/dist ./dist
-    COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
     
-    # В k8s ты будешь передавать переменные через Secret/ConfigMap,
-    # поэтому .env внутрь образа лучше НЕ класть.
-    # Локально, если очень хочется, можно раскомментировать:
-    # COPY .env ./.env
+    # prisma runtime bits
+    COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+    COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+    
+    # если вдруг в рантайме нужны файлы prisma:
+    # COPY --from=builder /app/prisma ./prisma
     
     CMD ["node", "dist/main.js"]
