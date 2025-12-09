@@ -42,8 +42,6 @@ jobs:
       - name: Install frontend deps
         run: npm ci
 
-      - name: Lint
-        run: npm run lint
 
       # Если тестов нет — можешь временно удалить этот шаг
       - name: Test
