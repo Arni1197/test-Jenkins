@@ -1,6 +1,6 @@
 // src/pages/LoginPage.tsx
 import { FormEvent, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import PageContainer from "../components/PageContainer";
 import { login } from "../api/auth";
 
@@ -9,6 +9,9 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const navigate = useNavigate();
+
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -19,6 +22,7 @@ function LoginPage() {
       const result = await login({ email, password });
       // TODO: сохранить токены (localStorage / context)
       console.log("Logged in:", result);
+      navigate("/profile")
     } catch (err) {
       setError("Не удалось войти. Проверь email/пароль.");
     } finally {

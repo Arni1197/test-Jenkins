@@ -1,14 +1,31 @@
-// src/components/Navbar.tsx
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
+import { apiFetch } from "../api/client";
+import { useAuth } from "../api/AuthContext";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `text-sm px-3 py-1.5 rounded-full ${
+  `text-sm px-3 py-1.5 rounded-full transition ${
     isActive
       ? "bg-[rgba(99,102,241,0.18)] text-white"
       : "text-[var(--text-muted)] hover:bg-[rgba(15,23,42,0.9)]"
   }`;
 
 function Navbar() {
+  const navigate = useNavigate();
+  const { user, loading, clearAuthLocal } = useAuth();
+
+  const onLogout = async () => {
+    try {
+      await apiFetch("/auth/logout", { method: "POST" });
+    } catch {
+      // даже если бэк упал — локально чистим
+    } finally {
+      clearAuthLocal();
+      navigate("/login");
+    }
+  };
+
+  const isAuthed = !!user;
+
   return (
     <header
       style={{
@@ -41,12 +58,7 @@ function Navbar() {
           />
           <div style={{ display: "flex", flexDirection: "column" }}>
             <span style={{ fontSize: 14, fontWeight: 600 }}>Game Project</span>
-            <span
-              style={{
-                fontSize: 11,
-                color: "var(--text-muted)",
-              }}
-            >
+            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
               DevOps playground
             </span>
           </div>
@@ -56,15 +68,35 @@ function Navbar() {
           <NavLink to="/catalog" className={navLinkClass}>
             Catalog
           </NavLink>
-          <NavLink to="/profile" className={navLinkClass}>
-            Profile
-          </NavLink>
+
+          {/* ✅ Profile только если авторизован */}
+          {!loading && isAuthed && (
+            <NavLink to="/profile" className={navLinkClass}>
+              Profile
+            </NavLink>
+          )}
         </nav>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <NavLink to="/login" className={navLinkClass}>
-            Sign in
-          </NavLink>
+          {/* Пока грузим статус — можно ничего не показывать */}
+          {loading ? null : isAuthed ? (
+            <>
+              <button
+                className={navLinkClass({ isActive: false })}
+                onClick={onLogout}
+                type="button"
+                style={{ border: "1px solid rgba(148,163,184,0.22)" }}
+              >
+                Sign out
+              </button>
+            </>
+          ) : (
+            <>
+              <NavLink to="/login" className={navLinkClass}>
+                Sign in
+              </NavLink>
+            </>
+          )}
         </div>
       </div>
     </header>

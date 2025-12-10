@@ -1,25 +1,44 @@
-// src/pages/ProfilePage.tsx
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import PageContainer from "../components/PageContainer";
-import { getMe, updateMe, UserProfile, UpdateProfilePayload } from "../api/user";
+import {
+  getMe,
+  updateMe,
+  UserProfile,
+  UpdateProfilePayload,
+} from "../api/user";
 
-type UpdateUserProfileDto = UpdateProfilePayload;
+type FormState = UpdateProfilePayload;
+
+const FIELDS: Array<{
+  key: keyof FormState;
+  label: string;
+  placeholder?: string;
+  type?: "text" | "url";
+  span?: 1 | 2;
+}> = [
+  { key: "displayName", label: "Display name", placeholder: "Как тебя показывать" },
+  { key: "country", label: "Country", placeholder: "RU, FI, US..." },
+  { key: "firstName", label: "First name", placeholder: "Имя" },
+  { key: "lastName", label: "Last name", placeholder: "Фамилия" },
+  { key: "language", label: "Language", placeholder: "ru, en..." },
+  { key: "avatarUrl", label: "Avatar URL", placeholder: "https://...", type: "url" },
+];
 
 function ProfilePage() {
+  const navigate = useNavigate();
+
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [form, setForm] = useState<UpdateUserProfileDto>({});
+  const [form, setForm] = useState<FormState>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
 
-  function normalize(v: any) {
-    return v ?? "";
-  }
+  const normalize = (v: any) => v ?? "";
 
-  function hydrateForm(p: UserProfile) {
+  const hydrateForm = useCallback((p: UserProfile) => {
     setForm({
       displayName: p.displayName ?? null,
       firstName: p.firstName ?? null,
@@ -29,22 +48,20 @@ function ProfilePage() {
       avatarUrl: p.avatarUrl ?? null,
       country: p.country ?? null,
     });
-  }
-
+  }, []);
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
     setError(null);
-    setSuccessMsg(null);
-  
+
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
-  
+
     try {
       const data = await getMe();
       if (controller.signal.aborted) return;
-  
+
       setProfile(data);
       hydrateForm(data);
     } catch (e: any) {
@@ -54,17 +71,21 @@ function ProfilePage() {
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
-  }, []);
+  }, [hydrateForm]);
 
-  async function saveProfile() {
+  const resetChanges = useCallback(() => {
+    if (profile) hydrateForm(profile);
+    setError(null);
+  }, [profile, hydrateForm]);
+
+  const saveProfile = useCallback(async () => {
     if (!profile) return;
 
     setSaving(true);
     setError(null);
-    setSuccessMsg(null);
 
     try {
-      const payload: UpdateUserProfileDto = {
+      const payload: FormState = {
         displayName: form.displayName ?? null,
         firstName: form.firstName ?? null,
         lastName: form.lastName ?? null,
@@ -74,69 +95,46 @@ function ProfilePage() {
         country: form.country ?? null,
       };
 
-      const updated = await updateMe(payload);
+      await updateMe(payload);
 
-      setProfile(updated);
-      hydrateForm(updated);
-      setSuccessMsg("Профиль обновлён ✅");
+      // Перезагрузим профиль из API, чтобы показать именно "сохранённое"
+      await loadProfile();
+
+      // И отправим на read-only экран
+      navigate("/profile/saved");
     } catch (e: any) {
       setError(e?.message ?? "Ошибка сохранения профиля");
     } finally {
       setSaving(false);
     }
-  }
-
-  function resetChanges() {
-    if (!profile) return;
-    hydrateForm(profile);
-    setSuccessMsg(null);
-    setError(null);
-  }
+  }, [profile, form, loadProfile, navigate]);
 
   useEffect(() => {
     loadProfile();
     return () => abortRef.current?.abort();
   }, [loadProfile]);
 
+  const previewName = useMemo(
+    () =>
+      normalize(form.displayName) ||
+      normalize(form.firstName) ||
+      "Unnamed user",
+    [form.displayName, form.firstName]
+  );
+
   return (
     <PageContainer
       title="Profile"
       subtitle="Данные берутся из user-service через API Gateway."
     >
-      <div className="card-soft" style={{ display: "grid", gap: 14 }}>
-        {loading && (
-          <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>
-            Загружаю профиль...
-          </p>
-        )}
+      <div className="card-soft gp-panel">
+        {/* STATUS */}
+        {loading && <p className="gp-muted">Загружаю профиль...</p>}
 
-        {error && (
-          <div
-            style={{
-              padding: "10px 12px",
-              borderRadius: 10,
-              background: "rgba(255,0,0,0.06)",
-              fontSize: 13,
-            }}
-          >
-            {error}
-          </div>
-        )}
+        {error && <div className="gp-alert">{error}</div>}
 
-        {successMsg && (
-          <div
-            style={{
-              padding: "10px 12px",
-              borderRadius: 10,
-              background: "rgba(0,128,0,0.08)",
-              fontSize: 13,
-            }}
-          >
-            {successMsg}
-          </div>
-        )}
-
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {/* ACTIONS */}
+        <div className="gp-row">
           <button
             className="btn-soft"
             onClick={loadProfile}
@@ -145,7 +143,6 @@ function ProfilePage() {
           >
             Обновить
           </button>
-
           <button
             className="btn-soft"
             onClick={resetChanges}
@@ -156,197 +153,84 @@ function ProfilePage() {
           </button>
         </div>
 
+        {/* CONTENT */}
         {!loading && profile && (
-          <div style={{ display: "grid", gap: 16 }}>
-            <div className="card-soft">
-              <p
-                style={{
-                  margin: "0 0 8px 0",
-                  fontSize: 12,
-                  color: "var(--text-muted)",
-                }}
-              >
+          <div className="gp-stack">
+            <div className="card-soft gp-tech">
+              <div className="gp-muted" style={{ marginBottom: 6 }}>
                 Техническая информация
-              </p>
-              <div style={{ fontSize: 12, lineHeight: 1.6 }}>
-                <div>
-                  <b>Profile id:</b> {profile.id}
-                </div>
-                <div>
-                  <b>Auth user id:</b> {profile.authUserId}
-                </div>
+              </div>
+              <div className="gp-tech-grid">
+                <div><b>Profile id:</b> {profile.id}</div>
+                <div><b>Auth user id:</b> {profile.authUserId}</div>
               </div>
             </div>
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 12,
-              }}
-            >
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                  Display name
-                </span>
-                <input
-                  value={normalize(form.displayName)}
-                  onChange={(e) =>
-                    setForm((s) => ({ ...s, displayName: e.target.value }))
-                  }
-                  placeholder="Как тебя показывать в UI"
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                  Country
-                </span>
-                <input
-                  value={normalize(form.country)}
-                  onChange={(e) =>
-                    setForm((s) => ({ ...s, country: e.target.value }))
-                  }
-                  placeholder="RU, FI, US..."
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                  First name
-                </span>
-                <input
-                  value={normalize(form.firstName)}
-                  onChange={(e) =>
-                    setForm((s) => ({ ...s, firstName: e.target.value }))
-                  }
-                  placeholder="Имя"
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                  Last name
-                </span>
-                <input
-                  value={normalize(form.lastName)}
-                  onChange={(e) =>
-                    setForm((s) => ({ ...s, lastName: e.target.value }))
-                  }
-                  placeholder="Фамилия"
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                  Language
-                </span>
-                <input
-                  value={normalize(form.language)}
-                  onChange={(e) =>
-                    setForm((s) => ({ ...s, language: e.target.value }))
-                  }
-                  placeholder="ru, en..."
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                  Avatar URL
-                </span>
-                <input
-                  value={normalize(form.avatarUrl)}
-                  onChange={(e) =>
-                    setForm((s) => ({ ...s, avatarUrl: e.target.value }))
-                  }
-                  placeholder="https://..."
-                />
-              </label>
+            <div className="gp-form-grid">
+              {FIELDS.map((f) => (
+                <label key={String(f.key)} className="gp-field">
+                  <span className="gp-label">{f.label}</span>
+                  <input
+                    type={f.type ?? "text"}
+                    value={normalize((form as any)[f.key])}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, [f.key]: e.target.value }))
+                    }
+                    placeholder={f.placeholder}
+                  />
+                </label>
+              ))}
             </div>
 
-            <label style={{ display: "grid", gap: 6 }}>
-              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                Bio
-              </span>
+            <label className="gp-field">
+              <span className="gp-label">Bio</span>
               <textarea
                 value={normalize(form.bio)}
-                onChange={(e) =>
-                  setForm((s) => ({ ...s, bio: e.target.value }))
-                }
+                onChange={(e) => setForm((s) => ({ ...s, bio: e.target.value }))}
                 placeholder="Коротко о себе"
                 rows={4}
               />
             </label>
 
-            <div className="card-soft">
-              <p
-                style={{
-                  margin: "0 0 8px 0",
-                  fontSize: 12,
-                  color: "var(--text-muted)",
-                }}
-              >
+            {/* PREVIEW */}
+            <div className="card-soft gp-preview">
+              <div className="gp-muted" style={{ marginBottom: 8 }}>
                 Preview
-              </p>
-              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                <div
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 12,
-                    background: "rgba(255,255,255,0.06)",
-                    overflow: "hidden",
-                    display: "grid",
-                    placeItems: "center",
-                    fontSize: 10,
-                    color: "var(--text-muted)",
-                  }}
-                >
+              </div>
+              <div className="gp-preview-row">
+                <div className="gp-avatar">
                   {form.avatarUrl ? (
                     <img
                       src={form.avatarUrl}
                       alt="avatar"
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                      }}
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).style.display =
-                          "none";
-                      }}
+                      onError={(e) =>
+                        ((e.currentTarget as HTMLImageElement).style.display =
+                          "none")
+                      }
                     />
                   ) : (
-                    "no avatar"
+                    <span>no avatar</span>
                   )}
                 </div>
 
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>
-                    {normalize(form.displayName) ||
-                      normalize(form.firstName) ||
-                      "Unnamed user"}
-                  </div>
-                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                  <div className="gp-name">{previewName}</div>
+                  <div className="gp-muted">
                     {[normalize(form.firstName), normalize(form.lastName)]
                       .filter(Boolean)
                       .join(" ") || "—"}
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                  <div className="gp-muted">
                     {normalize(form.country) || "—"} •{" "}
                     {normalize(form.language) || "—"}
                   </div>
                 </div>
               </div>
 
-              {form.bio && (
-                <p style={{ margin: "10px 0 0 0", fontSize: 12 }}>
-                  {form.bio}
-                </p>
-              )}
+              {form.bio && <p className="gp-bio">{form.bio}</p>}
             </div>
 
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div className="gp-row">
               <button
                 className="btn-primary"
                 onClick={saveProfile}
@@ -360,7 +244,7 @@ function ProfilePage() {
         )}
 
         {!loading && !profile && !error && (
-          <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>
+          <p className="gp-muted">
             Профиль ещё не создан или нет доступа. Проверь логин.
           </p>
         )}
