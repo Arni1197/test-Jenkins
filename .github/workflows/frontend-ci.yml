@@ -45,7 +45,8 @@ jobs:
 
       # Если тестов нет — можешь временно удалить этот шаг
       - name: Test
-        run: npm test
+        run: npm test -- --watchAll=false --passWithNoTests
+
 
       - name: Build frontend
         run: npm run build
