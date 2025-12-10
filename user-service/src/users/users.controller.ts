@@ -1,8 +1,10 @@
-import { Body, Controller, Get, Patch } from '@nestjs/common';
+import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CurrentUserId } from '../common/decorators/current-user-id.decorator';
 import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
+import { UserIdHeaderGuard } from 'src/common/guards/user-id-header.guard';
 
+@UseGuards(UserIdHeaderGuard)
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
