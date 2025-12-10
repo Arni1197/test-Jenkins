@@ -1,5 +1,5 @@
 // src/pages/ProfilePage.tsx
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import PageContainer from "../components/PageContainer";
 import { getMe, updateMe, UserProfile, UpdateProfilePayload } from "../api/user";
 
@@ -31,21 +31,20 @@ function ProfilePage() {
     });
   }
 
-  async function loadProfile() {
+
+  const loadProfile = useCallback(async () => {
     setLoading(true);
     setError(null);
     setSuccessMsg(null);
-
+  
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
-
+  
     try {
-      // ✅ через общий API-слой
       const data = await getMe();
-
       if (controller.signal.aborted) return;
-
+  
       setProfile(data);
       hydrateForm(data);
     } catch (e: any) {
@@ -55,7 +54,7 @@ function ProfilePage() {
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
-  }
+  }, []);
 
   async function saveProfile() {
     if (!profile) return;
@@ -97,7 +96,7 @@ function ProfilePage() {
   useEffect(() => {
     loadProfile();
     return () => abortRef.current?.abort();
-  }, []);
+  }, [loadProfile]);
 
   return (
     <PageContainer
