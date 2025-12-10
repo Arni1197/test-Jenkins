@@ -10,7 +10,7 @@ authService:
   image:
     repository: arnold2343/game-backend
     # по умолчанию; в CI будет переопределяться через yq
-    tag: "049e3771a1deaf8515e31887d95a0736f971a82e"
+    tag: "42961f208456c00699280df7e5e487f434f96f74"
     pullPolicy: IfNotPresent
   containerPort: 3000
   service:
