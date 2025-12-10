@@ -7,6 +7,7 @@ import {
   UserProfile,
   UpdateProfilePayload,
 } from "../api/user";
+import TwoFaPanel from "../components/TwoFaPanel";
 
 type FormState = UpdateProfilePayload;
 
@@ -123,6 +124,10 @@ function ProfilePage() {
   );
 
   return (
+    <div>
+
+    
+    <TwoFaPanel />
     <PageContainer
       title="Profile"
       subtitle="Данные берутся из user-service через API Gateway."
@@ -250,6 +255,7 @@ function ProfilePage() {
         )}
       </div>
     </PageContainer>
+    </div>
   );
 }
 

@@ -12,55 +12,96 @@ export interface RegisterPayload {
   password: string;
 }
 
+export type LoginResponse =
+  | {
+      need2fa: true;
+      twoFaToken: string;
+    }
+  | {
+      need2fa?: false;
+      userId: string;
+      email: string;
+      username?: string;
+    };
+
 export interface AuthResponse {
-  accessToken: string;
-  refreshToken: string;
   userId: string;
+  email: string;
+  username?: string;
 }
 
-export async function register(
-  payload: RegisterPayload
-): Promise<AuthResponse> {
+// -------------------- Auth basic --------------------
+export async function register(payload: RegisterPayload) {
   return apiFetch<AuthResponse>("/auth/register", {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: payload,
   });
 }
 
-export async function login(payload: LoginPayload): Promise<AuthResponse> {
-  return apiFetch<AuthResponse>("/auth/login", {
+export async function login(payload: LoginPayload) {
+  return apiFetch<LoginResponse>("/auth/login", {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: payload,
   });
 }
 
-export async function refreshToken(
-  refreshTokenValue: string
-): Promise<AuthResponse> {
-  return apiFetch<AuthResponse>("/auth/refresh", {
+export async function logout() {
+  return apiFetch<{ message: string }>("/auth/logout", {
     method: "POST",
-    body: JSON.stringify({ refreshToken: refreshTokenValue }),
   });
 }
 
-// ✅ удобные хелперы хранения токена
-const ACCESS_TOKEN_KEY = "accessToken";
-const REFRESH_TOKEN_KEY = "refreshToken";
-
-export function saveAuthTokens(res: AuthResponse) {
-  localStorage.setItem(ACCESS_TOKEN_KEY, res.accessToken);
-  localStorage.setItem(REFRESH_TOKEN_KEY, res.refreshToken);
+export async function me() {
+  return apiFetch<any>("/auth/me");
 }
 
-export function getAccessToken() {
-  return localStorage.getItem(ACCESS_TOKEN_KEY) ?? "";
+// -------------------- Password reset --------------------
+export async function forgotPassword(email: string) {
+  return apiFetch<{ message: string }>("/auth/forgot-password", {
+    method: "POST",
+    body: { email },
+  });
 }
 
-export function getRefreshToken() {
-  return localStorage.getItem(REFRESH_TOKEN_KEY) ?? "";
+export async function resetPassword(token: string, password: string) {
+  return apiFetch<{ message: string }>("/auth/reset-password", {
+    method: "POST",
+    body: { token, password },
+  });
 }
 
-export function clearAuthTokens() {
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
+// -------------------- 2FA --------------------
+export interface TwoFaSetupResponse {
+  otpauthUrl: string;
+  secret: string;
+}
+
+export async function twoFaSetup() {
+  return apiFetch<TwoFaSetupResponse>("/auth/2fa/setup", {
+    method: "POST",
+  });
+}
+
+export async function twoFaEnable(code: string) {
+  return apiFetch<{ message: string }>("/auth/2fa/enable", {
+    method: "POST",
+    body: { code },
+  });
+}
+
+export async function twoFaDisable(code: string) {
+  return apiFetch<{ message: string }>("/auth/2fa/disable", {
+    method: "POST",
+    body: { code },
+  });
+}
+
+export async function twoFaLogin(twoFaToken: string, code: string) {
+  return apiFetch<{ userId: string; email: string; username?: string }>(
+    "/auth/2fa/login",
+    {
+      method: "POST",
+      body: { twoFaToken, code },
+    }
+  );
 }
