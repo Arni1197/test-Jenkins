@@ -37,8 +37,8 @@ export class EmailConfirmationService {
       ttlSeconds,
     );
 
-    const frontendUrl = this.config.get<string>('FRONTEND_URL');
-    const confirmUrl = `${frontendUrl}/confirm-email?token=${rawToken}`;
+    const gatewayUrl = this.config.get<string>('GATEWAY_PUBLIC_URL');
+    const confirmUrl = `${gatewayUrl}/auth/confirm-email?token=${rawToken}`;
 
     const usernameOrEmail = user.username ?? user.email;
 

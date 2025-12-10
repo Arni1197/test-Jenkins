@@ -9,6 +9,7 @@ import {
   UnauthorizedException,
   HttpCode,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import type { Response, Request } from 'express';
 
@@ -210,7 +211,24 @@ export class AuthController {
     return { message: 'Пароль успешно сброшен.' };
   }
 
-  // ---------- Confirm email ----------
+  // ---------- Confirm email (VARIANT 2: клик из письма) ----------
+  @Get('confirm-email')
+  async confirmEmailFromLink(
+    @Query('token') token: string,
+    @Res() res: Response,
+  ) {
+    const frontend =
+      process.env.FRONTEND_URL?.trim() || 'http://localhost:3000';
+
+    try {
+      await this.emailConfirmationService.confirmEmail(token);
+      return res.redirect(302, `${frontend}/login?verified=1`);
+    } catch {
+      return res.redirect(302, `${frontend}/login?verified=0`);
+    }
+  }
+
+  // ---------- Confirm email (API/manual) ----------
   @Post('confirm-email')
   async confirmEmail(@Body() dto: ConfirmEmailDto) {
     await this.emailConfirmationService.confirmEmail(dto.token);
