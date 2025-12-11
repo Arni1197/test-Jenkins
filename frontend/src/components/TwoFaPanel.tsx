@@ -1,9 +1,8 @@
-import { useCallback, useMemo, useState } from "react";
+// src/components/TwoFaPanel.tsx
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
-
-// ⚠️ Подстрой импорт под твой проект:
-// если у тебя уже есть общий клиент — используй его.
-import { apiFetch } from "../api/client";
+import { twoFaDisable, twoFaEnable, twoFaSetup } from "../api/auth";
+import { useAuth } from "../api/AuthContext";
 
 type TwoFaSetupResponse = {
   otpauthUrl: string;
@@ -11,13 +10,28 @@ type TwoFaSetupResponse = {
 };
 
 export default function TwoFaPanel() {
+  const { user, refreshAuth } = useAuth();
+
+  const [twoFaEnabled, setTwoFaEnabled] = useState<boolean>(
+    !!user?.twoFactorEnabled
+  );
+
   const [setupData, setSetupData] = useState<TwoFaSetupResponse | null>(null);
   const [code, setCode] = useState("");
+
   const [loadingSetup, setLoadingSetup] = useState(false);
   const [loadingEnable, setLoadingEnable] = useState(false);
   const [loadingDisable, setLoadingDisable] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // синхронизируем локальный статус при изменении user
+  useEffect(() => {
+    if (typeof user?.twoFactorEnabled === "boolean") {
+      setTwoFaEnabled(user.twoFactorEnabled);
+    }
+  }, [user?.twoFactorEnabled]);
 
   const codeIsValid = useMemo(() => /^\d{6}$/.test(code.trim()), [code]);
 
@@ -31,10 +45,7 @@ export default function TwoFaPanel() {
     setLoadingSetup(true);
 
     try {
-      const data = await apiFetch<TwoFaSetupResponse>("/auth/2fa/setup", {
-        method: "POST",
-      });
-
+      const data = await twoFaSetup();
       setSetupData(data);
       setSuccess("Секрет создан ✅ Сканируй QR в Authenticator.");
       setCode("");
@@ -56,24 +67,21 @@ export default function TwoFaPanel() {
     setLoadingEnable(true);
 
     try {
-        await apiFetch("/auth/2fa/enable", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ code: code.trim() }),
-          });
+      await twoFaEnable(code.trim());
 
+      // ✅ оптимистично
+      setTwoFaEnabled(true);
       setSuccess("2FA включена ✅ Теперь при логине нужен код.");
-      // логично оставить setupData, но можно очистить:
-      // setSetupData(null);
       setCode("");
+
+      // подтягиваем актуальный me
+      await refreshAuth().catch(() => {});
     } catch (e: any) {
       setError(e?.message ?? "Ошибка включения 2FA");
     } finally {
       setLoadingEnable(false);
     }
-  }, [code, codeIsValid]);
+  }, [code, codeIsValid, refreshAuth]);
 
   const handleDisable = useCallback(async () => {
     clearMessages();
@@ -86,23 +94,23 @@ export default function TwoFaPanel() {
     setLoadingDisable(true);
 
     try {
-        await apiFetch("/auth/2fa/disable", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ code: code.trim() }),
-          });
+      await twoFaDisable(code.trim());
 
+      // ✅ оптимистично
+      setTwoFaEnabled(false);
       setSuccess("2FA отключена ✅");
       setSetupData(null);
       setCode("");
+
+      await refreshAuth().catch(() => {});
     } catch (e: any) {
       setError(e?.message ?? "Ошибка отключения 2FA");
     } finally {
       setLoadingDisable(false);
     }
-  }, [code, codeIsValid]);
+  }, [code, codeIsValid, refreshAuth]);
+
+  const isBusy = loadingSetup || loadingEnable || loadingDisable;
 
   return (
     <div className="card-soft" style={{ display: "grid", gap: 12 }}>
@@ -113,17 +121,43 @@ export default function TwoFaPanel() {
       >
         <div>
           <div style={{ fontWeight: 600 }}>Two-Factor Auth</div>
-          <div className="gp-muted">TOTP через Authenticator-приложение.</div>
+          <div className="gp-muted">
+            TOTP через Authenticator-приложение (Google Authenticator, Authy и
+            т.д.).
+          </div>
         </div>
 
-        <button
-          className="btn-soft"
-          onClick={handleSetup}
-          disabled={loadingSetup || loadingEnable || loadingDisable}
-          type="button"
-        >
-          {loadingSetup ? "Creating..." : "Setup"}
-        </button>
+        <div className="gp-row" style={{ gap: 8 }}>
+          <span
+            className="pill"
+            style={{
+              opacity: 0.9,
+              padding: "4px 10px",
+              fontSize: 11,
+              borderRadius: 999,
+              border: "1px solid rgba(148,163,184,0.2)",
+            }}
+          >
+            {twoFaEnabled ? "Enabled ✅" : "Disabled"}
+          </span>
+
+          <button
+            className="btn-soft"
+            onClick={handleSetup}
+            disabled={isBusy}
+            type="button"
+            title="Create new secret"
+          >
+            {loadingSetup ? "Creating..." : "Setup"}
+          </button>
+        </div>
+      </div>
+
+      {/* Info line */}
+      <div className="gp-muted" style={{ fontSize: 12 }}>
+        {twoFaEnabled
+          ? "2FA включена. При следующем логине потребуется код."
+          : "2FA выключена. Нажми Setup, чтобы создать секрет и включить защиту."}
       </div>
 
       {/* Alerts */}
@@ -158,7 +192,7 @@ export default function TwoFaPanel() {
       {/* Setup data block */}
       {setupData && (
         <div className="card-soft" style={{ display: "grid", gap: 10 }}>
-          <div className="gp-muted">
+          <div className="gp-muted" style={{ fontSize: 12 }}>
             Секрет создан. Отсканируй QR или вставь ключ вручную.
           </div>
 
@@ -170,7 +204,7 @@ export default function TwoFaPanel() {
               flexWrap: "wrap",
             }}
           >
-            {/* Белая подложка для читаемости QR на тёмной теме */}
+            {/* Белая подложка для читаемости */}
             <div
               style={{
                 background: "white",
@@ -206,16 +240,17 @@ export default function TwoFaPanel() {
 
       {/* Code input */}
       <label style={{ display: "grid", gap: 6 }}>
-        <span className="gp-muted">Code from Authenticator</span>
+        <span className="gp-muted" style={{ fontSize: 12 }}>
+          Code from Authenticator
+        </span>
         <input
+          className="input"
           value={code}
           onChange={(e) => setCode(e.target.value)}
           placeholder="123456"
           inputMode="numeric"
           maxLength={6}
-          style={{
-            letterSpacing: "0.12em",
-          }}
+          style={{ letterSpacing: "0.12em" }}
         />
       </label>
 
@@ -224,7 +259,7 @@ export default function TwoFaPanel() {
         <button
           className="btn-primary"
           onClick={handleEnable}
-          disabled={!codeIsValid || loadingEnable || loadingSetup || loadingDisable}
+          disabled={!codeIsValid || isBusy || twoFaEnabled}
           type="button"
         >
           {loadingEnable ? "Enabling..." : "Enable"}
@@ -233,7 +268,7 @@ export default function TwoFaPanel() {
         <button
           className="btn-soft"
           onClick={handleDisable}
-          disabled={!codeIsValid || loadingDisable || loadingSetup || loadingEnable}
+          disabled={!codeIsValid || isBusy || !twoFaEnabled}
           type="button"
         >
           {loadingDisable ? "Disabling..." : "Disable"}

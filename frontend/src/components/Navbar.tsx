@@ -1,30 +1,33 @@
+// src/components/Navbar.tsx
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { apiFetch } from "../api/client";
+import { logout } from "../api/auth";
 import { useAuth } from "../api/AuthContext";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `text-sm px-3 py-1.5 rounded-full transition ${
+  `text-sm px-3 py-1.5 rounded-full ${
     isActive
       ? "bg-[rgba(99,102,241,0.18)] text-white"
       : "text-[var(--text-muted)] hover:bg-[rgba(15,23,42,0.9)]"
   }`;
 
 function Navbar() {
-  const navigate = useNavigate();
   const { user, loading, clearAuthLocal } = useAuth();
+  const navigate = useNavigate();
 
-  const onLogout = async () => {
+  const isAuthed = !!user?.userId;
+
+  const handleLogout = async () => {
     try {
-      await apiFetch("/auth/logout", { method: "POST" });
-    } catch {
-      // даже если бэк упал — локально чистим
+      await logout();
+    } catch (e) {
+      // можно залогировать, но не блокируем выход
+      console.error("Logout error", e);
     } finally {
+      // 🔑 сразу чистим локальную auth-сессию
       clearAuthLocal();
       navigate("/login");
     }
   };
-
-  const isAuthed = !!user;
 
   return (
     <header
@@ -69,8 +72,7 @@ function Navbar() {
             Catalog
           </NavLink>
 
-          {/* ✅ Profile только если авторизован */}
-          {!loading && isAuthed && (
+          {isAuthed && (
             <NavLink to="/profile" className={navLinkClass}>
               Profile
             </NavLink>
@@ -78,24 +80,21 @@ function Navbar() {
         </nav>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {/* Пока грузим статус — можно ничего не показывать */}
-          {loading ? null : isAuthed ? (
-            <>
-              <button
-                className={navLinkClass({ isActive: false })}
-                onClick={onLogout}
-                type="button"
-                style={{ border: "1px solid rgba(148,163,184,0.22)" }}
-              >
-                Sign out
-              </button>
-            </>
-          ) : (
+          {/* Пока идёт первичная загрузка me() — можно вообще ничего не рендерить справа */}
+          {loading ? null : !isAuthed ? (
             <>
               <NavLink to="/login" className={navLinkClass}>
                 Sign in
               </NavLink>
             </>
+          ) : (
+            <button
+              onClick={handleLogout}
+              className="btn-soft"
+              style={{ padding: "6px 10px", fontSize: 12 }}
+            >
+              Sign out
+            </button>
           )}
         </div>
       </div>

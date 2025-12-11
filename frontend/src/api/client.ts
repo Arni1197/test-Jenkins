@@ -4,75 +4,74 @@ const API_BASE_URL =
   (process.env.REACT_APP_API_BASE_URL as string | undefined)?.trim() ||
   "http://localhost:8081/api";
 
-// ✅ ВАЖНО: выкидываем стандартный body из RequestInit
-type ApiFetchOptions = Omit<RequestInit, "body"> & {
-  body?: any; // теперь можно объект
+export type ApiFetchOptions = Omit<RequestInit, "body"> & {
+  // можно передавать объект, строку, FormData и т.д.
+  body?: any;
+  // не пытаться делать refresh при 401
   skipAuthRefresh?: boolean;
 };
 
-function buildBody(body: any, headers: Headers) {
+function isBodyInitLike(v: any) {
+  if (!v) return false;
+  if (typeof v === "string") return true;
+  if (v instanceof Blob) return true;
+  if (v instanceof ArrayBuffer) return true;
+  if (v instanceof FormData) return true;
+  if (v instanceof URLSearchParams) return true;
+  return false;
+}
+
+function normalizeBody(body: any, headers: HeadersInit | undefined) {
   if (body == null) return undefined;
 
-  if (
-    typeof body === "string" ||
-    body instanceof Blob ||
-    body instanceof ArrayBuffer ||
-    body instanceof FormData ||
-    body instanceof URLSearchParams
-  ) {
+  if (isBodyInitLike(body)) {
     return body;
   }
 
-  if (!headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
-  }
-
-  const ct = headers.get("Content-Type") ?? "";
-  if (ct.includes("application/json")) {
-    return JSON.stringify(body);
-  }
-
-  return body;
+  // иначе считаем, что это JSON-объект
+  // Content-Type выставим в rawFetch
+  return JSON.stringify(body);
 }
 
+/**
+ * Низкоуровневый fetch с cookies
+ */
 async function rawFetch(path: string, options: ApiFetchOptions = {}) {
-  const headers = new Headers(options.headers || {});
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string> | undefined),
+  };
 
-  if (options.body && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
+  const body = normalizeBody(options.body, headers);
+
+  // если body выглядит как JSON-объект — гарантируем Content-Type
+  if (body && !isBodyInitLike(options.body)) {
+    headers["Content-Type"] = headers["Content-Type"] || "application/json";
   }
 
-  const body = buildBody(options.body, headers);
-
   return fetch(`${API_BASE_URL}${path}`, {
-    ...options,
     method: options.method ?? "GET",
     credentials: "include",
+    ...options,
     headers,
     body,
   });
 }
 
-function shouldSkipRefresh(path: string) {
-  return (
-    path.startsWith("/auth/login") ||
-    path.startsWith("/auth/register") ||
-    path.startsWith("/auth/forgot-password") ||
-    path.startsWith("/auth/reset-password") ||
-    path.startsWith("/auth/2fa/login")
-  );
-}
-
+/**
+ * Универсальный клиент:
+ * - делает запрос
+ * - если 401 → пытается refresh
+ * - если refresh OK → повторяет исходный запрос
+ */
 export async function apiFetch<T>(
   path: string,
   options: ApiFetchOptions = {}
 ): Promise<T> {
-  const skip =
-    options.skipAuthRefresh === true || shouldSkipRefresh(path);
-
   let res = await rawFetch(path, options);
 
-  if (!skip && res.status === 401) {
+  const shouldTryRefresh = !options.skipAuthRefresh && path !== "/auth/refresh";
+
+  if (res.status === 401 && shouldTryRefresh) {
     const refreshed = await rawFetch("/auth/refresh", {
       method: "POST",
       skipAuthRefresh: true,
@@ -84,18 +83,8 @@ export async function apiFetch<T>(
   }
 
   if (!res.ok) {
-    try {
-      const data = await res.json();
-      const msg =
-        data?.message ||
-        data?.error ||
-        (Array.isArray(data?.errors) ? data.errors.join(", ") : null);
-
-      throw new Error(msg || `API error: ${res.status}`);
-    } catch {
-      const text = await res.text().catch(() => "");
-      throw new Error(text || `API error: ${res.status}`);
-    }
+    const text = await res.text().catch(() => "");
+    throw new Error(text || `API error: ${res.status}`);
   }
 
   if (res.status === 204) {

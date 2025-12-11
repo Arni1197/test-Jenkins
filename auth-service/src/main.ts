@@ -1,11 +1,32 @@
 // src/main.ts
 import { NestFactory } from '@nestjs/core';
-import { BadRequestException, ValidationPipe, VersioningType } from '@nestjs/common';
+import {
+  BadRequestException,
+  ValidationPipe,
+  VersioningType,
+} from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
+import { ValidationError } from 'class-validator';
 
 import { AppModule } from './app.module';
 import { logger } from './logger';
+
+// 🔧 утилита для извлечения сообщений из вложенных ошибок валидации
+function collectValidationMessages(errors: ValidationError[] = []): string[] {
+  const messages: string[] = [];
+
+  for (const error of errors) {
+    if (error.constraints) {
+      messages.push(...Object.values(error.constraints));
+    }
+    if (error.children && error.children.length > 0) {
+      messages.push(...collectValidationMessages(error.children));
+    }
+  }
+
+  return messages;
+}
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { logger });
@@ -50,17 +71,26 @@ async function bootstrap() {
     res.status(200).json({ status: 'ok', service: 'auth-service' });
   });
 
-  // ✅ validation
+  // ✅ validation c логированием ошибок
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
-      exceptionFactory: (validationErrors = []) => {
-        const msgs = validationErrors.flatMap((e) =>
-          Object.values(e.constraints ?? {}),
+      exceptionFactory: (validationErrors: ValidationError[] = []) => {
+        const messages = collectValidationMessages(validationErrors);
+
+        // 📜 логируем полное содержимое ошибок
+        logger.error('Validation failed', {
+          context: 'ValidationPipe',
+          messages,
+          errors: validationErrors,
+        });
+
+        // На клиент уходит массив строк (или дефолтное сообщение)
+        return new BadRequestException(
+          messages.length ? messages : ['Validation failed'],
         );
-        return new BadRequestException(msgs.length ? msgs : 'Validation failed');
       },
     }),
   );
@@ -72,7 +102,9 @@ async function bootstrap() {
 
     const config = new DocumentBuilder()
       .setTitle('Auth API')
-      .setDescription('Auth-service API (registration, login, 2FA, email confirm)')
+      .setDescription(
+        'Auth-service API (registration, login, 2FA, email confirm)',
+      )
       .setVersion('1.0')
       .addBearerAuth(
         {

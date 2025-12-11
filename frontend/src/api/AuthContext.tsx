@@ -1,11 +1,19 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { apiFetch } from "../api/client";
+// src/context/AuthContext.tsx
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import * as authApi from "../api/auth";
 
 export type AuthUser = {
-  id?: string;
   userId?: string;
   email?: string;
   username?: string;
+  twoFactorEnabled?: boolean;
 };
 
 type AuthContextValue = {
@@ -25,8 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshAuth = useCallback(async () => {
     setLoading(true);
     try {
-      // ✅ JwtAuthGuard на бэке
-      const me = await apiFetch<AuthUser>("/auth/me");
+      const me = await authApi.me();
       setUser(me ?? null);
     } catch {
       setUser(null);

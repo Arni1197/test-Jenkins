@@ -12,6 +12,12 @@ export interface RegisterPayload {
   password: string;
 }
 
+export interface RegisterResponse {
+  userId: string;
+  email: string;
+  username?: string;
+}
+
 export type LoginResponse =
   | {
       need2fa: true;
@@ -24,24 +30,18 @@ export type LoginResponse =
       username?: string;
     };
 
-export interface AuthResponse {
-  userId: string;
-  email: string;
-  username?: string;
-}
-
 // -------------------- Auth basic --------------------
 export async function register(payload: RegisterPayload) {
-  return apiFetch<AuthResponse>("/auth/register", {
+  return apiFetch<RegisterResponse>("/auth/register", {
     method: "POST",
-    body: payload,
+    body: payload,                 // ⬅️ БЕЗ JSON.stringify
   });
 }
 
 export async function login(payload: LoginPayload) {
   return apiFetch<LoginResponse>("/auth/login", {
     method: "POST",
-    body: payload,
+    body: payload,                 // ⬅️ тоже объект
   });
 }
 
@@ -59,14 +59,14 @@ export async function me() {
 export async function forgotPassword(email: string) {
   return apiFetch<{ message: string }>("/auth/forgot-password", {
     method: "POST",
-    body: { email },
+    body: { email },               // ⬅️ объект
   });
 }
 
 export async function resetPassword(token: string, password: string) {
   return apiFetch<{ message: string }>("/auth/reset-password", {
     method: "POST",
-    body: { token, password },
+    body: { token, password },     // ⬅️ объект
   });
 }
 
@@ -85,14 +85,14 @@ export async function twoFaSetup() {
 export async function twoFaEnable(code: string) {
   return apiFetch<{ message: string }>("/auth/2fa/enable", {
     method: "POST",
-    body: { code },
+    body: { code },                // ⬅️ объект
   });
 }
 
 export async function twoFaDisable(code: string) {
   return apiFetch<{ message: string }>("/auth/2fa/disable", {
     method: "POST",
-    body: { code },
+    body: { code },                // ⬅️ объект
   });
 }
 
@@ -101,7 +101,7 @@ export async function twoFaLogin(twoFaToken: string, code: string) {
     "/auth/2fa/login",
     {
       method: "POST",
-      body: { twoFaToken, code },
+      body: { twoFaToken, code },  // ⬅️ объект
     }
   );
 }

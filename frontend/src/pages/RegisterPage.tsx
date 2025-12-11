@@ -1,17 +1,16 @@
 // src/pages/RegisterPage.tsx
 import { FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import PageContainer from "../components/PageContainer";
 import { register } from "../api/auth";
 
 function RegisterPage() {
-  const navigate = useNavigate();
-
   const [email, setEmail] = useState("");
-  const [username, setUsername] = useState(""); // ✅ новое состояние
+  const [username, setUsername] = useState(""); // ✅ состояние username
   const [password, setPassword] = useState("");
   const [passwordRepeat, setPasswordRepeat] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null); // ✅ новое инфо-сообщение
   const [loading, setLoading] = useState(false);
 
   const validatePassword = (value: string) => {
@@ -26,6 +25,7 @@ function RegisterPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    setInfo(null);
 
     if (!username.trim()) {
       setError("Username обязателен.");
@@ -45,11 +45,39 @@ function RegisterPage() {
 
     setLoading(true);
     try {
-      const result = await register({ email, username, password }); // ✅ отправляем username
-      console.log("Registered:", result);
-      navigate("/profile");
-    } catch (err) {
-      setError("Не удалось зарегистрироваться. Проверь email/username и сложность пароля.");
+      // 1️⃣ создаём пользователя (бэкенд шлёт письмо с подтверждением)
+      await register({ email, username, password });
+
+      // 2️⃣ показываем уведомление, что письмо отправлено
+      setInfo(
+        `Мы отправили письмо с подтверждением на ${email}. ` +
+          "Перейди по ссылке в письме, чтобы активировать аккаунт, а затем войди."
+      );
+
+      // 3️⃣ можно очистить форму, чтобы не висели значения
+      setPassword("");
+      setPasswordRepeat("");
+      // email / username можно оставить, чтобы юзер видел, куда ушло письмо
+      // если хочешь — раскомментируй:
+      // setEmail("");
+      // setUsername("");
+    } catch (err: any) {
+      // аккуратно разбираем ошибку, чтобы не показывать сырое JSON
+      let msg =
+        "Не удалось зарегистрироваться. Проверь email/username и сложность пароля.";
+
+      if (typeof err?.message === "string") {
+        try {
+          const parsed = JSON.parse(err.message);
+          if (parsed?.message) {
+            msg = parsed.message;
+          }
+        } catch {
+          // сообщение было не JSON — просто оставляем дефолтное
+        }
+      }
+
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -115,6 +143,19 @@ function RegisterPage() {
         {error && (
           <p style={{ color: "var(--danger)", fontSize: 12, margin: "4px 0" }}>
             {error}
+          </p>
+        )}
+
+        {info && (
+          <p
+            style={{
+              color: "var(--accent)",
+              fontSize: 12,
+              margin: "4px 0",
+              whiteSpace: "pre-line",
+            }}
+          >
+            {info}
           </p>
         )}
 
