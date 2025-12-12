@@ -125,4 +125,4 @@ jobs:
           echo "Verifying digest: $DIGEST"
           cosign verify "${IMAGE}@${DIGEST}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-            --certificate-identity "https://github.com/${{ github.repository }}/.github/workflows/api-gateway-ci.yml@refs/heads/main"
+            --certificate-identity-regexp "^https://github.com/${{ github.repository }}/\\.github/workflows/.*@refs/(heads/main|tags/v.*)$"
