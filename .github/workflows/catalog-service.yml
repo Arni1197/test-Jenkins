@@ -53,12 +53,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: tests
 
-    # 🔐 OIDC нужен только здесь (keyless cosign)
     permissions:
       contents: read
       id-token: write
 
-    # Пушим образы только на push в main
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     env:
@@ -111,4 +109,4 @@ jobs:
           echo "Verifying digest: $DIGEST"
           cosign verify "${IMAGE}@${DIGEST}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-            --certificate-identity "https://github.com/${{ github.repository }}/.github/workflows/catalog-service-ci.yml@refs/heads/main"
+            --certificate-identity-regexp "^https://github.com/${{ github.repository }}/\\.github/workflows/.*@refs/heads/main$"
