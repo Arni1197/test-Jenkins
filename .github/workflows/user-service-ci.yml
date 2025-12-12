@@ -6,11 +6,13 @@ on:
     paths:
       - "user-service/**"
       - ".github/workflows/user-service-ci.yml"
+      - ".github/trivy/**"
   pull_request:
     branches: [ "main" ]
     paths:
       - "user-service/**"
       - ".github/workflows/user-service-ci.yml"
+      - ".github/trivy/**"
 
 permissions:
   contents: read
@@ -48,7 +50,6 @@ jobs:
       - name: Test
         run: npm test
 
-
   build-and-push:
     if: github.event_name == 'push' &&
         github.ref == 'refs/heads/main' &&
@@ -56,13 +57,15 @@ jobs:
     runs-on: ubuntu-latest
     needs: tests
 
-    # 🔐 важно: OIDC нужен только здесь (для keyless cosign)
     permissions:
       contents: read
       id-token: write
 
     env:
       IMAGE: arnold2343/user-service
+
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
 
     steps:
       - name: Checkout repo
@@ -111,4 +114,81 @@ jobs:
           echo "Verifying digest: $DIGEST"
           cosign verify "${IMAGE}@${DIGEST}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-            --certificate-identity "https://github.com/${{ github.repository }}/.github/workflows/user-service-ci.yml@refs/heads/main"
+            --certificate-identity-regexp "^https://github.com/${{ github.repository }}/\\.github/workflows/.*@refs/heads/main$"
+
+  scan-image:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    permissions:
+      contents: read
+      security-events: write
+
+    env:
+      IMAGE: arnold2343/user-service
+      DIGEST: ${{ needs.build-and-push.outputs.digest }}
+
+    steps:
+      - name: Checkout repo (for configs/templates)
+        uses: actions/checkout@v4
+
+      # 1) Логи + падение только по CRITICAL (через trivy.yaml)
+      - name: Trivy scan (CRITICAL only, fail on CRITICAL)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: "${{ env.IMAGE }}@${{ env.DIGEST }}"
+          trivy-config: .github/trivy/trivy.yaml
+          trivyignores: .github/trivy/.trivyignore
+
+      # 2) Полный отчёт JSON (артефакт)
+      - name: Trivy report (JSON)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: "${{ env.IMAGE }}@${{ env.DIGEST }}"
+          format: json
+          output: trivy-report.json
+          vuln-type: os,library
+          severity: CRITICAL
+          trivyignores: .github/trivy/.trivyignore
+
+      # 3) HTML отчёт через template (артефакт)
+      - name: Trivy report (HTML)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: "${{ env.IMAGE }}@${{ env.DIGEST }}"
+          format: template
+          template: "@.github/trivy/trivy-html.tpl"
+          output: trivy-report.html
+          vuln-type: os,library
+          severity: CRITICAL
+          trivyignores: .github/trivy/.trivyignore
+
+      # 4) SARIF в GitHub Security tab
+      - name: Trivy report (SARIF)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: "${{ env.IMAGE }}@${{ env.DIGEST }}"
+          format: sarif
+          output: trivy.sarif
+          vuln-type: os,library
+          severity: CRITICAL
+          trivyignores: .github/trivy/.trivyignore
+
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy.sarif
+
+      # 5) JSON+HTML как артефакты (скачать из Actions)
+      - name: Upload Trivy reports (JSON + HTML)
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-user-service-reports
+          path: |
+            trivy-report.json
+            trivy-report.html

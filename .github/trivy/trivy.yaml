@@ -1,0 +1,16 @@
+# trivy.yaml
+scan:
+  scanners:
+    - vuln
+
+vulnerability:
+  type:
+    - os
+    - library
+
+severity:
+  - CRITICAL
+
+# pipeline падает только при CRITICAL
+format: table
+exitCode: 1
