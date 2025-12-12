@@ -32,14 +32,9 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      # 🟡 МАКСИМАЛЬНО НЕСТРОГО:
-      # - npm install вместо npm ci
-      # - без audit/fund
-      # - игнорируем возможные мелкие конфликты, которые npm ci бы зарубил
       - name: Install frontend deps (loose)
         run: npm install --prefix frontend --no-audit --no-fund
 
-      # 🟡 Без тестов — чтобы не стопорить пайплайн
       - name: Build frontend
         run: npm run build --prefix frontend
 
@@ -51,6 +46,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: tests-and-build
+
+    # 🔐 OIDC только для подписи (keyless cosign)
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      IMAGE: arnold2343/game-frontend
 
     steps:
       - name: Checkout repo
@@ -68,7 +71,8 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push FRONTEND image
+      - name: Build and push FRONTEND image (get digest)
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
@@ -76,7 +80,26 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            arnold2343/game-frontend:latest
-            arnold2343/game-frontend:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ github.sha }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Cosign sign image by digest (keyless)
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+        run: |
+          DIGEST="${{ steps.build.outputs.digest }}"
+          echo "Signing digest: $DIGEST"
+          cosign sign -y "${IMAGE}@${DIGEST}"
+
+      - name: Cosign verify (quality gate)
+        run: |
+          DIGEST="${{ steps.build.outputs.digest }}"
+          echo "Verifying digest: $DIGEST"
+          cosign verify "${IMAGE}@${DIGEST}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            --certificate-identity "https://github.com/${{ github.repository }}/.github/workflows/frontend-ci.yml@refs/heads/main"
