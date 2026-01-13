@@ -2,11 +2,11 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 
-# 1) Устанавливаем зависимости
+# 1) Устанавливаем зависимости (dev+prod — нужны для сборки)
 COPY package*.json ./
 RUN npm ci
 
-# 2) Копируем исходники
+# 2) Копируем конфиги и исходники
 COPY tsconfig.json ./
 COPY src ./src
 
@@ -14,21 +14,30 @@ COPY src ./src
 RUN npm run build
 
 
-# ====== Runtime stage ======
-FROM node:20-alpine AS runner
+# ====== Prod deps stage (optional but best practice) ======
+# Если хочешь максимально чисто, можно не ставить prod deps в runner, а вынести отдельно:
+FROM node:20-alpine AS prod-deps
 WORKDIR /app
 
-ENV NODE_ENV=production
-
-# 1) Ставим только prod зависимости
 COPY package*.json ./
 RUN npm ci --omit=dev
 
-# 2) Забираем собранный код
+
+# ====== Runtime stage ======
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+
+# ✅ только prod зависимости
+COPY --from=prod-deps /app/node_modules ./node_modules
+COPY package*.json ./
+
+# ✅ собранный код
 COPY --from=build /app/dist ./dist
 
-# 3) Порт gateway
 EXPOSE 8080
 
-# 4) Запуск
+# ✅ не root
+USER node
+
 CMD ["node", "dist/main.js"]
