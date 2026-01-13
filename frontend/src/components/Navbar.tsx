@@ -1,5 +1,5 @@
 // src/components/Navbar.tsx
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { logout } from "../api/auth";
 import { useAuth } from "../api/AuthContext";
 
@@ -13,8 +13,16 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 function Navbar() {
   const { user, loading, clearAuthLocal } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
+  // ✅ твоя авторизация (адаптируй, если поле не userId)
   const isAuthed = !!user?.userId;
+
+  // ✅ роут-логика для UI
+  const isOnProfile = location.pathname.startsWith("/profile");
+  const isOnAuthPage =
+    location.pathname.startsWith("/login") ||
+    location.pathname.startsWith("/register");
 
   const handleLogout = async () => {
     try {
@@ -72,7 +80,7 @@ function Navbar() {
             Catalog
           </NavLink>
 
-          {isAuthed && (
+          {(isAuthed || isOnProfile) && (
             <NavLink to="/profile" className={navLinkClass}>
               Profile
             </NavLink>
@@ -81,13 +89,7 @@ function Navbar() {
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {/* Пока идёт первичная загрузка me() — можно вообще ничего не рендерить справа */}
-          {loading ? null : !isAuthed ? (
-            <>
-              <NavLink to="/login" className={navLinkClass}>
-                Sign in
-              </NavLink>
-            </>
-          ) : (
+          {loading ? null : isAuthed || isOnProfile ? (
             <button
               onClick={handleLogout}
               className="btn-soft"
@@ -95,6 +97,13 @@ function Navbar() {
             >
               Sign out
             </button>
+          ) : (
+            // На страницах /login и /register кнопку входа можно скрыть
+            !isOnAuthPage && (
+              <NavLink to="/login" className={navLinkClass}>
+                Sign in
+              </NavLink>
+            )
           )}
         </div>
       </div>

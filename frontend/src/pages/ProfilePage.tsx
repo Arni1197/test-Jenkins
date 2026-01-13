@@ -1,3 +1,4 @@
+// src/pages/ProfilePage.tsx
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PageContainer from "../components/PageContainer";
@@ -26,6 +27,26 @@ const FIELDS: Array<{
   { key: "avatarUrl", label: "Avatar URL", placeholder: "https://...", type: "url" },
 ];
 
+const normalize = (v: any) => v ?? "";
+
+// ✅ пустая строка -> null, undefined -> не отправляем
+const toNullableOrUndefined = (v: any) => {
+  if (v === undefined) return undefined; // не отправляем ключ вообще
+  if (v === null) return null; // явное очищение
+  const s = String(v).trim();
+  return s === "" ? null : s;
+};
+
+// ✅ PATCH-пейлоад: отправляем только реально заданные поля
+const buildPatchPayload = (form: FormState): UpdateProfilePayload => {
+  const payload: UpdateProfilePayload = {};
+  (Object.keys(form) as (keyof FormState)[]).forEach((k) => {
+    const v = toNullableOrUndefined(form[k]);
+    if (v !== undefined) (payload as any)[k] = v;
+  });
+  return payload;
+};
+
 function ProfilePage() {
   const navigate = useNavigate();
 
@@ -37,9 +58,8 @@ function ProfilePage() {
 
   const abortRef = useRef<AbortController | null>(null);
 
-  const normalize = (v: any) => v ?? "";
-
   const hydrateForm = useCallback((p: UserProfile) => {
+    // ⚠️ Важно: кладём именно строки/ null, не undefined
     setForm({
       displayName: p.displayName ?? null,
       firstName: p.firstName ?? null,
@@ -86,29 +106,20 @@ function ProfilePage() {
     setError(null);
 
     try {
-      const payload: FormState = {
-        displayName: form.displayName ?? null,
-        firstName: form.firstName ?? null,
-        lastName: form.lastName ?? null,
-        language: form.language ?? null,
-        bio: form.bio ?? null,
-        avatarUrl: form.avatarUrl ?? null,
-        country: form.country ?? null,
-      };
+      // ✅ отправляем PATCH-пейлоад (не обнуляет лишнее)
+      const payload = buildPatchPayload(form);
 
       await updateMe(payload);
 
-      // Перезагрузим профиль из API, чтобы показать именно "сохранённое"
-      await loadProfile();
-
-      // И отправим на read-only экран
+      // ✅ ВАЖНО: не вызываем loadProfile() тут (не перезатираем форму)
+      // Страница /profile/saved сама загрузит "сохранённое" из БД.
       navigate("/profile/saved");
     } catch (e: any) {
       setError(e?.message ?? "Ошибка сохранения профиля");
     } finally {
       setSaving(false);
     }
-  }, [profile, form, loadProfile, navigate]);
+  }, [profile, form, navigate]);
 
   useEffect(() => {
     loadProfile();
@@ -117,144 +128,144 @@ function ProfilePage() {
 
   const previewName = useMemo(
     () =>
-      normalize(form.displayName) ||
-      normalize(form.firstName) ||
-      "Unnamed user",
+      normalize(form.displayName) || normalize(form.firstName) || "Unnamed user",
     [form.displayName, form.firstName]
   );
 
   return (
     <div>
+      <TwoFaPanel />
 
-    
-    <TwoFaPanel />
-    <PageContainer
-      title="Profile"
-      subtitle="Данные берутся из user-service через API Gateway."
-    >
-      <div className="card-soft gp-panel">
-        {/* STATUS */}
-        {loading && <p className="gp-muted">Загружаю профиль...</p>}
+      <PageContainer
+        title="Profile"
+        subtitle="Данные берутся из user-service через API Gateway."
+      >
+        <div className="card-soft gp-panel">
+          {/* STATUS */}
+          {loading && <p className="gp-muted">Загружаю профиль...</p>}
+          {error && <div className="gp-alert">{error}</div>}
 
-        {error && <div className="gp-alert">{error}</div>}
-
-        {/* ACTIONS */}
-        <div className="gp-row">
-          <button
-            className="btn-soft"
-            onClick={loadProfile}
-            disabled={loading || saving}
-            type="button"
-          >
-            Обновить
-          </button>
-          <button
-            className="btn-soft"
-            onClick={resetChanges}
-            disabled={!profile || loading || saving}
-            type="button"
-          >
-            Сбросить изменения
-          </button>
-        </div>
-
-        {/* CONTENT */}
-        {!loading && profile && (
-          <div className="gp-stack">
-            <div className="card-soft gp-tech">
-              <div className="gp-muted" style={{ marginBottom: 6 }}>
-                Техническая информация
-              </div>
-              <div className="gp-tech-grid">
-                <div><b>Profile id:</b> {profile.id}</div>
-                <div><b>Auth user id:</b> {profile.authUserId}</div>
-              </div>
-            </div>
-
-            <div className="gp-form-grid">
-              {FIELDS.map((f) => (
-                <label key={String(f.key)} className="gp-field">
-                  <span className="gp-label">{f.label}</span>
-                  <input
-                    type={f.type ?? "text"}
-                    value={normalize((form as any)[f.key])}
-                    onChange={(e) =>
-                      setForm((s) => ({ ...s, [f.key]: e.target.value }))
-                    }
-                    placeholder={f.placeholder}
-                  />
-                </label>
-              ))}
-            </div>
-
-            <label className="gp-field">
-              <span className="gp-label">Bio</span>
-              <textarea
-                value={normalize(form.bio)}
-                onChange={(e) => setForm((s) => ({ ...s, bio: e.target.value }))}
-                placeholder="Коротко о себе"
-                rows={4}
-              />
-            </label>
-
-            {/* PREVIEW */}
-            <div className="card-soft gp-preview">
-              <div className="gp-muted" style={{ marginBottom: 8 }}>
-                Preview
-              </div>
-              <div className="gp-preview-row">
-                <div className="gp-avatar">
-                  {form.avatarUrl ? (
-                    <img
-                      src={form.avatarUrl}
-                      alt="avatar"
-                      onError={(e) =>
-                        ((e.currentTarget as HTMLImageElement).style.display =
-                          "none")
-                      }
-                    />
-                  ) : (
-                    <span>no avatar</span>
-                  )}
-                </div>
-
-                <div>
-                  <div className="gp-name">{previewName}</div>
-                  <div className="gp-muted">
-                    {[normalize(form.firstName), normalize(form.lastName)]
-                      .filter(Boolean)
-                      .join(" ") || "—"}
-                  </div>
-                  <div className="gp-muted">
-                    {normalize(form.country) || "—"} •{" "}
-                    {normalize(form.language) || "—"}
-                  </div>
-                </div>
-              </div>
-
-              {form.bio && <p className="gp-bio">{form.bio}</p>}
-            </div>
-
-            <div className="gp-row">
-              <button
-                className="btn-primary"
-                onClick={saveProfile}
-                disabled={saving || loading}
-                type="button"
-              >
-                {saving ? "Сохраняю..." : "Сохранить"}
-              </button>
-            </div>
+          {/* ACTIONS */}
+          <div className="gp-row">
+            <button
+              className="btn-soft"
+              onClick={loadProfile}
+              disabled={loading || saving}
+              type="button"
+            >
+              Обновить
+            </button>
+            <button
+              className="btn-soft"
+              onClick={resetChanges}
+              disabled={!profile || loading || saving}
+              type="button"
+            >
+              Сбросить изменения
+            </button>
           </div>
-        )}
 
-        {!loading && !profile && !error && (
-          <p className="gp-muted">
-            Профиль ещё не создан или нет доступа. Проверь логин.
-          </p>
-        )}
-      </div>
-    </PageContainer>
+          {/* CONTENT */}
+          {!loading && profile && (
+            <div className="gp-stack">
+              <div className="card-soft gp-tech">
+                <div className="gp-muted" style={{ marginBottom: 6 }}>
+                  Техническая информация
+                </div>
+                <div className="gp-tech-grid">
+                  <div>
+                    <b>Profile id:</b> {profile.id}
+                  </div>
+                  <div>
+                    <b>Auth user id:</b> {profile.authUserId}
+                  </div>
+                </div>
+              </div>
+
+              <div className="gp-form-grid">
+                {FIELDS.map((f) => (
+                  <label key={String(f.key)} className="gp-field">
+                    <span className="gp-label">{f.label}</span>
+                    <input
+                      type={f.type ?? "text"}
+                      value={normalize((form as any)[f.key])}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, [f.key]: e.target.value }))
+                      }
+                      placeholder={f.placeholder}
+                    />
+                  </label>
+                ))}
+              </div>
+
+              <label className="gp-field">
+                <span className="gp-label">Bio</span>
+                <textarea
+                  value={normalize(form.bio)}
+                  onChange={(e) => setForm((s) => ({ ...s, bio: e.target.value }))}
+                  placeholder="Коротко о себе"
+                  rows={4}
+                />
+              </label>
+
+              {/* PREVIEW */}
+              <div className="card-soft gp-preview">
+                <div className="gp-muted" style={{ marginBottom: 8 }}>
+                  Preview
+                </div>
+                <div className="gp-preview-row">
+                  <div className="gp-avatar">
+                    {form.avatarUrl ? (
+                      <img
+                        src={form.avatarUrl}
+                        alt="avatar"
+                        onError={(e) =>
+                          ((e.currentTarget as HTMLImageElement).style.display =
+                            "none")
+                        }
+                      />
+                    ) : (
+                      <span>no avatar</span>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="gp-name">{previewName}</div>
+                    <div className="gp-muted">
+                      {[normalize(form.firstName), normalize(form.lastName)]
+                        .filter(Boolean)
+                        .join(" ") || "—"}
+                    </div>
+                    <div className="gp-muted">
+                      {normalize(form.country) || "—"} •{" "}
+                      {normalize(form.language) || "—"}
+                    </div>
+                  </div>
+                </div>
+
+                {form.bio && <p className="gp-bio">{form.bio}</p>}
+              </div>
+
+              <div className="gp-row">
+                <button
+                  className="btn-primary"
+                  onClick={saveProfile}
+                  disabled={saving || loading}
+                  type="button"
+                >
+                  {saving ? "Сохраняю..." : "Сохранить"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!loading && !profile && !error && (
+            <p className="gp-muted">
+              Профиль ещё не создан или нет доступа. Проверь логин.
+            </p>
+          )}
+        </div>
+      </PageContainer>
     </div>
   );
 }
