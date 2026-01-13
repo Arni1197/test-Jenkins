@@ -2,13 +2,13 @@ name: user-service CI-CD
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
     paths:
       - "user-service/**"
       - ".github/workflows/user-service-ci.yml"
       - ".github/trivy/**"
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
     paths:
       - "user-service/**"
       - ".github/workflows/user-service-ci.yml"
@@ -49,6 +49,27 @@ jobs:
 
       - name: Test
         run: npm test
+
+  scan-pr:
+    name: Trivy PR gate (fs scan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'pull_request'
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Trivy FS scan (fail on CRITICAL)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: user-service
+          trivy-config: .github/trivy/trivy.yaml
+          trivyignores: .github/trivy/.trivyignore
 
   build-and-push:
     if: github.event_name == 'push' &&
@@ -114,7 +135,7 @@ jobs:
           echo "Verifying digest: $DIGEST"
           cosign verify "${IMAGE}@${DIGEST}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-            --certificate-identity-regexp "^https://github.com/${{ github.repository }}/\\.github/workflows/.*@refs/heads/main$"
+            --certificate-identity-regexp "^https://github.com/${{ github.repository }}/\.github/workflows/.*@refs/heads/main$"
 
   scan-image:
     runs-on: ubuntu-latest
