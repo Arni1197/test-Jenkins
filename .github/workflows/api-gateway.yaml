@@ -1,19 +1,21 @@
+# .github/workflows/api-gateway-ci.yml
 name: api-gateway CI-CD
 
 on:
   push:
     branches: ["main"]
+    tags:
+      - "v*.*.*"
     paths:
       - "api-gateway/**"
       - ".github/workflows/api-gateway-ci.yml"
-    tags:
-      - "v*.*.*"
-
+      - ".github/trivy/**"
   pull_request:
     branches: ["main"]
     paths:
       - "api-gateway/**"
       - ".github/workflows/api-gateway-ci.yml"
+      - ".github/trivy/**"
 
 permissions:
   contents: read
@@ -52,20 +54,41 @@ jobs:
       - name: Test
         run: npm test -- --passWithNoTests
 
+  scan-pr:
+    name: Trivy PR gate (fs scan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Trivy FS scan (fail on CRITICAL)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: api-gateway
+          trivy-config: .github/trivy/trivy.yaml
+          trivyignores: .github/trivy/.trivyignore
+
   build-and-push:
     runs-on: ubuntu-latest
     needs: tests
 
-    # 🔐 OIDC для keyless cosign
     permissions:
       contents: read
       id-token: write
 
-    # ✅ пуш образов только на main и релизные теги
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
 
     env:
       IMAGE: arnold2343/game-api-gateway
+
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
 
     steps:
       - name: Checkout repo
@@ -126,3 +149,75 @@ jobs:
           cosign verify "${IMAGE}@${DIGEST}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
             --certificate-identity-regexp "^https://github.com/${{ github.repository }}/\\.github/workflows/.*@refs/(heads/main|tags/v.*)$"
+
+  scan-image:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    permissions:
+      contents: read
+      security-events: write
+
+    env:
+      IMAGE: arnold2343/game-api-gateway
+      DIGEST: ${{ needs.build-and-push.outputs.digest }}
+
+    steps:
+      - name: Checkout repo (for configs/templates)
+        uses: actions/checkout@v4
+
+      - name: Trivy scan (CRITICAL only, fail on CRITICAL)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: "${{ env.IMAGE }}@${{ env.DIGEST }}"
+          trivy-config: .github/trivy/trivy.yaml
+          trivyignores: .github/trivy/.trivyignore
+
+      - name: Trivy report (SARIF)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: "${{ env.IMAGE }}@${{ env.DIGEST }}"
+          format: sarif
+          output: trivy.sarif
+          vuln-type: os,library
+          severity: CRITICAL
+          trivyignores: .github/trivy/.trivyignore
+
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy.sarif
+
+      - name: Trivy report (JSON)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: "${{ env.IMAGE }}@${{ env.DIGEST }}"
+          format: json
+          output: trivy-report.json
+          vuln-type: os,library
+          severity: CRITICAL
+          trivyignores: .github/trivy/.trivyignore
+
+      - name: Trivy report (HTML)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: "${{ env.IMAGE }}@${{ env.DIGEST }}"
+          format: template
+          template: "@.github/trivy/trivy-html.tpl"
+          output: trivy-report.html
+          vuln-type: os,library
+          severity: CRITICAL
+          trivyignores: .github/trivy/.trivyignore
+
+      - name: Upload Trivy reports (JSON + HTML)
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-api-gateway-reports
+          path: |
+            trivy-report.json
+            trivy-report.html
