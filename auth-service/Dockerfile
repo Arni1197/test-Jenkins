@@ -1,44 +1,53 @@
-# 🏗 Этап сборки
+# 🏗 Build stage: собираем приложение (TS -> JS) и генерируем Prisma Client
 FROM node:20-alpine AS build
 WORKDIR /app
 
-# 1. Кладём package*.json
+# 1) Зависимости (для сборки нужны devDependencies)
 COPY package*.json ./
-
-# 2. Кладём Prisma-схему (ОБЯЗАТЕЛЬНО до generate)
 COPY prisma ./prisma
-
-# 3. Ставим все зависимости (включая dev, где лежит prisma CLI)
 RUN npm ci
 
-# 4. Генерируем Prisma Client
+# 2) Prisma Client (для компиляции/рантайма)
 RUN npx prisma generate
 
-# 5. Кладём tsconfig и исходники
+# 3) Исходники + сборка
 COPY tsconfig*.json ./
 COPY src ./src
-
-# 6. Собираем NestJS в dist/
 RUN npm run build
 
 
-# 🚀 Прод-образ
+# 📦 Prod deps stage: ставим ТОЛЬКО production зависимости
+FROM node:20-alpine AS prod-deps
+WORKDIR /app
+
+COPY package*.json ./
+COPY prisma ./prisma
+
+# ✅ Только production зависимости (без devDependencies)
+RUN npm ci --omit=dev
+
+# ✅ Prisma Client должен существовать и в runtime-окружении
+RUN npx prisma generate
+
+
+# 🚀 Runtime stage: минимальный образ для Kubernetes/Prod
 FROM node:20-alpine
 WORKDIR /app
 
-# package*.json — просто чтобы были внутри образа
-COPY package*.json ./
+ENV NODE_ENV=production
 
-# Берём готовые node_modules (вместе с сгенерированным Prisma Client)
-COPY --from=build /app/node_modules ./node_modules
+# (Опционально, но часто нужно для Prisma/SSL в alpine. Если у тебя всё работает без этого — можешь убрать.)
+# RUN apk add --no-cache openssl libc6-compat
 
-# ⚠️ ВАЖНО: кладём Prisma-схему и миграции
-COPY --from=build /app/prisma ./prisma
-
-# Кладём собранный dist
+# ✅ Копируем только нужное для запуска
+COPY --from=prod-deps /app/node_modules ./node_modules
+COPY --from=prod-deps /app/prisma ./prisma
 COPY --from=build /app/dist ./dist
+COPY package*.json ./
 
 EXPOSE 3000
 
-# Запуск
+# ✅ Не root: у node:20-alpine уже есть пользователь "node"
+USER node
+
 CMD ["node", "dist/main.js"]
