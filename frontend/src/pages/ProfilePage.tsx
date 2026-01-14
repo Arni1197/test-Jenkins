@@ -37,13 +37,26 @@ const toNullableOrUndefined = (v: any) => {
   return s === "" ? null : s;
 };
 
-// ✅ PATCH-пейлоад: отправляем только реально заданные поля
-const buildPatchPayload = (form: FormState): UpdateProfilePayload => {
+// ✅ DIFF PATCH: отправляем только реально изменившиеся поля относительно profile
+const buildPatchPayload = (
+  form: FormState,
+  profile: UserProfile
+): UpdateProfilePayload => {
   const payload: UpdateProfilePayload = {};
+
   (Object.keys(form) as (keyof FormState)[]).forEach((k) => {
-    const v = toNullableOrUndefined(form[k]);
-    if (v !== undefined) (payload as any)[k] = v;
+    const next = toNullableOrUndefined(form[k]);
+    const prev = (profile as any)[k] ?? null; // undefined считаем как null
+
+    // не изменилось -> не отправляем
+    if (next === prev) return;
+
+    // undefined -> не отправляем
+    if (next === undefined) return;
+
+    (payload as any)[k] = next;
   });
+
   return payload;
 };
 
@@ -59,7 +72,7 @@ function ProfilePage() {
   const abortRef = useRef<AbortController | null>(null);
 
   const hydrateForm = useCallback((p: UserProfile) => {
-    // ⚠️ Важно: кладём именно строки/ null, не undefined
+    // ⚠️ Важно: кладём строки/null, не undefined
     setForm({
       displayName: p.displayName ?? null,
       firstName: p.firstName ?? null,
@@ -106,13 +119,18 @@ function ProfilePage() {
     setError(null);
 
     try {
-      // ✅ отправляем PATCH-пейлоад (не обнуляет лишнее)
-      const payload = buildPatchPayload(form);
+      // ✅ отправляем только изменения
+      const payload = buildPatchPayload(form, profile);
+
+      // если нечего сохранять — можно просто перейти или показать уведомление
+      if (Object.keys(payload).length === 0) {
+        navigate("/profile/saved");
+        return;
+      }
 
       await updateMe(payload);
 
-      // ✅ ВАЖНО: не вызываем loadProfile() тут (не перезатираем форму)
-      // Страница /profile/saved сама загрузит "сохранённое" из БД.
+      // ✅ не делаем loadProfile() — чтобы не перезатирать локальную форму
       navigate("/profile/saved");
     } catch (e: any) {
       setError(e?.message ?? "Ошибка сохранения профиля");
@@ -217,7 +235,7 @@ function ProfilePage() {
                   <div className="gp-avatar">
                     {form.avatarUrl ? (
                       <img
-                        src={form.avatarUrl}
+                        src={String(form.avatarUrl)}
                         alt="avatar"
                         onError={(e) =>
                           ((e.currentTarget as HTMLImageElement).style.display =
@@ -243,7 +261,7 @@ function ProfilePage() {
                   </div>
                 </div>
 
-                {form.bio && <p className="gp-bio">{form.bio}</p>}
+                {form.bio && <p className="gp-bio">{String(form.bio)}</p>}
               </div>
 
               <div className="gp-row">

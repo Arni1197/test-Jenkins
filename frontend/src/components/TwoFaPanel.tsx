@@ -1,8 +1,8 @@
-// src/components/TwoFaPanel.tsx
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { twoFaDisable, twoFaEnable, twoFaSetup } from "../api/auth";
 import { useAuth } from "../api/AuthContext";
+import "./TwoFaPanel.css";
 
 type TwoFaSetupResponse = {
   otpauthUrl: string;
@@ -47,7 +47,7 @@ export default function TwoFaPanel() {
     try {
       const data = await twoFaSetup();
       setSetupData(data);
-      setSuccess("Секрет создан ✅ Сканируй QR в Authenticator.");
+      setSuccess("Секрет создан ✅ Отсканируй QR в Authenticator.");
       setCode("");
     } catch (e: any) {
       setError(e?.message ?? "Ошибка при создании 2FA секрета");
@@ -74,7 +74,6 @@ export default function TwoFaPanel() {
       setSuccess("2FA включена ✅ Теперь при логине нужен код.");
       setCode("");
 
-      // подтягиваем актуальный me
       await refreshAuth().catch(() => {});
     } catch (e: any) {
       setError(e?.message ?? "Ошибка включения 2FA");
@@ -113,167 +112,104 @@ export default function TwoFaPanel() {
   const isBusy = loadingSetup || loadingEnable || loadingDisable;
 
   return (
-    <div className="card-soft" style={{ display: "grid", gap: 12 }}>
+    <section className="card-soft twofa">
       {/* Header */}
-      <div
-        className="gp-row"
-        style={{ justifyContent: "space-between", alignItems: "center" }}
-      >
-        <div>
-          <div style={{ fontWeight: 600 }}>Two-Factor Auth</div>
-          <div className="gp-muted">
-            TOTP через Authenticator-приложение (Google Authenticator, Authy и
-            т.д.).
+      <div className="twofa__header">
+        <div className="twofa__titleBlock">
+          <div className="twofa__title">Two-Factor Authentication</div>
+          <div className="gp-muted twofa__subtitle">
+            TOTP через Authenticator (Google Authenticator, Authy и т.д.).
           </div>
         </div>
 
-        <div className="gp-row" style={{ gap: 8 }}>
-          <span
-            className="pill"
-            style={{
-              opacity: 0.9,
-              padding: "4px 10px",
-              fontSize: 11,
-              borderRadius: 999,
-              border: "1px solid rgba(148,163,184,0.2)",
-            }}
-          >
-            {twoFaEnabled ? "Enabled ✅" : "Disabled"}
+        <div className="twofa__actions">
+          <span className={`pill twofa__pill ${twoFaEnabled ? "is-on" : "is-off"}`}>
+            {twoFaEnabled ? "2FA ON ✅" : "2FA OFF"}
           </span>
 
           <button
-            className="btn-soft"
+            className="btn-soft twofa__btn"
             onClick={handleSetup}
             disabled={isBusy}
             type="button"
             title="Create new secret"
           >
-            {loadingSetup ? "Creating..." : "Setup"}
+            {loadingSetup ? "Creating secret..." : setupData ? "Recreate secret" : "Create secret"}
           </button>
         </div>
       </div>
 
       {/* Info line */}
-      <div className="gp-muted" style={{ fontSize: 12 }}>
+      <div className="gp-muted twofa__info">
         {twoFaEnabled
-          ? "2FA включена. При следующем логине потребуется код."
-          : "2FA выключена. Нажми Setup, чтобы создать секрет и включить защиту."}
+          ? "2FA активна. При следующем логине потребуется код."
+          : "2FA выключена. Создай секрет и подтверди кодом, чтобы включить защиту."}
       </div>
 
       {/* Alerts */}
-      {error && (
-        <div
-          style={{
-            padding: "10px 12px",
-            borderRadius: 12,
-            background: "rgba(239,68,68,0.08)",
-            border: "1px solid rgba(239,68,68,0.25)",
-            fontSize: 12,
-          }}
-        >
-          {error}
-        </div>
-      )}
-
-      {success && (
-        <div
-          style={{
-            padding: "10px 12px",
-            borderRadius: 12,
-            background: "rgba(16,185,129,0.08)",
-            border: "1px solid rgba(16,185,129,0.22)",
-            fontSize: 12,
-          }}
-        >
-          {success}
-        </div>
-      )}
+      {error && <div className="twofa__alert twofa__alert--error">{error}</div>}
+      {success && <div className="twofa__alert twofa__alert--success">{success}</div>}
 
       {/* Setup data block */}
       {setupData && (
-        <div className="card-soft" style={{ display: "grid", gap: 10 }}>
-          <div className="gp-muted" style={{ fontSize: 12 }}>
-            Секрет создан. Отсканируй QR или вставь ключ вручную.
+        <div className="card-soft twofa__setup">
+          <div className="gp-muted twofa__setupHint">
+            Секрет создан. Отсканируй QR или введи ключ вручную.
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              gap: 16,
-              alignItems: "center",
-              flexWrap: "wrap",
-            }}
-          >
-            {/* Белая подложка для читаемости */}
-            <div
-              style={{
-                background: "white",
-                padding: 10,
-                borderRadius: 12,
-              }}
-            >
-              <QRCodeCanvas
-                value={setupData.otpauthUrl}
-                size={160}
-                includeMargin
-              />
+          <div className="twofa__setupGrid">
+            {/* QR */}
+            <div className="twofa__qrWrap" aria-label="QR code">
+              <QRCodeCanvas value={setupData.otpauthUrl} size={160} includeMargin />
             </div>
 
-            <div style={{ fontSize: 12, maxWidth: 520 }}>
-              <div className="gp-muted" style={{ marginBottom: 6 }}>
-                otpauthUrl
-              </div>
-              <div style={{ wordBreak: "break-all", opacity: 0.9 }}>
-                {setupData.otpauthUrl}
-              </div>
+            {/* Text */}
+            <div className="twofa__setupText">
+              <div className="twofa__monoLabel">otpauthUrl</div>
+              <div className="twofa__monoValue">{setupData.otpauthUrl}</div>
 
-              <div className="gp-muted" style={{ margin: "10px 0 6px" }}>
-                Secret (если вводишь вручную)
+              <div className="twofa__monoLabel" style={{ marginTop: 10 }}>
+                Secret (manual entry)
               </div>
-              <div style={{ fontWeight: 600, wordBreak: "break-all" }}>
-                {setupData.secret}
-              </div>
+              <div className="twofa__secret">{setupData.secret}</div>
             </div>
           </div>
         </div>
       )}
 
       {/* Code input */}
-      <label style={{ display: "grid", gap: 6 }}>
-        <span className="gp-muted" style={{ fontSize: 12 }}>
-          Code from Authenticator
-        </span>
+      <label className="twofa__code">
+        <span className="gp-muted twofa__codeLabel">Authenticator code</span>
         <input
-          className="input"
+          className="input twofa__codeInput"
           value={code}
           onChange={(e) => setCode(e.target.value)}
           placeholder="123456"
           inputMode="numeric"
           maxLength={6}
-          style={{ letterSpacing: "0.12em" }}
         />
       </label>
 
       {/* Actions */}
-      <div className="gp-row">
+      <div className="twofa__footer">
         <button
-          className="btn-primary"
+          className="btn-primary twofa__btn"
           onClick={handleEnable}
           disabled={!codeIsValid || isBusy || twoFaEnabled}
           type="button"
         >
-          {loadingEnable ? "Enabling..." : "Enable"}
+          {loadingEnable ? "Turning on..." : "Turn on 2FA"}
         </button>
 
         <button
-          className="btn-soft"
+          className="btn-soft twofa__btn"
           onClick={handleDisable}
           disabled={!codeIsValid || isBusy || !twoFaEnabled}
           type="button"
         >
-          {loadingDisable ? "Disabling..." : "Disable"}
+          {loadingDisable ? "Turning off..." : "Turn off 2FA"}
         </button>
       </div>
-    </div>
+    </section>
   );
 }

@@ -1,18 +1,15 @@
 // src/api/client.ts
-
 const API_BASE_URL =
   (process.env.REACT_APP_API_BASE_URL as string | undefined)?.trim() ||
   "http://localhost:8081/api";
 
 export type ApiFetchOptions = Omit<RequestInit, "body"> & {
-  // можно передавать объект, строку, FormData и т.д.
   body?: any;
-  // не пытаться делать refresh при 401
   skipAuthRefresh?: boolean;
 };
 
 function isBodyInitLike(v: any) {
-  if (!v) return false;
+  if (v == null) return false;
   if (typeof v === "string") return true;
   if (v instanceof Blob) return true;
   if (v instanceof ArrayBuffer) return true;
@@ -21,15 +18,9 @@ function isBodyInitLike(v: any) {
   return false;
 }
 
-function normalizeBody(body: any, headers: HeadersInit | undefined) {
+function normalizeBody(body: any) {
   if (body == null) return undefined;
-
-  if (isBodyInitLike(body)) {
-    return body;
-  }
-
-  // иначе считаем, что это JSON-объект
-  // Content-Type выставим в rawFetch
+  if (isBodyInitLike(body)) return body;
   return JSON.stringify(body);
 }
 
@@ -41,10 +32,10 @@ async function rawFetch(path: string, options: ApiFetchOptions = {}) {
     ...(options.headers as Record<string, string> | undefined),
   };
 
-  const body = normalizeBody(options.body, headers);
+  const body = normalizeBody(options.body);
 
-  // если body выглядит как JSON-объект — гарантируем Content-Type
-  if (body && !isBodyInitLike(options.body)) {
+  // если body НЕ BodyInitLike (т.е. JSON-объект) — гарантируем Content-Type
+  if (body !== undefined && !isBodyInitLike(options.body)) {
     headers["Content-Type"] = headers["Content-Type"] || "application/json";
   }
 
@@ -83,8 +74,14 @@ export async function apiFetch<T>(
   }
 
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || `API error: ${res.status}`);
+    const raw = await res.text().catch(() => "");
+    // ✅ если сервер вернул JSON — покажем message
+    try {
+      const data = JSON.parse(raw);
+      throw new Error(data?.message || raw || `API error: ${res.status}`);
+    } catch {
+      throw new Error(raw || `API error: ${res.status}`);
+    }
   }
 
   if (res.status === 204) {

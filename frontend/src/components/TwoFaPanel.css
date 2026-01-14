@@ -1,0 +1,152 @@
+.twofa {
+    display: grid;
+    gap: 12px;
+  }
+  
+  /* Header: desktop = row, mobile = column */
+  .twofa__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  
+  .twofa__titleBlock {
+    min-width: 220px;
+  }
+  
+  .twofa__title {
+    font-weight: 700;
+    letter-spacing: 0.2px;
+  }
+  
+  .twofa__subtitle {
+    font-size: 12px;
+  }
+  
+  .twofa__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  
+  .twofa__btn {
+    white-space: nowrap;
+  }
+  
+  .twofa__pill {
+    opacity: 0.92;
+    padding: 4px 10px;
+    font-size: 11px;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+  }
+  
+  .twofa__info {
+    font-size: 12px;
+  }
+  
+  /* Alerts */
+  .twofa__alert {
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+  }
+  
+  .twofa__alert--error {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+  }
+  
+  .twofa__alert--success {
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.22);
+  }
+  
+  /* Setup block */
+  .twofa__setup {
+    display: grid;
+    gap: 10px;
+  }
+  
+  .twofa__setupHint {
+    font-size: 12px;
+  }
+  
+  .twofa__setupGrid {
+    display: grid;
+    grid-template-columns: 190px 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+  
+  .twofa__qrWrap {
+    background: white;
+    padding: 10px;
+    border-radius: 12px;
+    width: fit-content;
+  }
+  
+  .twofa__setupText {
+    min-width: 0; /* важно для wrap длинных строк */
+  }
+  
+  .twofa__monoLabel {
+    font-size: 12px;
+    opacity: 0.7;
+    margin-bottom: 6px;
+  }
+  
+  .twofa__monoValue {
+    font-size: 12px;
+    word-break: break-all;
+    opacity: 0.92;
+  }
+  
+  .twofa__secret {
+    font-size: 12px;
+    font-weight: 700;
+    word-break: break-all;
+  }
+  
+  /* Code input */
+  .twofa__code {
+    display: grid;
+    gap: 6px;
+  }
+  
+  .twofa__codeLabel {
+    font-size: 12px;
+  }
+  
+  .twofa__codeInput {
+    letter-spacing: 0.12em;
+  }
+  
+  /* Footer buttons */
+  .twofa__footer {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  
+  /* Mobile */
+  @media (max-width: 640px) {
+    .twofa__setupGrid {
+      grid-template-columns: 1fr;
+    }
+  
+    .twofa__qrWrap {
+      justify-self: start;
+    }
+  
+    .twofa__footer {
+      flex-direction: column;
+    }
+  
+    .twofa__btn {
+      width: 100%;
+    }
+  }

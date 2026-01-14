@@ -1,7 +1,7 @@
 // src/api/user.ts
 import { apiFetch } from "./client";
 
-// Тип профиля под твою Prisma-модель UserProfile
+// Тип профиля под Prisma-модель UserProfile
 export interface UserProfile {
   id: string;
   authUserId: string;
@@ -32,20 +32,20 @@ export interface UpdateProfilePayload {
 
 // Нормализация строк: "" -> null, "  a  " -> "a"
 const toNull = (v?: string | null) => {
-  const s = typeof v === "string" ? v.trim() : v;
-  return s ? s : null;
+  if (v === undefined) return undefined;
+  if (v === null) return null;
+  const s = v.trim();
+  return s === "" ? null : s;
 };
 
 // ✅ GET /users/me
-// Токен НЕ передаем вручную — он приходит как httpOnly cookie в gateway
 export async function getMe(): Promise<UserProfile> {
   return apiFetch<UserProfile>("/users/me");
 }
 
 // ✅ PATCH /users/me
-export async function updateMe(
-  payload: UpdateProfilePayload
-): Promise<UserProfile> {
+export async function updateMe(payload: UpdateProfilePayload): Promise<UserProfile> {
+  // ✅ чистим payload, но НЕ превращаем undefined в null
   const cleaned: UpdateProfilePayload = {
     displayName: toNull(payload.displayName),
     firstName: toNull(payload.firstName),
@@ -56,8 +56,9 @@ export async function updateMe(
     country: toNull(payload.country),
   };
 
+  // ✅ ВАЖНО: передаем ОБЪЕКТ, а не JSON.stringify
   return apiFetch<UserProfile>("/users/me", {
     method: "PATCH",
-    body: JSON.stringify(cleaned),
+    body: cleaned,
   });
 }

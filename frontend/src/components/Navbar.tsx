@@ -28,10 +28,8 @@ function Navbar() {
     try {
       await logout();
     } catch (e) {
-      // можно залогировать, но не блокируем выход
       console.error("Logout error", e);
     } finally {
-      // 🔑 сразу чистим локальную auth-сессию
       clearAuthLocal();
       navigate("/login");
     }
@@ -51,31 +49,45 @@ function Navbar() {
           maxWidth: 1120,
           margin: "0 auto",
           padding: "10px 16px",
-          display: "flex",
+          display: "grid",
+          gridTemplateColumns: "1fr auto 1fr", // ✅ ключ к “ровно и прямо”
           alignItems: "center",
-          gap: 16,
-          justifyContent: "space-between",
+          gap: 12,
+          minHeight: 56,
         }}
       >
-        <Link to="/" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 999,
-              background:
-                "radial-gradient(circle at 30% 20%, #facc15, #4f46e5)",
-            }}
-          />
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <span style={{ fontSize: 14, fontWeight: 600 }}>Game Project</span>
-            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-              DevOps playground
-            </span>
-          </div>
-        </Link>
+        {/* LEFT */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start" }}>
+          <Link to="/" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 999,
+                background:
+                  "radial-gradient(circle at 30% 20%, #facc15, #4f46e5)",
+                flex: "0 0 auto",
+              }}
+            />
+            <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.15 }}>
+              <span style={{ fontSize: 14, fontWeight: 600 }}>Game Project</span>
+              <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                DevOps playground
+              </span>
+            </div>
+          </Link>
+        </div>
 
-        <nav style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        {/* CENTER */}
+        <nav
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center", // ✅ центрируем именно nav
+            gap: 6,
+            flexWrap: "wrap",
+          }}
+        >
           <NavLink to="/catalog" className={navLinkClass}>
             Catalog
           </NavLink>
@@ -87,18 +99,24 @@ function Navbar() {
           )}
         </nav>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {/* Пока идёт первичная загрузка me() — можно вообще ничего не рендерить справа */}
+        {/* RIGHT */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end", // ✅ всегда вправо
+            gap: 8,
+          }}
+        >
           {loading ? null : isAuthed || isOnProfile ? (
             <button
               onClick={handleLogout}
               className="btn-soft"
-              style={{ padding: "6px 10px", fontSize: 12 }}
+              style={{ padding: "6px 10px", fontSize: 12, whiteSpace: "nowrap" }}
             >
               Sign out
             </button>
           ) : (
-            // На страницах /login и /register кнопку входа можно скрыть
             !isOnAuthPage && (
               <NavLink to="/login" className={navLinkClass}>
                 Sign in
