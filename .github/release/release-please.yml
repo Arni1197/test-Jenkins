@@ -1,0 +1,22 @@
+name: release-please
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-please-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run release-please (manifest)
+        uses: googleapis/release-please-action@v4
+        with:
+          command: manifest

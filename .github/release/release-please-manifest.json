@@ -1,0 +1,7 @@
+{
+  "auth-service": "0.1.0",
+  "user-service": "0.1.0",
+  "catalog-service": "0.1.0",
+  "api-gateway": "0.1.0",
+  "frontend": "0.1.0"
+}
