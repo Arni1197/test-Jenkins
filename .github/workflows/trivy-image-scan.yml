@@ -1,0 +1,81 @@
+name: Trivy image scan (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      image:
+        required: true
+        type: string
+      digest:
+        required: true
+        type: string
+      artifact-name:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  trivy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo (for trivy configs/templates)
+        uses: actions/checkout@v4
+
+      - name: Trivy scan (CRITICAL only, fail on CRITICAL)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: "${{ inputs.image }}@${{ inputs.digest }}"
+          trivyignores: .github/trivy/.trivyignore
+          trivy-config: .github/trivy/trivy.yaml
+
+      - name: Trivy report (SARIF)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: "${{ inputs.image }}@${{ inputs.digest }}"
+          format: sarif
+          output: trivy.sarif
+          vuln-type: os,library
+          severity: CRITICAL
+          trivyignores: .github/trivy/.trivyignore
+
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy.sarif
+
+      - name: Trivy report (JSON)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: "${{ inputs.image }}@${{ inputs.digest }}"
+          format: json
+          output: trivy-report.json
+          vuln-type: os,library
+          severity: CRITICAL
+          trivyignores: .github/trivy/.trivyignore
+
+      - name: Trivy report (HTML)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: "${{ inputs.image }}@${{ inputs.digest }}"
+          format: template
+          template: "@.github/trivy/trivy-html.tpl"
+          output: trivy-report.html
+          vuln-type: os,library
+          severity: CRITICAL
+          trivyignores: .github/trivy/.trivyignore
+
+      - name: Upload Trivy reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: |
+            trivy-report.json
+            trivy-report.html
