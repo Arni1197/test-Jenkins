@@ -4,7 +4,7 @@ on:
   push:
     branches: ["main"]
     tags:
-      - "v*.*.*"
+      - "api-gateway-v*.*.*"
     paths:
       - "api-gateway/**"
       - "k8s/game-project/**"
@@ -70,6 +70,8 @@ jobs:
           scan-ref: api-gateway
           trivy-config: .github/trivy/trivy.yaml
           trivyignores: .github/trivy/.trivyignore
+          severity: CRITICAL
+          exit-code: "1"
 
   build-and-push:
     runs-on: ubuntu-latest
@@ -78,7 +80,9 @@ jobs:
       contents: read
       id-token: write
 
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    if: >
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/api-gateway-v'))
 
     env:
       IMAGE: arnold2343/game-api-gateway
@@ -106,9 +110,9 @@ jobs:
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=sha,format=long
-            type=semver,pattern={{version}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
-            type=semver,pattern={{major}}.{{minor}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
-            type=semver,pattern={{major}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=semver,pattern={{version}},enable=${{ startsWith(github.ref, 'refs/tags/api-gateway-v') }}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ startsWith(github.ref, 'refs/tags/api-gateway-v') }}
+            type=semver,pattern={{major}},enable=${{ startsWith(github.ref, 'refs/tags/api-gateway-v') }}
 
       - name: Build & Push image (get digest)
         id: build
@@ -137,12 +141,12 @@ jobs:
           DIGEST="${{ steps.build.outputs.digest }}"
           cosign verify "${IMAGE}@${DIGEST}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-            --certificate-identity-regexp "^https://github.com/${{ github.repository }}/\\.github/workflows/.*@refs/(heads/main|tags/v.*)$"
+            --certificate-identity-regexp "^https://github.com/${{ github.repository }}/\\.github/workflows/.*@refs/(heads/main|tags/api-gateway-v.*)$"
 
   scan-image:
     name: Trivy image scan (reusable)
     needs: build-and-push
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/api-gateway-v'))
     uses: ./.github/workflows/trivy-image-scan.yml
     with:
       image: arnold2343/game-api-gateway
