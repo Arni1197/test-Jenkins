@@ -1,4 +1,3 @@
-# .github/workflows/api-gateway-ci.yml
 name: api-gateway CI-CD
 
 on:
@@ -8,17 +7,23 @@ on:
       - "v*.*.*"
     paths:
       - "api-gateway/**"
+      - "k8s/game-project/**"
       - ".github/workflows/api-gateway-ci.yml"
+      - ".github/workflows/trivy-image-scan.yml"
       - ".github/trivy/**"
   pull_request:
     branches: ["main"]
     paths:
       - "api-gateway/**"
+      - "k8s/game-project/**"
       - ".github/workflows/api-gateway-ci.yml"
+      - ".github/workflows/trivy-image-scan.yml"
       - ".github/trivy/**"
 
 permissions:
   contents: read
+  security-events: write
+  actions: read
 
 concurrency:
   group: api-gateway-${{ github.ref }}
@@ -35,24 +40,17 @@ jobs:
         working-directory: api-gateway
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Use Node.js 20
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: api-gateway/package-lock.json
 
-      - name: Install deps
-        run: npm ci
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Test
-        run: npm test -- --passWithNoTests
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test -- --passWithNoTests
 
   scan-pr:
     name: Trivy PR gate (fs scan)
@@ -63,8 +61,7 @@ jobs:
       contents: read
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Trivy FS scan (fail on CRITICAL)
         uses: aquasecurity/trivy-action@0.28.0
@@ -77,7 +74,6 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     needs: tests
-
     permissions:
       contents: read
       id-token: write
@@ -91,8 +87,7 @@ jobs:
       digest: ${{ steps.build.outputs.digest }}
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -100,11 +95,8 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Buildx
-        uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
 
       - name: Docker metadata
         id: meta
@@ -118,7 +110,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
             type=semver,pattern={{major}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
 
-      - name: Build & Push API-GATEWAY image (get digest)
+      - name: Build & Push image (get digest)
         id: build
         uses: docker/build-push-action@v6
         with:
@@ -131,93 +123,28 @@ jobs:
           cache-from: type=gha,scope=api-gateway
           cache-to: type=gha,mode=max,scope=api-gateway
 
-      - name: Install cosign
-        uses: sigstore/cosign-installer@v3
+      - uses: sigstore/cosign-installer@v3
 
-      - name: Cosign sign image by digest (keyless)
+      - name: Cosign sign (keyless)
         env:
           COSIGN_EXPERIMENTAL: "true"
         run: |
           DIGEST="${{ steps.build.outputs.digest }}"
-          echo "Signing digest: $DIGEST"
           cosign sign -y "${IMAGE}@${DIGEST}"
 
-      - name: Cosign verify (quality gate)
+      - name: Cosign verify
         run: |
           DIGEST="${{ steps.build.outputs.digest }}"
-          echo "Verifying digest: $DIGEST"
           cosign verify "${IMAGE}@${DIGEST}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
             --certificate-identity-regexp "^https://github.com/${{ github.repository }}/\\.github/workflows/.*@refs/(heads/main|tags/v.*)$"
 
   scan-image:
-    runs-on: ubuntu-latest
+    name: Trivy image scan (reusable)
     needs: build-and-push
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    permissions:
-      contents: read
-      security-events: write
-
-    env:
-      IMAGE: arnold2343/game-api-gateway
-      DIGEST: ${{ needs.build-and-push.outputs.digest }}
-
-    steps:
-      - name: Checkout repo (for configs/templates)
-        uses: actions/checkout@v4
-
-      - name: Trivy scan (CRITICAL only, fail on CRITICAL)
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          scan-type: image
-          image-ref: "${{ env.IMAGE }}@${{ env.DIGEST }}"
-          trivy-config: .github/trivy/trivy.yaml
-          trivyignores: .github/trivy/.trivyignore
-
-      - name: Trivy report (SARIF)
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          scan-type: image
-          image-ref: "${{ env.IMAGE }}@${{ env.DIGEST }}"
-          format: sarif
-          output: trivy.sarif
-          vuln-type: os,library
-          severity: CRITICAL
-          trivyignores: .github/trivy/.trivyignore
-
-      - name: Upload SARIF to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: trivy.sarif
-
-      - name: Trivy report (JSON)
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          scan-type: image
-          image-ref: "${{ env.IMAGE }}@${{ env.DIGEST }}"
-          format: json
-          output: trivy-report.json
-          vuln-type: os,library
-          severity: CRITICAL
-          trivyignores: .github/trivy/.trivyignore
-
-      - name: Trivy report (HTML)
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          scan-type: image
-          image-ref: "${{ env.IMAGE }}@${{ env.DIGEST }}"
-          format: template
-          template: "@.github/trivy/trivy-html.tpl"
-          output: trivy-report.html
-          vuln-type: os,library
-          severity: CRITICAL
-          trivyignores: .github/trivy/.trivyignore
-
-      - name: Upload Trivy reports (JSON + HTML)
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-api-gateway-reports
-          path: |
-            trivy-report.json
-            trivy-report.html
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    uses: ./.github/workflows/trivy-image-scan.yml
+    with:
+      image: arnold2343/game-api-gateway
+      digest: ${{ needs.build-and-push.outputs.digest }}
+      artifact-name: trivy-api-gateway-reports

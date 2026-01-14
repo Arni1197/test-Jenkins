@@ -6,16 +6,21 @@ on:
     paths:
       - "user-service/**"
       - ".github/workflows/user-service-ci.yml"
+      - ".github/workflows/trivy-image-scan.yml"
       - ".github/trivy/**"
   pull_request:
     branches: ["main"]
     paths:
       - "user-service/**"
       - ".github/workflows/user-service-ci.yml"
+      - ".github/workflows/trivy-image-scan.yml"
       - ".github/trivy/**"
 
+# ✅ нужно для SARIF (security-events) и для вызова reusable (actions)
 permissions:
   contents: read
+  security-events: write
+  actions: read
 
 concurrency:
   group: user-service-${{ github.ref }}
@@ -55,7 +60,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: github.event_name == 'pull_request'
-
     permissions:
       contents: read
 
@@ -126,90 +130,21 @@ jobs:
           COSIGN_EXPERIMENTAL: "true"
         run: |
           DIGEST="${{ steps.build.outputs.digest }}"
-          echo "Signing digest: $DIGEST"
           cosign sign -y "${IMAGE}@${DIGEST}"
 
       - name: Cosign verify (quality gate)
         run: |
           DIGEST="${{ steps.build.outputs.digest }}"
-          echo "Verifying digest: $DIGEST"
           cosign verify "${IMAGE}@${DIGEST}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-            --certificate-identity-regexp "^https://github.com/${{ github.repository }}/\.github/workflows/.*@refs/heads/main$"
+            --certificate-identity-regexp "^https://github.com/${{ github.repository }}/\\.github/workflows/.*@refs/heads/main$"
 
   scan-image:
-    runs-on: ubuntu-latest
+    name: Trivy image scan (reusable)
     needs: build-and-push
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    permissions:
-      contents: read
-      security-events: write
-
-    env:
-      IMAGE: arnold2343/user-service
-      DIGEST: ${{ needs.build-and-push.outputs.digest }}
-
-    steps:
-      - name: Checkout repo (for configs/templates)
-        uses: actions/checkout@v4
-
-      # 1) Логи + падение только по CRITICAL (через trivy.yaml)
-      - name: Trivy scan (CRITICAL only, fail on CRITICAL)
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          scan-type: image
-          image-ref: "${{ env.IMAGE }}@${{ env.DIGEST }}"
-          trivy-config: .github/trivy/trivy.yaml
-          trivyignores: .github/trivy/.trivyignore
-
-      # 2) Полный отчёт JSON (артефакт)
-      - name: Trivy report (JSON)
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          scan-type: image
-          image-ref: "${{ env.IMAGE }}@${{ env.DIGEST }}"
-          format: json
-          output: trivy-report.json
-          vuln-type: os,library
-          severity: CRITICAL
-          trivyignores: .github/trivy/.trivyignore
-
-      # 3) HTML отчёт через template (артефакт)
-      - name: Trivy report (HTML)
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          scan-type: image
-          image-ref: "${{ env.IMAGE }}@${{ env.DIGEST }}"
-          format: template
-          template: "@.github/trivy/trivy-html.tpl"
-          output: trivy-report.html
-          vuln-type: os,library
-          severity: CRITICAL
-          trivyignores: .github/trivy/.trivyignore
-
-      # 4) SARIF в GitHub Security tab
-      - name: Trivy report (SARIF)
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          scan-type: image
-          image-ref: "${{ env.IMAGE }}@${{ env.DIGEST }}"
-          format: sarif
-          output: trivy.sarif
-          vuln-type: os,library
-          severity: CRITICAL
-          trivyignores: .github/trivy/.trivyignore
-
-      - name: Upload SARIF to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: trivy.sarif
-
-      # 5) JSON+HTML как артефакты (скачать из Actions)
-      - name: Upload Trivy reports (JSON + HTML)
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-user-service-reports
-          path: |
-            trivy-report.json
-            trivy-report.html
+    uses: ./.github/workflows/trivy-image-scan.yml
+    with:
+      image: arnold2343/user-service
+      digest: ${{ needs.build-and-push.outputs.digest }}
+      artifact-name: trivy-user-service-reports
