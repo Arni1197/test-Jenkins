@@ -161,6 +161,11 @@ jobs:
     name: SBOM (reusable)
     needs: build-and-push
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/auth-service-v'))
+
+    permissions:
+      contents: read
+      id-token: write
+
     uses: ./.github/workflows/sbom-attest.yml
     with:
       image: arnold2343/game-auth-service
