@@ -1,0 +1,114 @@
+name: SBOM (Anchore) + Cosign attest
+
+on:
+  workflow_call:
+    inputs:
+      image:
+        description: "Image name without digest (e.g. arnold2343/game-auth-service)"
+        required: true
+        type: string
+      digest:
+        description: "Image digest (e.g. sha256:...)"
+        required: true
+        type: string
+      artifact-name:
+        description: "Artifact name for uploaded SBOM"
+        required: false
+        type: string
+        default: sbom-report
+      format:
+        description: "SBOM format (spdx-json or cyclonedx-json)"
+        required: false
+        type: string
+        default: spdx-json
+    secrets:
+      registry_username:
+        required: false
+      registry_password:
+        required: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  sbom:
+    name: Generate & attest SBOM
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Validate inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ inputs.digest }}" != sha256:* ]]; then
+            echo "Expected digest like sha256:..., got: ${{ inputs.digest }}"
+            exit 1
+          fi
+          echo "SBOM target: ${{ inputs.image }}@${{ inputs.digest }}"
+
+      - name: Login to registry (optional)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "${{ secrets.registry_username }}" && -n "${{ secrets.registry_password }}" ]]; then
+            echo "${{ secrets.registry_password }}" | docker login -u "${{ secrets.registry_username }}" --password-stdin
+            echo "Logged in to registry."
+          else
+            echo "No registry creds provided. Skipping docker login."
+          fi
+
+      - name: Generate SBOM (Anchore SBOM Action / Syft)
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ inputs.image }}@${{ inputs.digest }}
+          format: ${{ inputs.format }}
+          output-file: sbom.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: sbom.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Cosign attest SBOM to image (keyless)
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+        shell: bash
+        run: |
+          set -euo pipefail
+          FMT="${{ inputs.format }}"
+          if [[ "$FMT" == "spdx-json" || "$FMT" == "spdx" ]]; then
+            TYPE="spdxjson"
+          else
+            TYPE="cyclonedx"
+          fi
+
+          cosign attest -y \
+            --predicate sbom.json \
+            --type "$TYPE" \
+            "${{ inputs.image }}@${{ inputs.digest }}"
+
+      - name: Verify SBOM attestation (quality gate)
+        shell: bash
+        run: |
+          set -euo pipefail
+          FMT="${{ inputs.format }}"
+          if [[ "$FMT" == "spdx-json" || "$FMT" == "spdx" ]]; then
+            TYPE="spdxjson"
+          else
+            TYPE="cyclonedx"
+          fi
+
+          cosign verify-attestation \
+            "${{ inputs.image }}@${{ inputs.digest }}" \
+            --type "$TYPE" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
