@@ -111,4 +111,5 @@ jobs:
           cosign verify-attestation \
             "${{ inputs.image }}@${{ inputs.digest }}" \
             --type "$TYPE" \
-            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            --certificate-identity-regexp "^https://github.com/${{ github.repository }}/\\.github/workflows/.*@refs/(heads/main|tags/auth-service-v.*)$"
