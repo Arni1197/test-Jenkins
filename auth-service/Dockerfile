@@ -6,8 +6,6 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma
 RUN npm ci
-
-# 2) Prisma Client (для компиляции/рантайма)
 RUN npx prisma generate
 
 # 3) Исходники + сборка
