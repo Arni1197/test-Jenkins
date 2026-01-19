@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "auth-service-v*.*.*"
+      - "v*.*.*"
 
 permissions:
   contents: write
