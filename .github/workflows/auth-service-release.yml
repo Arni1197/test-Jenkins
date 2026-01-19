@@ -1,0 +1,112 @@
+name: auth-service release (tag -> build -> GitOps PR)
+
+on:
+  push:
+    tags:
+      - "auth-service-v*.*.*"
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+concurrency:
+  group: auth-service-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-gitops:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      IMAGE: arnold2343/game-auth-service
+      VALUES_FILE: k8s/environments/local/values/services/auth-service.yaml
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set release tag
+        run: |
+          echo "RELEASE_TAG=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+          echo "Release tag: ${GITHUB_REF_NAME}"
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=raw,value=${{ env.RELEASE_TAG }}
+
+      - name: Build & push (get digest)
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ./auth-service
+          file: ./auth-service/Dockerfile
+          push: true
+          platforms: linux/amd64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=auth-service
+          cache-to: type=gha,mode=max,scope=auth-service
+
+      - name: Export DIGEST
+        run: |
+          DIGEST="${{ steps.build.outputs.digest }}"
+          echo "DIGEST=$DIGEST" >> "$GITHUB_ENV"
+          echo "Built digest: $DIGEST"
+          if [[ "$DIGEST" != sha256:* ]]; then
+            echo "Expected sha256:* digest, got: $DIGEST"
+            exit 1
+          fi
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Update values (tag + digest)
+        run: |
+          set -euo pipefail
+          echo "Updating $VALUES_FILE"
+          yq -i '.image.tag = strenv(RELEASE_TAG)' "$VALUES_FILE"
+          yq -i '.image.digest = strenv(DIGEST)' "$VALUES_FILE"
+          echo "Diff:"
+          git diff -- "$VALUES_FILE" || true
+
+      - name: Create GitOps PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: main
+          branch: chore/gitops-auth-service-${{ env.RELEASE_TAG }}
+          delete-branch: true
+          add-paths: |
+            ${{ env.VALUES_FILE }}
+          commit-message: "chore(gitops): deploy auth-service ${{ env.RELEASE_TAG }}"
+          title: "chore(gitops): deploy auth-service ${{ env.RELEASE_TAG }}"
+          body: |
+            GitOps deploy PR from release tag.
+
+            - tag: ${{ env.RELEASE_TAG }}
+            - digest: ${{ env.DIGEST }}
+            - file: ${{ env.VALUES_FILE }}
+
+            Merge this PR -> ArgoCD syncs -> Kubernetes updates.
+          labels: |
+            gitops
+            release

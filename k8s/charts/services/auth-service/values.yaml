@@ -3,6 +3,7 @@ replicaCount: 1
 image:
   repository: arnold2343/game-auth-service
   tag: "latest"
+  digest: ""          # если пусто — будет repo:tag
   pullPolicy: IfNotPresent
 
 service:

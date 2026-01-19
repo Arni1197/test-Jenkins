@@ -8,16 +8,11 @@ permissions:
   contents: write
   pull-requests: write
 
-concurrency:
-  group: release-please-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  release:
+  release-please:
     runs-on: ubuntu-latest
     steps:
-      - name: Run release-please (manifest)
-        uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@v4
         with:
           config-file: .github/release/release-please-config.json
           manifest-file: .github/release/release-please-manifest.json
