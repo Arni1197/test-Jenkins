@@ -107,7 +107,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "Using digest: $DIGEST"
-          yq -i '.authService.image.digest = strenv(DIGEST)' "$VALUES_FILE"
+          yq -i '.image.digest = strenv(DIGEST)' "$VALUES_FILE"
           git diff -- "$VALUES_FILE" || true
 
       - name: Create Pull Request
