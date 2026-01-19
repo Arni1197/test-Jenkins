@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/Arni1197/test-Jenkins/compare/auth-service-v0.6.0...auth-service-v0.7.0) (2026-01-19)
+
+
+### Features
+
+* **auth-service:** implement email confirmation 112222 43222 ([47beaed](https://github.com/Arni1197/test-Jenkins/commit/47beaeda42cdd3b2200e5f492a8218a9192f9370))
+
 ## [0.6.0](https://github.com/Arni1197/test-Jenkins/compare/auth-service-v0.5.0...auth-service-v0.6.0) (2026-01-19)
 
 
