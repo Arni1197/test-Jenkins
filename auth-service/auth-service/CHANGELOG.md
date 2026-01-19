@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/Arni1197/test-Jenkins/compare/auth-service-v0.2.0...auth-service-v0.3.0) (2026-01-19)
+
+
+### Features
+
+* **auth-service:** implement email confirmation flow ([ece72b9](https://github.com/Arni1197/test-Jenkins/commit/ece72b972a01f287e6379129823e5399891de11b))
+
 ## [0.2.0](https://github.com/Arni1197/test-Jenkins/compare/auth-service-v0.1.0...auth-service-v0.2.0) (2026-01-19)
 
 
