@@ -18,17 +18,24 @@ jobs:
   deploy-gitops:
     name: Create GitOps PR from tag (update image.tag + image.digest)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     env:
-      # ✅ build workflow filename (must match your build workflow file name)
+      # ✅ must match your build workflow file name in .github/workflows/
       BUILD_WORKFLOW_FILE: auth-service-build.yml
 
-      # ✅ artifact name from build workflow
+      # ✅ artifact name uploaded by build workflow
       DIGEST_ARTIFACT_NAME: auth-service-image-digest
+
+      # ✅ file inside artifact
+      DIGEST_FILE: image-digest.txt
 
       # ✅ values file to update
       VALUES_FILE: k8s/environments/local/values/services/auth-service.yaml
+
+      # ⏱️ how long to wait for build run to succeed
+      MAX_WAIT_SECONDS: "900"   # 15 min
+      POLL_SECONDS: "15"
 
     steps:
       - name: Checkout main
@@ -37,8 +44,8 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Download digest artifact for this tag SHA
-        id: dl
+      - name: Resolve tag -> commit SHA
+        id: sha
         uses: actions/github-script@v7
         with:
           script: |
@@ -48,11 +55,8 @@ jobs:
             const tagName = context.ref.replace("refs/tags/", "");
             core.info(`Release tag: ${tagName}`);
 
-            // 1) Resolve tag -> commit sha
             const refData = await github.rest.git.getRef({
-              owner,
-              repo,
-              ref: `tags/${tagName}`,
+              owner, repo, ref: `tags/${tagName}`
             });
 
             let sha = refData.data.object.sha;
@@ -67,80 +71,96 @@ jobs:
               core.info(`Lightweight tag commit SHA: ${sha}`);
             }
 
-            core.setOutput("tagCommitSha", sha);
+            core.setOutput("commit_sha", sha);
 
-            // 2) Get workflow id by filename
+      - name: Wait for successful build run for this SHA (no race)
+        id: wait
+        uses: actions/github-script@v7
+        env:
+          COMMIT_SHA: ${{ steps.sha.outputs.commit_sha }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const workflowFile = process.env.BUILD_WORKFLOW_FILE;
+            const sha = process.env.COMMIT_SHA;
+
+            const maxWait = Number(process.env.MAX_WAIT_SECONDS || "900");
+            const poll = Number(process.env.POLL_SECONDS || "15");
+
+            core.info(`Waiting for build workflow='${workflowFile}' to succeed for sha=${sha}`);
+            core.info(`maxWait=${maxWait}s poll=${poll}s`);
+
+            // workflow id by file name
             const wf = await github.rest.actions.getWorkflow({
               owner,
               repo,
-              workflow_id: process.env.BUILD_WORKFLOW_FILE,
+              workflow_id: workflowFile,
             });
 
-            // 3) Find successful build run on main for SAME commit sha
-            const runs = await github.rest.actions.listWorkflowRuns({
-              owner,
-              repo,
-              workflow_id: wf.data.id,
-              branch: "main",
-              status: "completed",
-              per_page: 50,
-            });
+            const started = Date.now();
 
-            const run = runs.data.workflow_runs.find(r => r.conclusion === "success" && r.head_sha === sha);
+            while (true) {
+              const elapsed = Math.floor((Date.now() - started) / 1000);
+              if (elapsed > maxWait) {
+                core.setFailed(`Timeout: no successful '${workflowFile}' run found for sha=${sha} within ${maxWait}s`);
+                return;
+              }
 
-            if (!run) {
-              core.setFailed(
-                `No successful '${process.env.BUILD_WORKFLOW_FILE}' run on main for SHA=${sha}. ` +
-                `Make sure main build completed successfully and uploaded artifact '${process.env.DIGEST_ARTIFACT_NAME}'.`
-              );
-              return;
+              // list recent runs on main (completed or in_progress)
+              const runsResp = await github.rest.actions.listWorkflowRuns({
+                owner,
+                repo,
+                workflow_id: wf.data.id,
+                branch: "main",
+                per_page: 50,
+              });
+
+              const run = runsResp.data.workflow_runs.find(r => r.head_sha === sha);
+
+              if (!run) {
+                core.info(`[${elapsed}s] No run yet for sha=${sha}. Waiting...`);
+              } else {
+                core.info(`[${elapsed}s] Found run_id=${run.id} status=${run.status} conclusion=${run.conclusion || "-"}`);
+
+                if (run.status === "completed") {
+                  if (run.conclusion === "success") {
+                    core.info(`✅ Build succeeded. run_id=${run.id}`);
+                    core.setOutput("run_id", String(run.id));
+                    core.setOutput("run_url", run.html_url);
+                    return;
+                  }
+
+                  core.setFailed(
+                    `Build run for sha=${sha} completed with conclusion='${run.conclusion}'. ` +
+                    `Check: ${run.html_url}`
+                  );
+                  return;
+                }
+              }
+
+              await new Promise(res => setTimeout(res, poll * 1000));
             }
 
-            core.info(`Using build run_id=${run.id} url=${run.html_url}`);
+      - name: Download digest artifact from that build run
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.DIGEST_ARTIFACT_NAME }}
+          path: ./artifact
+          run-id: ${{ steps.wait.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-            // 4) Find artifact by name
-            const arts = await github.rest.actions.listWorkflowRunArtifacts({
-              owner,
-              repo,
-              run_id: run.id,
-              per_page: 100,
-            });
-
-            const art = arts.data.artifacts.find(a => a.name === process.env.DIGEST_ARTIFACT_NAME);
-
-            if (!art) {
-              core.setFailed(`Artifact '${process.env.DIGEST_ARTIFACT_NAME}' not found in run ${run.id}.`);
-              return;
-            }
-
-            core.info(`Found artifact id=${art.id}, size=${art.size_in_bytes}`);
-
-            // 5) Download artifact zip
-            const download = await github.rest.actions.downloadArtifact({
-              owner,
-              repo,
-              artifact_id: art.id,
-              archive_format: "zip",
-            });
-
-            const fs = require("fs");
-            const zipPath = "artifact.zip";
-            fs.writeFileSync(zipPath, Buffer.from(download.data));
-
-            core.setOutput("zipPath", zipPath);
-
-      - name: Unzip digest artifact and export DIGEST
+      - name: Read digest and export DIGEST
         run: |
           set -euo pipefail
-          unzip -o "${{ steps.dl.outputs.zipPath }}" -d ./artifact
-
           echo "Artifact contents:"
           ls -la ./artifact
 
           echo "Digest file:"
-          cat ./artifact/image-digest.txt
+          cat "./artifact/${DIGEST_FILE}"
 
-          DIGEST="$(cat ./artifact/image-digest.txt)"
+          DIGEST="$(cat "./artifact/${DIGEST_FILE}")"
 
           if [[ "$DIGEST" != sha256:* ]]; then
             echo "Expected sha256:* digest, got: $DIGEST"
@@ -148,6 +168,12 @@ jobs:
           fi
 
           echo "DIGEST=$DIGEST" >> "$GITHUB_ENV"
+          {
+            echo "### ✅ Using digest from build"
+            echo ""
+            echo "- Build run: ${{ steps.wait.outputs.run_url }}"
+            echo "- Digest: \`$DIGEST\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Install yq
         run: |
@@ -164,10 +190,10 @@ jobs:
           echo "Digest: $DIGEST"
           echo "Updating file: $VALUES_FILE"
 
-          # ✅ tag stays human-readable (auth-service-vX.Y.Z)
+          # 🏷️ human-readable tag for history/UI
           yq -i '.image.tag = strenv(RELEASE_TAG)' "$VALUES_FILE"
 
-          # ✅ digest is used by Helm for real deploy
+          # 🔒 digest is the real deploy source of truth
           yq -i '.image.digest = strenv(DIGEST)' "$VALUES_FILE"
 
           echo "Updated diff:"
@@ -187,9 +213,12 @@ jobs:
           body: |
             GitOps deploy PR from release tag (NO rebuild).
 
-            ✅ Updates values:
-            - image.tag -> ${{ github.ref_name }}
+            ✅ Updates:
+            - image.tag   -> ${{ github.ref_name }}
             - image.digest -> ${{ env.DIGEST }}
+
+            Build run used:
+            - ${{ steps.wait.outputs.run_url }}
 
             File:
             - ${{ env.VALUES_FILE }}
