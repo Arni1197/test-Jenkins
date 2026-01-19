@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/Arni1197/test-Jenkins/compare/auth-service-v0.12.0...auth-service-v0.13.0) (2026-01-19)
+
+
+### Features
+
+* add new st233440000 ([97b06be](https://github.com/Arni1197/test-Jenkins/commit/97b06be1b488de652722bc5fdc4d01bc9544286f))
+
 ## [0.12.0](https://github.com/Arni1197/test-Jenkins/compare/auth-service-v0.11.0...auth-service-v0.12.0) (2026-01-19)
 
 
