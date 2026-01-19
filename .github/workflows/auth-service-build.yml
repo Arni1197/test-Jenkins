@@ -39,6 +39,7 @@ jobs:
           filters: |
             relevant:
               - "auth-service/**"
+              - "k8s/**"
               - ".github/workflows/auth-service-build.yml"
               - ".github/workflows/trivy-image-scan.yml"
               - ".github/workflows/sbom-attest.yml"
@@ -104,7 +105,13 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.relevant == 'true'
+    if: >
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.changes.outputs.relevant == 'true' &&
+      !startsWith(github.event.head_commit.message, 'chore: release') &&
+      !startsWith(github.event.head_commit.message, 'chore(main): release') &&
+      github.actor != 'github-actions[bot]'
 
     env:
       IMAGE: arnold2343/game-auth-service
@@ -186,10 +193,16 @@ jobs:
   sbom:
     name: SBOM (reusable)
     needs: build-and-push
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build-and-push.result == 'success'
     permissions:
       contents: read
       id-token: write
+    if: >
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.build-and-push.result == 'success' &&
+      github.actor != 'github-actions[bot]' &&
+      !startsWith(github.event.head_commit.message, 'chore: release') &&
+      !startsWith(github.event.head_commit.message, 'chore(main): release')
     uses: ./.github/workflows/sbom-attest.yml
     with:
       image: arnold2343/game-auth-service
@@ -203,7 +216,13 @@ jobs:
   scan-image:
     name: Trivy image scan (reusable)
     needs: [build-and-push, sbom]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build-and-push.result == 'success'
+    if: >
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.build-and-push.result == 'success' &&
+      github.actor != 'github-actions[bot]' &&
+      !startsWith(github.event.head_commit.message, 'chore: release') &&
+      !startsWith(github.event.head_commit.message, 'chore(main): release')
     uses: ./.github/workflows/trivy-image-scan.yml
     with:
       image: arnold2343/game-auth-service
