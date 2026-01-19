@@ -1,22 +1,16 @@
 replicaCount: 1
-
 image:
   repository: arnold2343/game-auth-service
-
   # 🏷️ Человеческая версия (для истории, удобства, UI, дебага)
   # Пример: "auth-service-v1.2.3"
-  tag: "auth-service-v0.0.0"
-
+  tag: "auth-service-v1.2.39"
   # 🔒 Истина для деплоя (Helm будет использовать ТОЛЬКО digest)
   # Пример: "sha256:3516776e4f14a020d4c1a3cffd3d1b618fb49981bd3c4aa0a95dedf0a0b0fa9b"
-  digest: ""
-
+  digest: "sha256:d932410aa76e921149e229515fc1ad1ff2fc851ba4e90311a523cef11062e0db"
   pullPolicy: IfNotPresent
-
 service:
   type: ClusterIP
   port: 3001
-
 resources:
   requests:
     cpu: 50m
@@ -24,6 +18,5 @@ resources:
   limits:
     cpu: 250m
     memory: 256Mi
-
 env:
   NODE_ENV: "development"
