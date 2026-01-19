@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/Arni1197/test-Jenkins/compare/auth-service-v0.8.0...auth-service-v0.9.0) (2026-01-19)
+
+
+### Features
+
+* add new st222 ([c2215dd](https://github.com/Arni1197/test-Jenkins/commit/c2215ddac72f1cda338ce09ddaa5551bf75d7631))
+
 ## [0.8.0](https://github.com/Arni1197/test-Jenkins/compare/auth-service-v0.7.0...auth-service-v0.8.0) (2026-01-19)
 
 
