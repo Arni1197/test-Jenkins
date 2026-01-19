@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/Arni1197/test-Jenkins/compare/auth-service-v0.7.0...auth-service-v0.8.0) (2026-01-19)
+
+
+### Features
+
+* add new step ([883849d](https://github.com/Arni1197/test-Jenkins/commit/883849d980735f2efec88ed01124778a5f96a5bf))
+
 ## [0.7.0](https://github.com/Arni1197/test-Jenkins/compare/auth-service-v0.6.0...auth-service-v0.7.0) (2026-01-19)
 
 
