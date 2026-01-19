@@ -1,0 +1,134 @@
+name: auth-service deploy (tag -> GitOps PR)
+
+on:
+  push:
+    tags:
+      - "auth-service-v*.*.*"
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+
+concurrency:
+  group: auth-service-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-gitops:
+    name: Create GitOps PR from tag (no rebuild)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      BUILD_WORKFLOW_FILE: auth-service-build.yml
+      DIGEST_ARTIFACT_NAME: auth-service-image-digest
+      VALUES_FILE: k8s/environments/local/values/services/auth-service.yaml
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      # ✅ Находим последний успешный run build-workflow на main,
+      # вытаскиваем artifact с digest и читаем sha256:...
+      - name: Fetch latest digest from main build run
+        id: getdigest
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // 1) Получаем workflow по имени файла
+            const wf = await github.rest.actions.getWorkflow({
+              owner, repo, workflow_id: process.env.BUILD_WORKFLOW_FILE
+            });
+
+            // 2) Берём последний успешный run на main
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner,
+              repo,
+              workflow_id: wf.data.id,
+              branch: "main",
+              status: "completed",
+              per_page: 20
+            });
+
+            const run = runs.data.workflow_runs.find(r => r.conclusion === "success");
+            if (!run) {
+              core.setFailed("No successful main build workflow run found.");
+              return;
+            }
+
+            core.info(`Using main build run_id=${run.id}, html_url=${run.html_url}`);
+
+            // 3) Ищем нужный artifact в этом run
+            const arts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner, repo, run_id: run.id, per_page: 100
+            });
+
+            const art = arts.data.artifacts.find(a => a.name === process.env.DIGEST_ARTIFACT_NAME);
+            if (!art) {
+              core.setFailed(`Artifact '${process.env.DIGEST_ARTIFACT_NAME}' not found in run ${run.id}.`);
+              return;
+            }
+
+            core.info(`Found artifact id=${art.id}, size=${art.size_in_bytes}`);
+
+            // 4) Скачиваем zip артефакта
+            const download = await github.rest.actions.downloadArtifact({
+              owner, repo, artifact_id: art.id, archive_format: "zip"
+            });
+
+            // github-script отдаёт ArrayBuffer, сохраняем на диск
+            const fs = require("fs");
+            const path = "artifact.zip";
+            fs.writeFileSync(path, Buffer.from(download.data));
+            core.setOutput("zipPath", path);
+
+      - name: Unzip digest artifact
+        run: |
+          set -euo pipefail
+          unzip -o "${{ steps.getdigest.outputs.zipPath }}" -d ./artifact
+          cat ./artifact/image-digest.txt
+          DIGEST="$(cat ./artifact/image-digest.txt)"
+          echo "DIGEST=$DIGEST" >> $GITHUB_ENV
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      # ✅ Обновляем values на digest (enterprise-правильно)
+      - name: Update authService image digest in values
+        run: |
+          set -euo pipefail
+          echo "Using digest: $DIGEST"
+          yq -i '.authService.image.digest = strenv(DIGEST)' "$VALUES_FILE"
+          git diff -- "$VALUES_FILE" || true
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: main
+          branch: chore/gitops-auth-service-${{ github.ref_name }}
+          delete-branch: true
+          add-paths: |
+            ${{ env.VALUES_FILE }}
+          commit-message: "chore(gitops): deploy auth-service ${{ github.ref_name }} (digest)"
+          title: "chore(gitops): deploy auth-service ${{ github.ref_name }} (digest)"
+          body: |
+            GitOps deploy PR (no rebuild).
+
+            - release tag: ${{ github.ref_name }}
+            - digest (from latest successful main build): ${{ env.DIGEST }}
+            - file: ${{ env.VALUES_FILE }}
+
+            Merge this PR to trigger ArgoCD sync/deploy.
+          labels: |
+            gitops
+            release
