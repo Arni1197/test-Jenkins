@@ -10,6 +10,7 @@ permissions:
   contents: write
   pull-requests: write
   id-token: write
+  security-events: write   # ✅ FIX 1: разрешаем reusable workflow писать security events (SARIF)
 
 concurrency:
   group: auth-service-release-${{ github.ref }}
