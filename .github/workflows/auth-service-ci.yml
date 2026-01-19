@@ -1,0 +1,98 @@
+name: auth-service CI (PR + main checks)
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "auth-service/**"
+      - ".github/workflows/auth-service-ci.yml"
+      - ".github/workflows/trivy-image-scan.yml"
+      - ".github/workflows/sbom-attest.yml"
+      - ".github/trivy/**"
+  push:
+    branches: ["main"]
+    paths:
+      - "auth-service/**"
+      - ".github/workflows/auth-service-ci.yml"
+      - ".github/trivy/**"
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+concurrency:
+  group: auth-service-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: auth-service/package-lock.json
+
+      - name: Install deps
+        working-directory: auth-service
+        run: npm ci
+
+      - name: Lint
+        working-directory: auth-service
+        run: npm run lint
+
+      - name: Test
+        working-directory: auth-service
+        run: npm test
+
+  scan-pr:
+    name: Trivy PR gate (fs scan, fail on CRITICAL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Trivy FS scan (fail on CRITICAL)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: auth-service
+          trivy-config: .github/trivy/trivy.yaml
+          trivyignores: .github/trivy/.trivyignore
+          severity: CRITICAL
+          exit-code: "1"
+
+  smoke-docker-build:
+    name: Docker build (smoke, no push)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: tests
+    if: github.event_name != 'pull_request' || always()
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./auth-service
+          file: ./auth-service/Dockerfile
+          push: false
+          platforms: linux/amd64
+          tags: auth-service:ci
+          cache-from: type=gha,scope=auth-service-ci
+          cache-to: type=gha,mode=max,scope=auth-service-ci
