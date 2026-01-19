@@ -11,13 +11,10 @@ spec:
     path: k8s/charts/services/auth-service
     helm:
       valueFiles:
-        - ../../environments/local/values/services/auth-service.yaml
+        - ../../../environments/local/values/services/auth-service.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: auth
   syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
     syncOptions:
       - CreateNamespace=true
