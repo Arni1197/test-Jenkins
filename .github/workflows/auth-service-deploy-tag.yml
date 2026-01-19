@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: read
 
 concurrency:
   group: auth-service-deploy-${{ github.ref }}
@@ -15,11 +16,18 @@ concurrency:
 
 jobs:
   deploy-gitops:
-    name: Create GitOps PR from tag (update image.tag)
+    name: Create GitOps PR from tag (update image.tag + image.digest)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     env:
+      # ✅ build workflow filename (must match your build workflow file name)
+      BUILD_WORKFLOW_FILE: auth-service-build.yml
+
+      # ✅ artifact name from build workflow
+      DIGEST_ARTIFACT_NAME: auth-service-image-digest
+
+      # ✅ values file to update
       VALUES_FILE: k8s/environments/local/values/services/auth-service.yaml
 
     steps:
@@ -29,26 +37,140 @@ jobs:
           ref: main
           fetch-depth: 0
 
+      - name: Download digest artifact for this tag SHA
+        id: dl
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const tagName = context.ref.replace("refs/tags/", "");
+            core.info(`Release tag: ${tagName}`);
+
+            // 1) Resolve tag -> commit sha
+            const refData = await github.rest.git.getRef({
+              owner,
+              repo,
+              ref: `tags/${tagName}`,
+            });
+
+            let sha = refData.data.object.sha;
+            core.info(`Ref object SHA: ${sha} (type=${refData.data.object.type})`);
+
+            // annotated tag -> commit
+            if (refData.data.object.type === "tag") {
+              const tagObj = await github.rest.git.getTag({ owner, repo, tag_sha: sha });
+              sha = tagObj.data.object.sha;
+              core.info(`Resolved annotated tag to commit SHA: ${sha}`);
+            } else {
+              core.info(`Lightweight tag commit SHA: ${sha}`);
+            }
+
+            core.setOutput("tagCommitSha", sha);
+
+            // 2) Get workflow id by filename
+            const wf = await github.rest.actions.getWorkflow({
+              owner,
+              repo,
+              workflow_id: process.env.BUILD_WORKFLOW_FILE,
+            });
+
+            // 3) Find successful build run on main for SAME commit sha
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner,
+              repo,
+              workflow_id: wf.data.id,
+              branch: "main",
+              status: "completed",
+              per_page: 50,
+            });
+
+            const run = runs.data.workflow_runs.find(r => r.conclusion === "success" && r.head_sha === sha);
+
+            if (!run) {
+              core.setFailed(
+                `No successful '${process.env.BUILD_WORKFLOW_FILE}' run on main for SHA=${sha}. ` +
+                `Make sure main build completed successfully and uploaded artifact '${process.env.DIGEST_ARTIFACT_NAME}'.`
+              );
+              return;
+            }
+
+            core.info(`Using build run_id=${run.id} url=${run.html_url}`);
+
+            // 4) Find artifact by name
+            const arts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner,
+              repo,
+              run_id: run.id,
+              per_page: 100,
+            });
+
+            const art = arts.data.artifacts.find(a => a.name === process.env.DIGEST_ARTIFACT_NAME);
+
+            if (!art) {
+              core.setFailed(`Artifact '${process.env.DIGEST_ARTIFACT_NAME}' not found in run ${run.id}.`);
+              return;
+            }
+
+            core.info(`Found artifact id=${art.id}, size=${art.size_in_bytes}`);
+
+            // 5) Download artifact zip
+            const download = await github.rest.actions.downloadArtifact({
+              owner,
+              repo,
+              artifact_id: art.id,
+              archive_format: "zip",
+            });
+
+            const fs = require("fs");
+            const zipPath = "artifact.zip";
+            fs.writeFileSync(zipPath, Buffer.from(download.data));
+
+            core.setOutput("zipPath", zipPath);
+
+      - name: Unzip digest artifact and export DIGEST
+        run: |
+          set -euo pipefail
+          unzip -o "${{ steps.dl.outputs.zipPath }}" -d ./artifact
+
+          echo "Artifact contents:"
+          ls -la ./artifact
+
+          echo "Digest file:"
+          cat ./artifact/image-digest.txt
+
+          DIGEST="$(cat ./artifact/image-digest.txt)"
+
+          if [[ "$DIGEST" != sha256:* ]]; then
+            echo "Expected sha256:* digest, got: $DIGEST"
+            exit 1
+          fi
+
+          echo "DIGEST=$DIGEST" >> "$GITHUB_ENV"
+
       - name: Install yq
         run: |
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
 
-      - name: Update image.tag in values from release tag
+      - name: Update image.tag + image.digest in values
         env:
-          TAG_RAW: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
 
-          echo "Release tag: $TAG_RAW"
+          echo "Release tag: $RELEASE_TAG"
+          echo "Digest: $DIGEST"
+          echo "Updating file: $VALUES_FILE"
 
-          # ✅ auth-service-v1.2.3 -> v1.2.3
-          VERSION="${TAG_RAW#auth-service-}"
-          echo "Deploy version: $VERSION"
+          # ✅ tag stays human-readable (auth-service-vX.Y.Z)
+          yq -i '.image.tag = strenv(RELEASE_TAG)' "$VALUES_FILE"
 
-          yq -i '.image.tag = strenv(VERSION)' "$VALUES_FILE"
+          # ✅ digest is used by Helm for real deploy
+          yq -i '.image.digest = strenv(DIGEST)' "$VALUES_FILE"
 
-          echo "Updated file:"
+          echo "Updated diff:"
           git diff -- "$VALUES_FILE" || true
 
       - name: Create Pull Request
@@ -60,16 +182,17 @@ jobs:
           delete-branch: true
           add-paths: |
             ${{ env.VALUES_FILE }}
-          commit-message: "chore(gitops): deploy auth-service ${{ github.ref_name }}"
-          title: "chore(gitops): deploy auth-service ${{ github.ref_name }}"
+          commit-message: "chore(gitops): deploy auth-service ${{ github.ref_name }} (tag+digest)"
+          title: "chore(gitops): deploy auth-service ${{ github.ref_name }} (tag+digest)"
           body: |
-            GitOps deploy PR from release tag.
+            GitOps deploy PR from release tag (NO rebuild).
 
-            - release tag: ${{ github.ref_name }}
-            - file updated: ${{ env.VALUES_FILE }}
+            ✅ Updates values:
+            - image.tag -> ${{ github.ref_name }}
+            - image.digest -> ${{ env.DIGEST }}
 
-            This updates:
-            - image.tag -> vX.Y.Z
+            File:
+            - ${{ env.VALUES_FILE }}
 
             Merge this PR to trigger ArgoCD sync/deploy.
           labels: |

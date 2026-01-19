@@ -2,7 +2,15 @@ replicaCount: 1
 
 image:
   repository: arnold2343/game-auth-service
-  tag: "latest"
+
+  # 🏷️ Человеческая версия (для истории, удобства, UI, дебага)
+  # Пример: "auth-service-v1.2.3"
+  tag: "auth-service-v0.0.0"
+
+  # 🔒 Истина для деплоя (Helm будет использовать ТОЛЬКО digest)
+  # Пример: "sha256:3516776e4f14a020d4c1a3cffd3d1b618fb49981bd3c4aa0a95dedf0a0b0fa9b"
+  digest: ""
+
   pullPolicy: IfNotPresent
 
 service:
