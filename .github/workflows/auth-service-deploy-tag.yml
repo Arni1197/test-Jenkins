@@ -8,7 +8,6 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  actions: read
 
 concurrency:
   group: auth-service-deploy-${{ github.ref }}
@@ -16,22 +15,12 @@ concurrency:
 
 jobs:
   deploy-gitops:
-    name: Create GitOps PR from tag (no rebuild)
+    name: Create GitOps PR from tag (update image.tag)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
 
     env:
-      # build workflow file name (must match your build workflow filename)
-      BUILD_WORKFLOW_FILE: auth-service-build.yml
-
-      # artifact name from build workflow (upload-artifact name)
-      DIGEST_ARTIFACT_NAME: auth-service-image-digest
-
-      # where to write in GitOps repo (same repo here)
       VALUES_FILE: k8s/environments/local/values/services/auth-service.yaml
-
-      # optional: image name (for PR body info)
-      IMAGE: arnold2343/game-auth-service
 
     steps:
       - name: Checkout main
@@ -40,113 +29,26 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Resolve build run for this tag SHA and download digest artifact
-        id: dl
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-
-            const tagRef = context.ref; // refs/tags/auth-service-vX.Y.Z
-            const tagName = context.ref.replace('refs/tags/', '');
-            core.info(`Tag ref: ${tagRef}`);
-            core.info(`Tag name: ${tagName}`);
-
-            // 1) Get the commit SHA the tag points to
-            // annotated tags: Git has tag object + commit, but GitHub's ref API returns object SHA.
-            // We'll resolve it to a commit SHA by using the git/ref endpoint then git/commit as needed.
-            const refData = await github.rest.git.getRef({
-              owner, repo, ref: `tags/${tagName}`,
-            });
-
-            let sha = refData.data.object.sha;
-            core.info(`Ref object SHA: ${sha} (type=${refData.data.object.type})`);
-
-            // If it's an annotated tag, resolve tag object to the underlying commit
-            if (refData.data.object.type === 'tag') {
-              const tagObj = await github.rest.git.getTag({ owner, repo, tag_sha: sha });
-              sha = tagObj.data.object.sha;
-              core.info(`Resolved annotated tag to commit SHA: ${sha}`);
-            } else {
-              core.info(`Lightweight tag commit SHA: ${sha}`);
-            }
-
-            core.setOutput('tagCommitSha', sha);
-
-            // 2) Get workflow id by filename
-            const wf = await github.rest.actions.getWorkflow({
-              owner, repo, workflow_id: process.env.BUILD_WORKFLOW_FILE,
-            });
-
-            // 3) Find completed successful build run on main with the SAME head_sha
-            const runs = await github.rest.actions.listWorkflowRuns({
-              owner,
-              repo,
-              workflow_id: wf.data.id,
-              branch: "main",
-              status: "completed",
-              per_page: 50,
-            });
-
-            const run = runs.data.workflow_runs.find(r => r.conclusion === "success" && r.head_sha === sha);
-            if (!run) {
-              core.setFailed(
-                `No successful main build run found for SHA=${sha}. ` +
-                `Make sure auth-service-build.yml ran on that commit and uploaded artifact '${process.env.DIGEST_ARTIFACT_NAME}'.`
-              );
-              return;
-            }
-
-            core.info(`Using build run_id=${run.id} url=${run.html_url}`);
-
-            // 4) Find artifact by name in that run
-            const arts = await github.rest.actions.listWorkflowRunArtifacts({
-              owner, repo, run_id: run.id, per_page: 100
-            });
-
-            const art = arts.data.artifacts.find(a => a.name === process.env.DIGEST_ARTIFACT_NAME);
-            if (!art) {
-              core.setFailed(`Artifact '${process.env.DIGEST_ARTIFACT_NAME}' not found in run ${run.id}.`);
-              return;
-            }
-
-            core.info(`Found artifact id=${art.id}, size=${art.size_in_bytes}`);
-
-            // 5) Download artifact zip
-            const download = await github.rest.actions.downloadArtifact({
-              owner, repo, artifact_id: art.id, archive_format: "zip"
-            });
-
-            const fs = require("fs");
-            const path = "artifact.zip";
-            fs.writeFileSync(path, Buffer.from(download.data));
-            core.setOutput("zipPath", path);
-
-      - name: Unzip digest artifact and export DIGEST
-        run: |
-          set -euo pipefail
-          unzip -o "${{ steps.dl.outputs.zipPath }}" -d ./artifact
-          echo "Artifact contents:"
-          ls -la ./artifact
-          echo "Digest file:"
-          cat ./artifact/image-digest.txt
-          DIGEST="$(cat ./artifact/image-digest.txt)"
-          echo "DIGEST=$DIGEST" >> "$GITHUB_ENV"
-
       - name: Install yq
         run: |
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
 
-      # ✅ Update values file
-      # IMPORTANT: adjust this path according to your actual yaml structure
-      - name: Update auth-service image digest in values
+      - name: Update image.tag in values from release tag
+        env:
+          TAG_RAW: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          echo "Using digest: $DIGEST"
-          echo "Updating file: $VALUES_FILE"
-          yq -i '.image.digest = strenv(DIGEST)' "$VALUES_FILE"
+
+          echo "Release tag: $TAG_RAW"
+
+          # ✅ auth-service-v1.2.3 -> v1.2.3
+          VERSION="${TAG_RAW#auth-service-}"
+          echo "Deploy version: $VERSION"
+
+          yq -i '.image.tag = strenv(VERSION)' "$VALUES_FILE"
+
+          echo "Updated file:"
           git diff -- "$VALUES_FILE" || true
 
       - name: Create Pull Request
@@ -158,15 +60,16 @@ jobs:
           delete-branch: true
           add-paths: |
             ${{ env.VALUES_FILE }}
-          commit-message: "chore(gitops): deploy auth-service ${{ github.ref_name }} (digest)"
-          title: "chore(gitops): deploy auth-service ${{ github.ref_name }} (digest)"
+          commit-message: "chore(gitops): deploy auth-service ${{ github.ref_name }}"
+          title: "chore(gitops): deploy auth-service ${{ github.ref_name }}"
           body: |
-            GitOps deploy PR (no rebuild).
+            GitOps deploy PR from release tag.
 
             - release tag: ${{ github.ref_name }}
-            - image: ${{ env.IMAGE }}
-            - digest (from main build for this tag SHA): ${{ env.DIGEST }}
-            - file: ${{ env.VALUES_FILE }}
+            - file updated: ${{ env.VALUES_FILE }}
+
+            This updates:
+            - image.tag -> vX.Y.Z
 
             Merge this PR to trigger ArgoCD sync/deploy.
           labels: |
