@@ -122,11 +122,10 @@ jobs:
           for i in 1 2 3; do
             echo "Attempt $i/3..."
 
-            # ✅ HARD TIMEOUT: гарантированно убивает зависший cosign
             if timeout -k 5s 90s cosign verify-attestation "$IMAGE" \
               --type "$TYPE" \
               --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-              --certificate-identity-regexp "^https://github.com/${{ github.repository }}/\\.github/workflows/sbom-attest\\.yml@refs/tags/.*$"
+              --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/sbom-attest.yml@refs/tags/.*$"
             then
               ok="true"
               break
