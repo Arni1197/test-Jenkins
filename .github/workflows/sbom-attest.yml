@@ -1,3 +1,4 @@
+# .github/workflows/sbom-attest.yml
 name: SBOM (Anchore) + Cosign attest
 
 on:
@@ -85,6 +86,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           FMT="${{ inputs.format }}"
           if [[ "$FMT" == "spdx-json" || "$FMT" == "spdx" ]]; then
             TYPE="spdxjson"
@@ -119,7 +121,9 @@ jobs:
           ok="false"
           for i in 1 2 3; do
             echo "Attempt $i/3..."
-            if timeout 180 cosign verify-attestation "$IMAGE" \
+
+            # ✅ HARD TIMEOUT: гарантированно убивает зависший cosign
+            if timeout -k 5s 90s cosign verify-attestation "$IMAGE" \
               --type "$TYPE" \
               --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
               --certificate-identity-regexp "^https://github.com/${{ github.repository }}/\\.github/workflows/sbom-attest\\.yml@refs/tags/.*$"
@@ -127,7 +131,8 @@ jobs:
               ok="true"
               break
             fi
-            echo "⚠️ Verify failed (attempt $i). Sleeping 5s..."
+
+            echo "⚠️ Verify failed or timed out (attempt $i). Sleeping 5s..."
             sleep 5
           done
 
@@ -137,6 +142,6 @@ jobs:
           fi
 
           echo "⚠️ WARNING: SBOM attestation verification did not succeed after retries."
-          echo "This may be a transient registry/network issue. Continuing..."
-          timeout 60 cosign tree "$IMAGE" || true
+          echo "Continuing release (best-effort). Showing cosign tree:"
+          timeout -k 2s 30s cosign tree "$IMAGE" || true
           exit 0
