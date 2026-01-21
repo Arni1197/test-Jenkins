@@ -9,8 +9,6 @@ on:
 
       # ✅ или если менялся сам этот workflow / reusable либы
       - ".github/workflows/main/api-gateway.main.yml"
-      - ".github/workflows/_lib-docker-build-push.yml"
-      - ".github/workflows/_lib-promote-pr.yml"
 
 permissions:
   contents: write
