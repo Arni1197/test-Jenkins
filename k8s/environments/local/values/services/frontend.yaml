@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: arnold2343/frontend
-  tag: sha-304bfc754e5dff563ae747247a917cc2e3a499e0
+  tag: sha-596f52a6e1e5c1a1a1e69744a031e452ad43afb3
   digest: "sha256:<PUT_DIGEST_HERE>"
   pullPolicy: IfNotPresent
 
