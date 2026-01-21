@@ -1,0 +1,24 @@
+replicaCount: 1
+
+image:
+  repository: arnold2343/user-service
+  # 🏷️ Человеческая версия (удобно смотреть в UI/логах)
+  tag: sha-<PUT_SHA_HERE>
+  # 🔒 Истина для деплоя (если chart настроен на digest)
+  digest: "sha256:<PUT_DIGEST_HERE>"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 3002
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+env:
+  NODE_ENV: "development"

@@ -5,7 +5,6 @@ image:
   # Пример: "auth-service-v1.2.3"
   tag: sha-3a19178790dd648633168be08f042150264ae0e0
   # 🔒 Истина для деплоя (Helm будет использовать ТОЛЬКО digest)
-  # Пример: "sha256:3516776e4f14a020d4c1a3cffd3d1b618fb49981bd3c4aa0a95dedf0a0b0fa9b"
   digest: "sha256:d932410aa76e921149e229515fc1ad1ff2fc851ba4e90311a523cef11062e0db"
   pullPolicy: IfNotPresent
 service:
