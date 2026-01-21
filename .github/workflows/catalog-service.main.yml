@@ -24,7 +24,7 @@ jobs:
       service_name: "catalog-service"
       context: "catalog-service"
       dockerfile: "catalog-service/Dockerfile"
-      image: "ghcr.io/${{ github.repository_owner }}/catalog-service"
+      image: "ghcr.io/arni1197/auth-service"
       tag: "sha-${{ github.sha }}"
       push: true
       platforms: "linux/amd64"
