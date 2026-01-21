@@ -1,4 +1,4 @@
-name: catalog-service | main build & dev deploy
+name: catalog-service | main build & dev deploy (via PR)
 
 on:
   push:
@@ -6,11 +6,11 @@ on:
     paths:
       - "catalog-service/**"
       - ".github/workflows/main/catalog-service.main.yml"
-      - ".github/workflows/_lib/docker-build-push.yml"
 
 permissions:
   contents: write
   packages: write
+  pull-requests: write
 
 concurrency:
   group: main-catalog-service-${{ github.ref }}
@@ -18,49 +18,34 @@ concurrency:
 
 jobs:
   build_push:
+    name: catalog-service | Docker build & push
     uses: ./.github/workflows/_lib-docker-build-push.yml
+    permissions:
+      contents: read
+      packages: write
     with:
       service_name: "catalog-service"
       context: "catalog-service"
       dockerfile: "catalog-service/Dockerfile"
-      image: "ghcr.io/arni1197/auth-service"
+      image: "ghcr.io/arni1197/catalog-service"
       tag: "sha-${{ github.sha }}"
       push: true
       platforms: "linux/amd64"
 
-  update_dev_values:
-    name: catalog-service | update dev values
+  update_dev_values_pr:
+    name: catalog-service | PR update dev values
     needs: [build_push]
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/_lib-promote-pr.yml
     permissions:
       contents: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Update dev values file (image.tag)
-        run: |
-          set -e
-          FILE="k8s/environments/local/values/services/catalog-service.yaml"
-          if [ ! -f "$FILE" ]; then
-            echo "Dev values file not found: $FILE"
-            exit 1
-          fi
-
-          echo "Updating $FILE -> tag: sha-${{ github.sha }}"
-          sed -i.bak -E "s/^([[:space:]]*tag:[[:space:]]*).*/\\1sha-${{ github.sha }}/" "$FILE"
-          rm -f "$FILE.bak"
-
-          echo "Result:"
-          grep -nE "^[[:space:]]*tag:" "$FILE" || true
-
-      - name: Commit and push
-        run: |
-          set -e
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          git add k8s/environments/local/values/services/catalog-service.yaml
-          git commit -m "chore(dev): deploy catalog-service sha-${{ github.sha }}" || exit 0
-          git push
+      pull-requests: write
+    with:
+      service_name: "catalog-service"
+      target_env: "dev"
+      target_values_file: "k8s/environments/local/values/services/catalog-service.yaml"
+      new_tag: "sha-${{ github.sha }}"
+      new_digest: "${{ needs.build_push.outputs.digest }}"
+      base_branch: "main"
+      pr_branch_prefix: "promote/dev"
+      pr_labels: "gitops,dev"
+      skip_if_exists: true
