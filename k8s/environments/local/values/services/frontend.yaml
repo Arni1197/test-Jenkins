@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: arnold2343/frontend
-  tag: sha-<PUT_SHA_HERE>
+  tag: sha-304bfc754e5dff563ae747247a917cc2e3a499e0
   digest: "sha256:<PUT_DIGEST_HERE>"
   pullPolicy: IfNotPresent
 
