@@ -2,8 +2,8 @@ replicaCount: 1
 
 image:
   repository: arnold2343/game-catalog
-  tag: sha-380a37b52134b96ccf6f4887b86bc57dd0bb96b0
-  digest: "sha256:<PUT_DIGEST_HERE>"
+  tag: sha-97f7b9c6b37c8429ee60edfa08d9d2c2b265335b
+  digest: "sha256:94e1e6795bb6a1857b857f60b13b42597e69311440d0dd6a946d63338db18117"
   pullPolicy: IfNotPresent
 
 service:
