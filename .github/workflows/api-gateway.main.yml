@@ -43,7 +43,7 @@ jobs:
       - name: Update dev values file (image.tag)
         run: |
           set -e
-          FILE="k8s/environments/local/values/services/api-gateway.yml"
+          FILE="k8s/environments/local/values/services/api-gateway.yaml"
           if [ ! -f "$FILE" ]; then
             echo "Dev values file not found: $FILE"
             exit 1
