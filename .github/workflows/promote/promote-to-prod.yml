@@ -1,0 +1,40 @@
+name: promote | release -> prod (PR)
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Service to promote"
+        required: true
+        type: choice
+        options:
+          - auth-service
+          - user-service
+          - catalog-service
+          - api-gateway
+          - frontend
+      release_tag:
+        description: "Release tag to deploy (e.g. auth-service-v1.2.3)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: promote-release-to-prod
+  cancel-in-progress: true
+
+jobs:
+  promote:
+    uses: ./.github/workflows/_lib/promote-pr.yml
+    with:
+      service_name: "${{ inputs.service }}"
+      target_env: "prod"
+      base_branch: "main"
+      target_values_file: "k8s/envs/prod/values/${{ inputs.service }}.yaml"
+      new_tag: "${{ inputs.release_tag }}"
+      pr_branch_prefix: "promote"
+      pr_labels: "promotion,prod"
+      skip_if_exists: true

@@ -1,0 +1,101 @@
+name: _lib | Node PR checks
+
+on:
+  workflow_call:
+    inputs:
+      service_name:
+        description: "Human readable service name"
+        required: true
+        type: string
+      working_directory:
+        description: "Path to service directory (monorepo)"
+        required: true
+        type: string
+      node_version:
+        description: "Node.js version"
+        required: false
+        type: string
+        default: "20"
+      cache_dependency_path:
+        description: "Path to lockfile for npm cache"
+        required: false
+        type: string
+        default: ""
+      run_lint:
+        description: "Run lint step"
+        required: false
+        type: boolean
+        default: true
+      run_test:
+        description: "Run test step"
+        required: false
+        type: boolean
+        default: true
+      run_build:
+        description: "Run build step"
+        required: false
+        type: boolean
+        default: false
+      install_command:
+        description: "Install command (npm ci recommended)"
+        required: false
+        type: string
+        default: "npm ci"
+      lint_command:
+        description: "Lint command"
+        required: false
+        type: string
+        default: "npm run lint"
+      test_command:
+        description: "Test command"
+        required: false
+        type: string
+        default: "npm test"
+      build_command:
+        description: "Build command"
+        required: false
+        type: string
+        default: "npm run build"
+      timeout_minutes:
+        description: "Job timeout"
+        required: false
+        type: number
+        default: 10
+
+jobs:
+  pr_checks:
+    name: "${{ inputs.service_name }} | PR checks"
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout_minutes }}
+    permissions:
+      contents: read
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node_version }}
+          cache: npm
+          cache-dependency-path: ${{ inputs.cache_dependency_path != '' && inputs.cache_dependency_path || format('{0}/package-lock.json', inputs.working_directory) }}
+
+      - name: Install dependencies
+        run: ${{ inputs.install_command }}
+
+      - name: Lint
+        if: ${{ inputs.run_lint }}
+        run: ${{ inputs.lint_command }}
+
+      - name: Test
+        if: ${{ inputs.run_test }}
+        run: ${{ inputs.test_command }}
+
+      - name: Build
+        if: ${{ inputs.run_build }}
+        run: ${{ inputs.build_command }}

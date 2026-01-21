@@ -1,0 +1,130 @@
+name: _lib | Docker build & push
+
+on:
+  workflow_call:
+    inputs:
+      service_name:
+        required: true
+        type: string
+      context:
+        description: "Docker build context"
+        required: true
+        type: string
+      dockerfile:
+        description: "Path to Dockerfile"
+        required: true
+        type: string
+      image:
+        description: "Full image name without tag, e.g. ghcr.io/OWNER/auth-service"
+        required: true
+        type: string
+      tag:
+        description: "Image tag, e.g. sha-abcdef0"
+        required: true
+        type: string
+      push:
+        description: "Push image to registry"
+        required: false
+        type: boolean
+        default: true
+      platforms:
+        description: "Target platforms"
+        required: false
+        type: string
+        default: "linux/amd64"
+      registry:
+        description: "Registry host for login (ghcr.io by default)"
+        required: false
+        type: string
+        default: "ghcr.io"
+      build_args:
+        description: "Newline-separated build-args: KEY=VALUE"
+        required: false
+        type: string
+        default: ""
+      labels:
+        description: "Extra OCI labels (newline-separated: key=value)"
+        required: false
+        type: string
+        default: ""
+    outputs:
+      image_ref:
+        description: "Image reference with tag"
+        value: ${{ jobs.build_push.outputs.image_ref }}
+      digest:
+        description: "Pushed image digest (if push=true)"
+        value: ${{ jobs.build_push.outputs.digest }}
+
+jobs:
+  build_push:
+    name: "${{ inputs.service_name }} | Docker build & push"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image_ref: ${{ steps.out.outputs.image_ref }}
+      digest: ${{ steps.out.outputs.digest }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to registry
+        if: ${{ inputs.push }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ inputs.registry }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare build-args
+        id: args
+        run: |
+          set -e
+          echo "args<<EOF" >> $GITHUB_OUTPUT
+          if [ -n "${{ inputs.build_args }}" ]; then
+            echo "${{ inputs.build_args }}" >> $GITHUB_OUTPUT
+          fi
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Prepare labels
+        id: lbl
+        run: |
+          set -e
+          echo "labels<<EOF" >> $GITHUB_OUTPUT
+          echo "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" >> $GITHUB_OUTPUT
+          echo "org.opencontainers.image.revision=${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
+          if [ -n "${{ inputs.labels }}" ]; then
+            echo "${{ inputs.labels }}" >> $GITHUB_OUTPUT
+          fi
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Build & (optionally) push
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ inputs.context }}
+          file: ${{ inputs.dockerfile }}
+          push: ${{ inputs.push }}
+          platforms: ${{ inputs.platforms }}
+          tags: ${{ inputs.image }}:${{ inputs.tag }}
+          build-args: ${{ steps.args.outputs.args }}
+          labels: ${{ steps.lbl.outputs.labels }}
+          provenance: true
+
+      - name: Outputs
+        id: out
+        run: |
+          set -e
+          echo "image_ref=${{ inputs.image }}:${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          # build-push-action exposes digest when push=true (and sometimes for local)
+          echo "digest=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT

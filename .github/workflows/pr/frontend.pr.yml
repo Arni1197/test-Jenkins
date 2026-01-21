@@ -1,0 +1,29 @@
+name: frontend | PR checks
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/pr/frontend.pr.yml"
+      - ".github/workflows/_lib/node-pr-checks.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    uses: ./.github/workflows/_lib/node-pr-checks.yml
+    with:
+      service_name: "frontend"
+      working_directory: "frontend"
+      node_version: "20"
+      cache_dependency_path: "frontend/package-lock.json"
+      run_lint: true
+      run_test: true
+      run_build: true
+      build_command: "npm run build"

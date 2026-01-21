@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: api-gateway-local
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Arni1197/test-Jenkins.git
+    targetRevision: main
+    path: k8s/charts/services/api-gateway
+    helm:
+      valueFiles:
+        - ../../../environments/local/values/services/api-gateway.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gateway
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,73 @@
+name: promote | dev -> staging (PR)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: promote-dev-to-staging
+  cancel-in-progress: true
+
+jobs:
+  auth_service:
+    uses: ./.github/workflows/_lib/promote-pr.yml
+    with:
+      service_name: "auth-service"
+      target_env: "staging"
+      base_branch: "main"
+      source_values_file: "k8s/envs/dev/values/auth-service.yaml"
+      target_values_file: "k8s/envs/staging/values/auth-service.yaml"
+      pr_branch_prefix: "promote"
+      pr_labels: "promotion,staging"
+      skip_if_exists: true
+
+  user_service:
+    uses: ./.github/workflows/_lib/promote-pr.yml
+    with:
+      service_name: "user-service"
+      target_env: "staging"
+      base_branch: "main"
+      source_values_file: "k8s/envs/dev/values/user-service.yaml"
+      target_values_file: "k8s/envs/staging/values/user-service.yaml"
+      pr_branch_prefix: "promote"
+      pr_labels: "promotion,staging"
+      skip_if_exists: true
+
+  catalog_service:
+    uses: ./.github/workflows/_lib/promote-pr.yml
+    with:
+      service_name: "catalog-service"
+      target_env: "staging"
+      base_branch: "main"
+      source_values_file: "k8s/envs/dev/values/catalog-service.yaml"
+      target_values_file: "k8s/envs/staging/values/catalog-service.yaml"
+      pr_branch_prefix: "promote"
+      pr_labels: "promotion,staging"
+      skip_if_exists: true
+
+  api_gateway:
+    uses: ./.github/workflows/_lib/promote-pr.yml
+    with:
+      service_name: "api-gateway"
+      target_env: "staging"
+      base_branch: "main"
+      source_values_file: "k8s/envs/dev/values/api-gateway.yaml"
+      target_values_file: "k8s/envs/staging/values/api-gateway.yaml"
+      pr_branch_prefix: "promote"
+      pr_labels: "promotion,staging"
+      skip_if_exists: true
+
+  frontend:
+    uses: ./.github/workflows/_lib/promote-pr.yml
+    with:
+      service_name: "frontend"
+      target_env: "staging"
+      base_branch: "main"
+      source_values_file: "k8s/envs/dev/values/frontend.yaml"
+      target_values_file: "k8s/envs/staging/values/frontend.yaml"
+      pr_branch_prefix: "promote"
+      pr_labels: "promotion,staging"
+      skip_if_exists: true

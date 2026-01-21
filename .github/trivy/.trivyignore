@@ -1,4 +1,0 @@
-# .trivyignore
-# Игнорируй CVE только осознанно и с комментарием/сроком.
-# Пример:
-# CVE-2025-12345  # false positive, accepted until 2026-01-01 (SEC-12)

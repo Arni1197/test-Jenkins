@@ -1,0 +1,67 @@
+name: user-service | main build & dev deploy
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "user-service/**"
+      - "k8s/**"
+      - ".github/workflows/main/user-service.main.yml"
+      - ".github/workflows/_lib/docker-build-push.yml"
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: main-user-service-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build_push:
+    uses: ./.github/workflows/_lib/docker-build-push.yml
+    with:
+      service_name: "user-service"
+      context: "user-service"
+      dockerfile: "user-service/Dockerfile"
+      image: "ghcr.io/${{ github.repository_owner }}/user-service"
+      tag: "sha-${{ github.sha }}"
+      push: true
+      platforms: "linux/amd64"
+
+  update_dev_values:
+    name: user-service | update dev values
+    needs: [build_push]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update dev values file (image.tag)
+        run: |
+          set -e
+          FILE="k8s/envs/dev/values/user-service.yaml"
+          if [ ! -f "$FILE" ]; then
+            echo "Dev values file not found: $FILE"
+            exit 1
+          fi
+
+          echo "Updating $FILE -> tag: sha-${{ github.sha }}"
+          sed -i.bak -E "s/^([[:space:]]*tag:[[:space:]]*).*/\\1sha-${{ github.sha }}/" "$FILE"
+          rm -f "$FILE.bak"
+
+          echo "Result:"
+          grep -nE "^[[:space:]]*tag:" "$FILE" || true
+
+      - name: Commit and push
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add k8s/envs/dev/values/user-service.yaml
+          git commit -m "chore(dev): deploy user-service sha-${{ github.sha }}" || exit 0
+          git push
