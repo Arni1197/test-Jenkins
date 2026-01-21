@@ -6,24 +6,31 @@ on:
       service_name:
         required: true
         type: string
+
       target_env:
-        description: "staging or prod"
+        description: "dev / staging / prod"
         required: true
         type: string
 
       source_values_file:
-        description: "Path to source env values file (e.g. k8s/environments/local/values/services/auth-service.yaml)"
+        description: "Path to source env values file (optional, if new_tag not set)"
         required: false
         type: string
         default: ""
 
       target_values_file:
-        description: "Path to target env values file (e.g. k8s/environments/local/values/services/auth-service.yaml)"
+        description: "Path to target env values file"
         required: true
         type: string
 
       new_tag:
         description: "If set, use this tag instead of reading from source_values_file"
+        required: false
+        type: string
+        default: ""
+
+      new_digest:
+        description: "If set, also update digest in target_values_file"
         required: false
         type: string
         default: ""
@@ -152,17 +159,38 @@ jobs:
         run: |
           git checkout -b "${{ steps.bn.outputs.branch }}"
 
-      - name: Update target values file (image.tag)
+      - name: Update target values file (image.tag + optional image.digest)
         run: |
           set -e
           FILE="${{ inputs.target_values_file }}"
 
+          if [ ! -f "$FILE" ]; then
+            echo "Target values file not found: $FILE"
+            exit 1
+          fi
+
           echo "Updating $FILE -> tag: ${{ steps.tags.outputs.new_tag }}"
           sed -i.bak -E "s/^([[:space:]]*tag:[[:space:]]*).*/\\1${{ steps.tags.outputs.new_tag }}/" "$FILE"
+
+          if [ -n "${{ inputs.new_digest }}" ]; then
+            echo "Updating $FILE -> digest: ${{ inputs.new_digest }}"
+            if grep -qE "^[[:space:]]*digest:[[:space:]]*" "$FILE"; then
+              sed -i.bak -E "s/^([[:space:]]*digest:[[:space:]]*).*/\\1\"${{ inputs.new_digest }}\"/" "$FILE"
+            else
+              awk -v dg="${{ inputs.new_digest }}" '
+                {print}
+                $0 ~ /^[[:space:]]*tag:[[:space:]]*/ && !done {
+                  print "  digest: \"" dg "\""
+                  done=1
+                }
+              ' "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+            fi
+          fi
+
           rm -f "$FILE.bak"
 
           echo "Result:"
-          grep -nE "^[[:space:]]*tag:" "$FILE" || true
+          grep -nE "^[[:space:]]*(tag|digest):" "$FILE" || true
 
       - name: Commit changes
         run: |
@@ -188,6 +216,7 @@ jobs:
               `- Service: **${{ inputs.service_name }}**`,
               `- Target env: **${{ inputs.target_env }}**`,
               `- New image tag: **${{ steps.tags.outputs.new_tag }}**`,
+              `${{ inputs.new_digest != '' && format('- New image digest: **{0}**', inputs.new_digest) || '' }}`,
               `- Target values: \`${{ inputs.target_values_file }}\``,
               `${{ inputs.source_values_file != '' && format('- Source values: `{0}`', inputs.source_values_file) || '' }}`
             ].filter(Boolean).join("\n");
@@ -208,4 +237,3 @@ jobs:
                 labels
               });
             }
-
