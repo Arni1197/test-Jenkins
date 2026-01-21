@@ -5,7 +5,6 @@ on:
     branches: ["main"]
     paths:
       - "user-service/**"
-      - "k8s/**"
       - ".github/workflows/main/user-service.main.yml"
       - ".github/workflows/_lib/docker-build-push.yml"
 
