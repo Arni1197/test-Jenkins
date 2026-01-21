@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   auth_service:
-    uses: ./.github/workflows/_lib/promote-pr.yml
+    uses: ./.github/workflows/_lib-promote-pr.yml
     with:
       service_name: "auth-service"
       target_env: "staging"
@@ -25,7 +25,7 @@ jobs:
       skip_if_exists: true
 
   user_service:
-    uses: ./.github/workflows/_lib/promote-pr.yml
+    uses: ./.github/workflows/_lib-promote-pr.yml
     with:
       service_name: "user-service"
       target_env: "staging"
@@ -37,7 +37,7 @@ jobs:
       skip_if_exists: true
 
   catalog_service:
-    uses: ./.github/workflows/_lib/promote-pr.yml
+    uses: ./.github/workflows/_lib-promote-pr.yml
     with:
       service_name: "catalog-service"
       target_env: "staging"
@@ -49,7 +49,7 @@ jobs:
       skip_if_exists: true
 
   api_gateway:
-    uses: ./.github/workflows/_lib/promote-pr.yml
+    uses: ./.github/workflows/_lib-promote-pr.yml
     with:
       service_name: "api-gateway"
       target_env: "staging"
@@ -61,7 +61,7 @@ jobs:
       skip_if_exists: true
 
   frontend:
-    uses: ./.github/workflows/_lib/promote-pr.yml
+    uses: ./.github/workflows/_lib-promote-pr.yml
     with:
       service_name: "frontend"
       target_env: "staging"

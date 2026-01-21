@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   build_push:
-    uses: ./.github/workflows/_lib/docker-build-push.yml
+    uses: ./.github/workflows/_lib-docker-build-push.yml
     with:
       service_name: "frontend"
       context: "frontend"

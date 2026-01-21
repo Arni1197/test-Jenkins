@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   checks:
-    uses: ./.github/workflows/_lib/node-pr-checks.yml
+    uses: ./.github/workflows/_lib-node-pr-checks.yml
     with:
       service_name: "auth-service"
       working_directory: "auth-service"

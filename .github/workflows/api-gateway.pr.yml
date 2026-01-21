@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   checks:
-    uses: ./.github/workflows/_lib/node-pr-checks.yml
+    uses: ./.github/workflows/_lib-node-pr-checks.yml
     with:
       service_name: "api-gateway"
       working_directory: "api-gateway"

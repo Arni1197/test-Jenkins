@@ -28,7 +28,7 @@ concurrency:
 
 jobs:
   promote:
-    uses: ./.github/workflows/_lib/promote-pr.yml
+    uses: ./.github/workflows/_lib-promote-pr.yml
     with:
       service_name: "${{ inputs.service }}"
       target_env: "prod"
