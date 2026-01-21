@@ -30,7 +30,7 @@ jobs:
       service_name: "auth-service"
       context: "auth-service"
       dockerfile: "auth-service/Dockerfile"
-      image: "ghcr.io/${{ github.repository_owner }}/auth-service"
+      image: "ghcr.io/arni1197/auth-service"
       tag: "sha-${{ github.sha }}"
       push: true
       platforms: "linux/amd64"
