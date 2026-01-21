@@ -5,10 +5,10 @@ on:
     branches: ["main"]
     paths:
       - "auth-service/**"
-      - "k8s/**"
+      - "k8s/charts/services/auth-service/**"
+      - "k8s/environments/local/values/services/auth-service.yaml"
       - ".github/workflows/auth-service.main.yml"
-      - ".github/workflows/_lib-docker-build-push.yml"
-      - ".github/workflows/_lib-promote-pr.yml"
+      - ".github/workflows/_lib/**"
 
 permissions:
   contents: write

@@ -4,10 +4,11 @@ on:
   push:
     branches: ["main"]
     paths:
-      - "user-service/**"
-      - "k8s/**"
-      - ".github/workflows/main/user-service.main.yml"
-      - ".github/workflows/_lib/docker-build-push.yml"
+      - "auth-service/**"
+      - "k8s/charts/services/user-service/**"
+      - "k8s/environments/local/values/services/user-service.yaml"
+      - ".github/workflows/user-service.main.yml"
+      - ".github/workflows/_lib/**"
 
 permissions:
   contents: write

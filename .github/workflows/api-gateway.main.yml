@@ -4,11 +4,11 @@ on:
   push:
     branches: ["main"]
     paths:
-      - "api-gateway/**"
-      - "k8s/**"
-      - ".github/workflows/main/api-gateway.main.yml"
-      - ".github/workflows/_lib/docker-build-push.yml"
-
+      - "auth-service/**"
+      - "k8s/charts/services/api-gateway/**"
+      - "k8s/environments/local/values/services/api-gateway.yaml"
+      - ".github/workflows/api-gateway.main.yml"
+      - ".github/workflows/_lib/**"
 permissions:
   contents: write
   packages: write

@@ -4,10 +4,11 @@ on:
   push:
     branches: ["main"]
     paths:
-      - "catalog-service/**"
-      - "k8s/**"
-      - ".github/workflows/main/catalog-service.main.yml"
-      - ".github/workflows/_lib/docker-build-push.yml"
+      - "auth-service/**"
+      - "k8s/charts/services/catalog-service/**"
+      - "k8s/environments/local/values/services/catalog-service.yaml"
+      - ".github/workflows/catalog-service.main.yml"
+      - ".github/workflows/_lib/**"
 
 permissions:
   contents: write

@@ -4,10 +4,11 @@ on:
   push:
     branches: ["main"]
     paths:
-      - "frontend/**"
-      - "k8s/**"
-      - ".github/workflows/main/frontend.main.yml"
-      - ".github/workflows/_lib/docker-build-push.yml"
+      - "auth-service/**"
+      - "k8s/charts/services/frontend/**"
+      - "k8s/environments/local/values/services/frontend.yaml"
+      - ".github/workflows/frontend.main.yml"
+      - ".github/workflows/_lib/**"
 
 permissions:
   contents: write
