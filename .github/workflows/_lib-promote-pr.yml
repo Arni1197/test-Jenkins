@@ -180,7 +180,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          BR="${{ inputs.pr_branch_prefix }}/${{ inputs.service_name }}/${{ inputs.target_env }}/${{ steps.resolved.outputs.new_tag }}"
+          BR="${{ inputs.pr_branch_prefix }}/${{ inputs.service_name }}/${{ inputs.target_env }}/${{ steps.resolved.outputs.new_tag }}-${{ github.run_id }}"
           BR="$(echo "$BR" | tr ' ' '-' | tr ':' '-')"
           echo "branch=$BR" >> "$GITHUB_OUTPUT"
           echo "✅ Promote branch: $BR"
