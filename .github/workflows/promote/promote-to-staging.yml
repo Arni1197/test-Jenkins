@@ -32,11 +32,11 @@ jobs:
           # 🔧 Здесь список сервисов и paths.
           # Подправь только если у тебя пути отличаются.
           SERVICES_JSON='[
-            {"name":"auth-service","dev":"k8s/environments/local/values/services/auth-service.yaml","staging":"k8s/enviroments/staging/values/services/auth-service.yaml"},
-            {"name":"user-service","dev":"k8s/environments/local/values/services/user-service.yaml","staging":"k8s/enviroments/staging/values/services/user-service.yaml"},
-            {"name":"catalog-service","dev":"k8s/environments/local/values/services/catalog-service.yaml","staging":"k8s/enviroments/staging/values/services/catalog-service.yaml"},
-            {"name":"api-gateway","dev":"k8s/environments/local/values/services/api-gateway.yaml","staging":"k8s/enviroments/staging/values/services/api-gateway.yaml"},
-            {"name":"frontend","dev":"k8s/environments/local/values/services/frontend.yaml","staging":"k8s/enviroments/staging/values/services/frontend.yaml"}
+            {"name":"auth-service","dev":"k8s/environments/local/values/services/auth-service.yaml","staging":"k8s/environments/staging/values/services/auth-service.yaml"},
+            {"name":"user-service","dev":"k8s/environments/local/values/services/user-service.yaml","staging":"k8s/environments/staging/values/services/user-service.yaml"},
+            {"name":"catalog-service","dev":"k8s/environments/local/values/services/catalog-service.yaml","staging":"k8s/environments/staging/values/services/catalog-service.yaml"},
+            {"name":"api-gateway","dev":"k8s/environments/local/values/services/api-gateway.yaml","staging":"k8s/environments/staging/values/services/api-gateway.yaml"},
+            {"name":"frontend","dev":"k8s/environments/local/values/services/frontend.yaml","staging":"k8s/environments/staging/values/services/frontend.yaml"}
           ]'
 
           read_yaml_field () {
