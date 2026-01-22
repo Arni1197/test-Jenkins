@@ -70,25 +70,33 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.base_branch }}
+
       - name: Debug inputs + files
         shell: bash
         run: |
           set -euo pipefail
           echo "base_branch=${{ inputs.base_branch }}"
+          echo "service_name=${{ inputs.service_name }}"
+          echo "target_env=${{ inputs.target_env }}"
           echo "source_values_file='${{ inputs.source_values_file }}'"
           echo "target_values_file='${{ inputs.target_values_file }}'"
+          echo "new_tag='${{ inputs.new_tag }}'"
+          echo "new_digest='${{ inputs.new_digest }}'"
           echo "GITHUB_REF=$GITHUB_REF"
           echo "GITHUB_SHA=$GITHUB_SHA"
-          git status --porcelain || true
-          echo "---- ls k8s/environments ----"
+          echo "---- repo root ----"
+          ls -la
+          echo "---- k8s/environments ----"
           ls -la k8s/environments || true
-          echo "---- ls staging services ----"
+          echo "---- staging values services ----"
           ls -la k8s/environments/staging/values/services || true
-          echo "---- ls local services ----"
+          echo "---- local values services ----"
           ls -la k8s/environments/local/values/services || true
 
       - name: Configure git
+        shell: bash
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
@@ -102,15 +110,17 @@ jobs:
           TGT_FILE="${{ inputs.target_values_file }}"
 
           if [ ! -f "$TGT_FILE" ]; then
-            echo "Target values file not found: $TGT_FILE"
+            echo "❌ Target values file not found: $TGT_FILE"
             exit 1
           fi
 
           read_yaml_field () {
             local file="$1"
             local key="$2"
-            # reads first matching "key: value" line (indented allowed)
-            grep -E "^[[:space:]]*$key:[[:space:]]*" "$file" | head -n1 | sed -E "s/^[[:space:]]*$key:[[:space:]]*//" | tr -d '"'
+            grep -E "^[[:space:]]*$key:[[:space:]]*" "$file" \
+              | head -n1 \
+              | sed -E "s/^[[:space:]]*$key:[[:space:]]*//" \
+              | tr -d '"'
           }
 
           # current target
@@ -118,25 +128,26 @@ jobs:
           TGT_DIGEST="$(read_yaml_field "$TGT_FILE" "digest" || true)"
 
           if [ -z "${TGT_TAG:-}" ]; then
-            echo "Cannot find 'tag:' in target file: $TGT_FILE"
+            echo "❌ Cannot find 'tag:' in target file: $TGT_FILE"
             exit 1
           fi
 
-          # decide new tag/digest
+          # new tag
           if [ -n "${{ inputs.new_tag }}" ]; then
             NEW_TAG="${{ inputs.new_tag }}"
           else
             if [ -z "$SRC_FILE" ] || [ ! -f "$SRC_FILE" ]; then
-              echo "Either new_tag or valid source_values_file must be provided."
+              echo "❌ Either new_tag or valid source_values_file must be provided."
               exit 1
             fi
             NEW_TAG="$(read_yaml_field "$SRC_FILE" "tag")"
             if [ -z "${NEW_TAG:-}" ]; then
-              echo "Cannot find 'tag:' in source file: $SRC_FILE"
+              echo "❌ Cannot find 'tag:' in source file: $SRC_FILE"
               exit 1
             fi
           fi
 
+          # new digest
           if [ -n "${{ inputs.new_digest }}" ]; then
             NEW_DIGEST="$(echo "${{ inputs.new_digest }}" | tr -d '"')"
           else
@@ -147,10 +158,10 @@ jobs:
             fi
           fi
 
-          echo "Target current tag:    $TGT_TAG"
-          echo "Target current digest: ${TGT_DIGEST:-<empty>}"
-          echo "New desired tag:       $NEW_TAG"
-          echo "New desired digest:    ${NEW_DIGEST:-<empty>}"
+          echo "✅ Target current tag:    $TGT_TAG"
+          echo "✅ Target current digest: ${TGT_DIGEST:-<empty>}"
+          echo "✅ New desired tag:       $NEW_TAG"
+          echo "✅ New desired digest:    ${NEW_DIGEST:-<empty>}"
 
           echo "tgt_tag=$TGT_TAG" >> "$GITHUB_OUTPUT"
           echo "tgt_digest=${TGT_DIGEST:-}" >> "$GITHUB_OUTPUT"
@@ -159,6 +170,7 @@ jobs:
 
       - name: Stop (already up to date)
         if: ${{ steps.resolved.outputs.tgt_tag == steps.resolved.outputs.new_tag && steps.resolved.outputs.tgt_digest == steps.resolved.outputs.new_digest }}
+        shell: bash
         run: |
           echo "✅ Target is already up-to-date (tag+digest). Nothing to do."
           exit 0
@@ -171,27 +183,41 @@ jobs:
           BR="${{ inputs.pr_branch_prefix }}/${{ inputs.service_name }}/${{ inputs.target_env }}/${{ steps.resolved.outputs.new_tag }}"
           BR="$(echo "$BR" | tr ' ' '-' | tr ':' '-')"
           echo "branch=$BR" >> "$GITHUB_OUTPUT"
+          echo "✅ Promote branch: $BR"
 
       - name: Check existing open PR
         if: ${{ inputs.skip_if_exists }}
         id: prcheck
         uses: actions/github-script@v7
+        env:
+          BRANCH_NAME: "${{ steps.bn.outputs.branch }}"
         with:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const head = `${owner}:${{ steps.bn.outputs.branch }}`;
-            const prs = await github.rest.pulls.list({ owner, repo, state: "open", head });
+            const head = `${owner}:${process.env.BRANCH_NAME}`;
+
+            const prs = await github.rest.pulls.list({
+              owner,
+              repo,
+              state: "open",
+              head,
+            });
+
             core.setOutput("exists", prs.data.length > 0 ? "true" : "false");
+            console.log(`Open PRs for ${head}:`, prs.data.length);
 
       - name: Stop (PR already exists)
         if: ${{ inputs.skip_if_exists && steps.prcheck.outputs.exists == 'true' }}
+        shell: bash
         run: |
           echo "✅ Promotion PR already exists for branch: ${{ steps.bn.outputs.branch }}"
           exit 0
 
       - name: Create branch
+        shell: bash
         run: |
+          set -euo pipefail
           git checkout -b "${{ steps.bn.outputs.branch }}"
 
       - name: Update target values file (image.tag + image.digest)
@@ -200,6 +226,11 @@ jobs:
           set -euo pipefail
           FILE="${{ inputs.target_values_file }}"
 
+          if [ ! -f "$FILE" ]; then
+            echo "❌ Target values file not found: $FILE"
+            exit 1
+          fi
+
           echo "Updating $FILE"
           echo "  -> tag:    ${{ steps.resolved.outputs.new_tag }}"
           echo "  -> digest: ${{ steps.resolved.outputs.new_digest }}"
@@ -207,7 +238,7 @@ jobs:
           # Update tag
           sed -i.bak -E "s/^([[:space:]]*tag:[[:space:]]*).*/\\1${{ steps.resolved.outputs.new_tag }}/" "$FILE"
 
-          # Update digest (if present in new)
+          # Update digest (if present in new_digest)
           if [ -n "${{ steps.resolved.outputs.new_digest }}" ]; then
             if grep -qE "^[[:space:]]*digest:[[:space:]]*" "$FILE"; then
               sed -i.bak -E "s/^([[:space:]]*digest:[[:space:]]*).*/\\1\"${{ steps.resolved.outputs.new_digest }}\"/" "$FILE"
@@ -228,47 +259,74 @@ jobs:
           grep -nE "^[[:space:]]*(tag|digest):" "$FILE" || true
 
       - name: Commit changes
+        shell: bash
         run: |
-          set -e
+          set -euo pipefail
           git add "${{ inputs.target_values_file }}"
           git commit -m "promote(${{ inputs.service_name }}): ${{ inputs.target_env }} -> ${{ steps.resolved.outputs.new_tag }}" || exit 0
 
       - name: Push branch
+        shell: bash
         run: |
+          set -euo pipefail
           git push -u origin "${{ steps.bn.outputs.branch }}"
 
       - name: Create PR
         uses: actions/github-script@v7
+        env:
+          SERVICE_NAME: "${{ inputs.service_name }}"
+          TARGET_ENV: "${{ inputs.target_env }}"
+          NEW_TAG: "${{ steps.resolved.outputs.new_tag }}"
+          NEW_DIGEST: "${{ steps.resolved.outputs.new_digest }}"
+          TARGET_FILE: "${{ inputs.target_values_file }}"
+          SOURCE_FILE: "${{ inputs.source_values_file }}"
+          HEAD_BRANCH: "${{ steps.bn.outputs.branch }}"
+          BASE_BRANCH: "${{ inputs.base_branch }}"
+          PR_LABELS: "${{ inputs.pr_labels }}"
         with:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
-            const title = `Promote ${{ inputs.service_name }} to ${{ inputs.target_env }}: ${{ steps.resolved.outputs.new_tag }}`;
-            const body = [
+            const title = `Promote ${process.env.SERVICE_NAME} to ${process.env.TARGET_ENV}: ${process.env.NEW_TAG}`;
+
+            const bodyLines = [
               `This is an automated GitOps promotion PR.`,
               ``,
-              `- Service: **${{ inputs.service_name }}**`,
-              `- Target env: **${{ inputs.target_env }}**`,
-              `- New image tag: **${{ steps.resolved.outputs.new_tag }}**`,
-              `- New image digest: **${{ steps.resolved.outputs.new_digest || '<empty>' }}**`,
-              `- Target values: \`${{ inputs.target_values_file }}\``,
-              `${{ inputs.source_values_file != '' && format('- Source values: `{0}`', inputs.source_values_file) || '' }}`
-            ].filter(Boolean).join("\n");
+              `- Service: **${process.env.SERVICE_NAME}**`,
+              `- Target env: **${process.env.TARGET_ENV}**`,
+              `- New image tag: **${process.env.NEW_TAG}**`,
+              `- New image digest: **${process.env.NEW_DIGEST || "<empty>"}**`,
+              `- Target values: \`${process.env.TARGET_FILE}\``,
+            ];
+
+            if (process.env.SOURCE_FILE && process.env.SOURCE_FILE.trim() !== "") {
+              bodyLines.push(`- Source values: \`${process.env.SOURCE_FILE}\``);
+            }
+
+            const body = bodyLines.join("\n");
 
             const pr = await github.rest.pulls.create({
-              owner, repo,
+              owner,
+              repo,
               title,
-              head: "${{ steps.bn.outputs.branch }}",
-              base: "${{ inputs.base_branch }}",
-              body
+              head: process.env.HEAD_BRANCH,
+              base: process.env.BASE_BRANCH,
+              body,
             });
 
-            const labels = "${{ inputs.pr_labels }}".split(",").map(s => s.trim()).filter(Boolean);
+            const labels = (process.env.PR_LABELS || "")
+              .split(",")
+              .map(s => s.trim())
+              .filter(Boolean);
+
             if (labels.length) {
               await github.rest.issues.addLabels({
-                owner, repo,
+                owner,
+                repo,
                 issue_number: pr.data.number,
-                labels
+                labels,
               });
             }
+
+            console.log(`✅ PR created: #${pr.data.number} ${pr.data.html_url}`);
