@@ -42,8 +42,8 @@ jobs:
       service_name: "catalog-service"
       target_env: "staging"
       base_branch: "main"
-      source_values_file: "k8s/enviroments/local/values/services/catalog-service.yaml"
-      target_values_file: "k8s/enviroments/staging/values/services/catalog-service.yaml"
+      source_values_file: "k8s/environments/local/values/services/catalog-service.yaml"
+      target_values_file: "k8s/environments/staging/values/services/catalog-service.yaml"
       pr_branch_prefix: "promote"
       pr_labels: "promotion,staging"
       skip_if_exists: true
@@ -54,8 +54,8 @@ jobs:
       service_name: "api-gateway"
       target_env: "staging"
       base_branch: "main"
-      source_values_file: "k8s/enviroments/local/values/services/api-gateway.yaml"
-      target_values_file: "k8s/enviroments/staging/values/services/api-gateway.yaml"
+      source_values_file: "k8s/environments/local/values/services/api-gateway.yaml"
+      target_values_file: "k8s/environments/staging/values/services/api-gateway.yaml"
       pr_branch_prefix: "promote"
       pr_labels: "promotion,staging"
       skip_if_exists: true
@@ -66,8 +66,8 @@ jobs:
       service_name: "frontend"
       target_env: "staging"
       base_branch: "main"
-      source_values_file: "k8s/enviroments/local/values/services/frontend.yaml"
-      target_values_file: "k8s/enviroments/staging/values/services/frontend.yaml"
+      source_values_file: "k8s/environments/local/values/services/frontend.yaml"
+      target_values_file: "k8s/environments/staging/values/services/frontend.yaml"
       pr_branch_prefix: "promote"
       pr_labels: "promotion,staging"
       skip_if_exists: true
