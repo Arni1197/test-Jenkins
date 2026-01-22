@@ -2,8 +2,8 @@ replicaCount: 1
 
 image:
   repository: arnold2343/api-gateway
-  tag: sha-30ba1ef25d9b9a6bfac7c6a67a82a6cdf1fdf9f7
-  digest: "sha256:2704611c3c7ee5cd0e08517396d300a5aa4b2ccc43666f5126a496ae9c087f42"
+  tag: sha-4136a19f8534415528c892254c6481ae2d92fc4a
+  digest: "sha256:e9bb84ad54cedf8532e9d5a49c3bee48ac3085998309ef19e52bb93b88eddba9"
   pullPolicy: IfNotPresent
 
 service:
