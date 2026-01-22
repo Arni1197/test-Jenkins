@@ -70,6 +70,22 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.base_branch }}
+      - name: Debug inputs + files
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "base_branch=${{ inputs.base_branch }}"
+          echo "source_values_file='${{ inputs.source_values_file }}'"
+          echo "target_values_file='${{ inputs.target_values_file }}'"
+          echo "GITHUB_REF=$GITHUB_REF"
+          echo "GITHUB_SHA=$GITHUB_SHA"
+          git status --porcelain || true
+          echo "---- ls k8s/environments ----"
+          ls -la k8s/environments || true
+          echo "---- ls staging services ----"
+          ls -la k8s/environments/staging/values/services || true
+          echo "---- ls local services ----"
+          ls -la k8s/environments/local/values/services || true
 
       - name: Configure git
         run: |
