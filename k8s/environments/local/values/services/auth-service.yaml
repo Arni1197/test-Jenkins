@@ -1,8 +1,8 @@
 replicaCount: 1
 image:
   repository: arnold2343/game-auth-service
-  tag: sha-a321a139f9e816da92b3f16082085d527bdec341
-  digest: "sha256:3dda1644ee485f40b7421339bba9b09c8db3a98c823eed18118ea76643ff5de1"
+  tag: sha-fbefd6ee74657962eec80210279684fe08d08211
+  digest: "sha256:46581d81af180082879fa51bc616747b52b830885f5c0d006277850ae62f8240"
   pullPolicy: IfNotPresent
 service:
   type: ClusterIP
