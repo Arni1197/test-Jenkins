@@ -76,10 +76,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Resolve tags (source -> target)
-        id: tags
+      - name: Resolve tag+digest (source -> target)
+        id: resolved
+        shell: bash
         run: |
-          set -e
+          set -euo pipefail
 
           SRC_FILE="${{ inputs.source_values_file }}"
           TGT_FILE="${{ inputs.target_values_file }}"
@@ -89,53 +90,71 @@ jobs:
             exit 1
           fi
 
-          # Read current target tag
-          TGT_TAG="$(grep -E '^[[:space:]]*tag:[[:space:]]*' "$TGT_FILE" | head -n1 | sed -E 's/^[[:space:]]*tag:[[:space:]]*//')"
-          if [ -z "$TGT_TAG" ]; then
+          read_yaml_field () {
+            local file="$1"
+            local key="$2"
+            # reads first matching "key: value" line (indented allowed)
+            grep -E "^[[:space:]]*$key:[[:space:]]*" "$file" | head -n1 | sed -E "s/^[[:space:]]*$key:[[:space:]]*//" | tr -d '"'
+          }
+
+          # current target
+          TGT_TAG="$(read_yaml_field "$TGT_FILE" "tag")"
+          TGT_DIGEST="$(read_yaml_field "$TGT_FILE" "digest" || true)"
+
+          if [ -z "${TGT_TAG:-}" ]; then
             echo "Cannot find 'tag:' in target file: $TGT_FILE"
             exit 1
           fi
 
-          # Decide new tag:
-          # 1) if new_tag input provided -> use it
-          # 2) else read from source_values_file
+          # decide new tag/digest
           if [ -n "${{ inputs.new_tag }}" ]; then
             NEW_TAG="${{ inputs.new_tag }}"
           else
-            if [ -z "$SRC_FILE" ]; then
-              echo "Either new_tag or source_values_file must be provided."
+            if [ -z "$SRC_FILE" ] || [ ! -f "$SRC_FILE" ]; then
+              echo "Either new_tag or valid source_values_file must be provided."
               exit 1
             fi
-            if [ ! -f "$SRC_FILE" ]; then
-              echo "Source values file not found: $SRC_FILE"
-              exit 1
-            fi
-            NEW_TAG="$(grep -E '^[[:space:]]*tag:[[:space:]]*' "$SRC_FILE" | head -n1 | sed -E 's/^[[:space:]]*tag:[[:space:]]*//')"
-            if [ -z "$NEW_TAG" ]; then
+            NEW_TAG="$(read_yaml_field "$SRC_FILE" "tag")"
+            if [ -z "${NEW_TAG:-}" ]; then
               echo "Cannot find 'tag:' in source file: $SRC_FILE"
               exit 1
             fi
           fi
 
-          echo "Current target tag: $TGT_TAG"
-          echo "New desired tag:   $NEW_TAG"
+          if [ -n "${{ inputs.new_digest }}" ]; then
+            NEW_DIGEST="$(echo "${{ inputs.new_digest }}" | tr -d '"')"
+          else
+            if [ -n "$SRC_FILE" ] && [ -f "$SRC_FILE" ]; then
+              NEW_DIGEST="$(read_yaml_field "$SRC_FILE" "digest" || true)"
+            else
+              NEW_DIGEST=""
+            fi
+          fi
 
-          echo "target_tag=$TGT_TAG" >> $GITHUB_OUTPUT
-          echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+          echo "Target current tag:    $TGT_TAG"
+          echo "Target current digest: ${TGT_DIGEST:-<empty>}"
+          echo "New desired tag:       $NEW_TAG"
+          echo "New desired digest:    ${NEW_DIGEST:-<empty>}"
+
+          echo "tgt_tag=$TGT_TAG" >> "$GITHUB_OUTPUT"
+          echo "tgt_digest=${TGT_DIGEST:-}" >> "$GITHUB_OUTPUT"
+          echo "new_tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
+          echo "new_digest=${NEW_DIGEST:-}" >> "$GITHUB_OUTPUT"
 
       - name: Stop (already up to date)
-        if: ${{ steps.tags.outputs.target_tag == steps.tags.outputs.new_tag }}
+        if: ${{ steps.resolved.outputs.tgt_tag == steps.resolved.outputs.new_tag && steps.resolved.outputs.tgt_digest == steps.resolved.outputs.new_digest }}
         run: |
-          echo "✅ Target is already up-to-date: ${{ steps.tags.outputs.new_tag }}"
+          echo "✅ Target is already up-to-date (tag+digest). Nothing to do."
           exit 0
 
       - name: Determine branch name
         id: bn
+        shell: bash
         run: |
-          set -e
-          BR="${{ inputs.pr_branch_prefix }}/${{ inputs.service_name }}/${{ inputs.target_env }}/${{ steps.tags.outputs.new_tag }}"
+          set -euo pipefail
+          BR="${{ inputs.pr_branch_prefix }}/${{ inputs.service_name }}/${{ inputs.target_env }}/${{ steps.resolved.outputs.new_tag }}"
           BR="$(echo "$BR" | tr ' ' '-' | tr ':' '-')"
-          echo "branch=$BR" >> $GITHUB_OUTPUT
+          echo "branch=$BR" >> "$GITHUB_OUTPUT"
 
       - name: Check existing open PR
         if: ${{ inputs.skip_if_exists }}
@@ -159,25 +178,25 @@ jobs:
         run: |
           git checkout -b "${{ steps.bn.outputs.branch }}"
 
-      - name: Update target values file (image.tag + optional image.digest)
+      - name: Update target values file (image.tag + image.digest)
+        shell: bash
         run: |
-          set -e
+          set -euo pipefail
           FILE="${{ inputs.target_values_file }}"
 
-          if [ ! -f "$FILE" ]; then
-            echo "Target values file not found: $FILE"
-            exit 1
-          fi
+          echo "Updating $FILE"
+          echo "  -> tag:    ${{ steps.resolved.outputs.new_tag }}"
+          echo "  -> digest: ${{ steps.resolved.outputs.new_digest }}"
 
-          echo "Updating $FILE -> tag: ${{ steps.tags.outputs.new_tag }}"
-          sed -i.bak -E "s/^([[:space:]]*tag:[[:space:]]*).*/\\1${{ steps.tags.outputs.new_tag }}/" "$FILE"
+          # Update tag
+          sed -i.bak -E "s/^([[:space:]]*tag:[[:space:]]*).*/\\1${{ steps.resolved.outputs.new_tag }}/" "$FILE"
 
-          if [ -n "${{ inputs.new_digest }}" ]; then
-            echo "Updating $FILE -> digest: ${{ inputs.new_digest }}"
+          # Update digest (if present in new)
+          if [ -n "${{ steps.resolved.outputs.new_digest }}" ]; then
             if grep -qE "^[[:space:]]*digest:[[:space:]]*" "$FILE"; then
-              sed -i.bak -E "s/^([[:space:]]*digest:[[:space:]]*).*/\\1\"${{ inputs.new_digest }}\"/" "$FILE"
+              sed -i.bak -E "s/^([[:space:]]*digest:[[:space:]]*).*/\\1\"${{ steps.resolved.outputs.new_digest }}\"/" "$FILE"
             else
-              awk -v dg="${{ inputs.new_digest }}" '
+              awk -v dg="${{ steps.resolved.outputs.new_digest }}" '
                 {print}
                 $0 ~ /^[[:space:]]*tag:[[:space:]]*/ && !done {
                   print "  digest: \"" dg "\""
@@ -196,7 +215,7 @@ jobs:
         run: |
           set -e
           git add "${{ inputs.target_values_file }}"
-          git commit -m "promote(${{ inputs.service_name }}): ${{ inputs.target_env }} -> ${{ steps.tags.outputs.new_tag }}"
+          git commit -m "promote(${{ inputs.service_name }}): ${{ inputs.target_env }} -> ${{ steps.resolved.outputs.new_tag }}" || exit 0
 
       - name: Push branch
         run: |
@@ -209,14 +228,14 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
-            const title = `Promote ${{ inputs.service_name }} to ${{ inputs.target_env }}: ${{ steps.tags.outputs.new_tag }}`;
+            const title = `Promote ${{ inputs.service_name }} to ${{ inputs.target_env }}: ${{ steps.resolved.outputs.new_tag }}`;
             const body = [
               `This is an automated GitOps promotion PR.`,
               ``,
               `- Service: **${{ inputs.service_name }}**`,
               `- Target env: **${{ inputs.target_env }}**`,
-              `- New image tag: **${{ steps.tags.outputs.new_tag }}**`,
-              `${{ inputs.new_digest != '' && format('- New image digest: **{0}**', inputs.new_digest) || '' }}`,
+              `- New image tag: **${{ steps.resolved.outputs.new_tag }}**`,
+              `- New image digest: **${{ steps.resolved.outputs.new_digest || '<empty>' }}**`,
               `- Target values: \`${{ inputs.target_values_file }}\``,
               `${{ inputs.source_values_file != '' && format('- Source values: `{0}`', inputs.source_values_file) || '' }}`
             ].filter(Boolean).join("\n");

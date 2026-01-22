@@ -1,0 +1,126 @@
+name: promote | dev -> staging (autodetect, PR)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: promote-dev-to-staging
+  cancel-in-progress: true
+
+jobs:
+  detect:
+    name: Detect diffs (dev vs staging)
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.mk.outputs.matrix }}
+      changed: ${{ steps.mk.outputs.changed }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build matrix
+        id: mk
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # 🔧 Здесь список сервисов и paths.
+          # Подправь только если у тебя пути отличаются.
+          SERVICES_JSON='[
+            {"name":"auth-service","dev":"k8s/envs/dev/values/auth-service.yaml","staging":"k8s/envs/staging/values/auth-service.yaml"},
+            {"name":"user-service","dev":"k8s/envs/dev/values/user-service.yaml","staging":"k8s/envs/staging/values/user-service.yaml"},
+            {"name":"catalog-service","dev":"k8s/envs/dev/values/catalog-service.yaml","staging":"k8s/envs/staging/values/catalog-service.yaml"},
+            {"name":"api-gateway","dev":"k8s/envs/dev/values/api-gateway.yaml","staging":"k8s/envs/staging/values/api-gateway.yaml"},
+            {"name":"frontend","dev":"k8s/envs/dev/values/frontend.yaml","staging":"k8s/envs/staging/values/frontend.yaml"}
+          ]'
+
+          read_yaml_field () {
+            local file="$1"
+            local key="$2"
+            grep -E "^[[:space:]]*$key:[[:space:]]*" "$file" | head -n1 | sed -E "s/^[[:space:]]*$key:[[:space:]]*//" | tr -d '"'
+          }
+
+          python3 - << 'PY'
+          import json, os, subprocess, sys
+
+          services = json.loads(os.environ["SERVICES_JSON"])
+
+          def sh(cmd):
+            return subprocess.check_output(cmd, shell=True, text=True).strip()
+
+          def read_field(path, key):
+            if not os.path.exists(path):
+              return None
+            cmd = f"bash -lc 'grep -E \"^[[:space:]]*{key}:[[:space:]]*\" \"{path}\" | head -n1 | sed -E \"s/^[[:space:]]*{key}:[[:space:]]*//\" | tr -d \"\\\"\"'"
+            out = sh(cmd)
+            return out if out else ""
+
+          changed = []
+          for s in services:
+            dev = s["dev"]; st = s["staging"]
+            dev_tag = read_field(dev, "tag")
+            dev_digest = read_field(dev, "digest")
+            st_tag = read_field(st, "tag")
+            st_digest = read_field(st, "digest")
+
+            # If staging file missing -> считаем "изменилось", чтобы создать PR и заполнить
+            if not os.path.exists(st):
+              changed.append({
+                "service_name": s["name"],
+                "source_values_file": dev,
+                "target_values_file": st
+              })
+              continue
+
+            # If tags/digests differ -> promote
+            if (dev_tag != st_tag) or (dev_digest != st_digest):
+              changed.append({
+                "service_name": s["name"],
+                "source_values_file": dev,
+                "target_values_file": st
+              })
+
+          matrix = {"include": changed}
+          print("CHANGED_COUNT", len(changed))
+          print(json.dumps(matrix))
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+            f.write(f"changed={'true' if len(changed)>0 else 'false'}\n")
+            f.write(f"matrix={json.dumps(matrix)}\n")
+          PY
+        env:
+          SERVICES_JSON: ${{ env.SERVICES_JSON }}
+
+  promote:
+    name: Promote (only changed)
+    needs: detect
+    if: ${{ needs.detect.outputs.changed == 'true' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect.outputs.matrix) }}
+
+    steps:
+      - name: Call reusable (_lib-promote-pr.yml)
+        uses: ./.github/workflows/_lib-promote-pr.yml
+        with:
+          service_name: ${{ matrix.service_name }}
+          target_env: "staging"
+          base_branch: "main"
+          source_values_file: ${{ matrix.source_values_file }}
+          target_values_file: ${{ matrix.target_values_file }}
+          pr_branch_prefix: "promote/dev-to-staging"
+          pr_labels: "promotion,staging"
+          skip_if_exists: true
+
+  no_changes:
+    name: No changes
+    needs: detect
+    if: ${{ needs.detect.outputs.changed != 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "✅ No diffs between dev and staging (tag+digest). Nothing to promote."
