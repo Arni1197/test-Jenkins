@@ -18,8 +18,8 @@ jobs:
       service_name: "auth-service"
       target_env: "staging"
       base_branch: "main"
-      source_values_file: "k8s/enviroments/local/values/services/auth-service.yaml"
-      target_values_file: "k8s/enviroments/staging/values/services/auth-service.yaml"
+      source_values_file: "k8s/environments/local/values/services/auth-service.yaml"
+      target_values_file: "k8s/environments/staging/values/services/auth-service.yaml"
       pr_branch_prefix: "promote"
       pr_labels: "promotion,staging"
       skip_if_exists: true
@@ -30,8 +30,8 @@ jobs:
       service_name: "user-service"
       target_env: "staging"
       base_branch: "main"
-      source_values_file: "k8s/enviroments/local/values/services/user-service.yaml"
-      target_values_file: "k8s/enviroments/staging/values/services/user-service.yaml"
+      source_values_file: "k8s/environments/local/values/services/user-service.yaml"
+      target_values_file: "k8s/environments/staging/values/services/user-service.yaml"
       pr_branch_prefix: "promote"
       pr_labels: "promotion,staging"
       skip_if_exists: true
