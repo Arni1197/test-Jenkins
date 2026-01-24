@@ -2,8 +2,8 @@ replicaCount: 1
 
 image:
   repository: arnold2343/game-auth-service
-  tag: "sha-30ba1ef25d9b9a6bfac7c6a67a82a6cdf1fdf9f7"   # опционально
-  digest: "sha256:3a7bdd031458f114025e67f99de603c043df4a10bef923610c5e6a564d23d21f"
+  tag: "sha-fbefd6ee74657962eec80210279684fe08d08211"   # опционально
+  digest: "sha256:46581d81af180082879fa51bc616747b52b830885f5c0d006277850ae62f8240"
   pullPolicy: IfNotPresent
 
 resources:
