@@ -5,6 +5,7 @@ metadata:
   namespace: argocd
 spec:
   project: default
+
   source:
     repoURL: https://github.com/Arni1197/test-Jenkins.git
     targetRevision: main
@@ -12,9 +13,16 @@ spec:
     helm:
       valueFiles:
         - ../../../environments/local/values/services/auth-service.yaml
+
   destination:
     server: https://kubernetes.default.svc
     namespace: auth
+
   syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - PruneLast=true
