@@ -30,7 +30,7 @@ jobs:
       image: "ghcr.io/arni1197/user-service"
       tag: "sha-${{ github.sha }}"
       push: true
-      platforms: "linux/amd64"
+      platforms: linux/amd64,linux/arm64
 
   update_dev_values_pr:
     name: user-service | PR update dev values
