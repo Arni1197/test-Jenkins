@@ -26,10 +26,5 @@ spec:
             - secretRef:
                 name: {{ .Values.secrets.envSecretName | default "secret-auth" | quote }}
 
-          # (опционально) Можно оставить NODE_ENV, но он будет перекрывать значение из secret, если там тоже есть NODE_ENV
-          env:
-            - name: NODE_ENV
-              value: "{{ .Values.env.NODE_ENV }}"
-
           resources:
 {{ toYaml .Values.resources | indent 12 }}
