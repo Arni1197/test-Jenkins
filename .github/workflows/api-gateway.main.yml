@@ -33,7 +33,7 @@ jobs:
       image: "ghcr.io/arni1197/api-gateway"
       tag: "sha-${{ github.sha }}"
       push: true
-      platforms: "linux/amd64"
+      platforms: linux/amd64,linux/arm64
 
   update_dev_values_pr:
     name: api-gateway | PR update dev values
