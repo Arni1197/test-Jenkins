@@ -14,8 +14,7 @@ COPY src ./src
 RUN npm run build
 
 
-# ====== Prod deps stage (optional but best practice) ======
-# Если хочешь максимально чисто, можно не ставить prod deps в runner, а вынести отдельно:
+# ====== Prod deps stage ======
 FROM node:20-alpine AS prod-deps
 WORKDIR /app
 
@@ -34,6 +33,9 @@ COPY package*.json ./
 
 # ✅ собранный код
 COPY --from=build /app/dist ./dist
+
+# ✅ ✅ ✅ ДОБАВЛЕНО: папка для file-логов + права под пользователя node
+RUN mkdir -p /app/logs && chown -R node:node /app
 
 EXPOSE 8080
 
