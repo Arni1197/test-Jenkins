@@ -13,7 +13,6 @@ RUN npx prisma generate
 # 3) код + сборка
 COPY tsconfig*.json ./
 COPY src ./src
-# если у тебя есть другие папки (modules, libs, etc) — добавь COPY
 RUN npm run build
 
 
@@ -37,15 +36,14 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-# (Опционально, но часто полезно для Prisma/SSL на alpine)
-# Если у тебя сейчас всё стабильно — можешь оставить закомментированным.
-# RUN apk add --no-cache openssl libc6-compat
-
 # ✅ переносим только то, что нужно для запуска
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=prod-deps /app/prisma ./prisma
 COPY --from=build /app/dist ./dist
 COPY package*.json ./
+
+# ✅ ✅ ✅ ДОБАВЛЕНО: папка для file-логов + права под пользователя node
+RUN mkdir -p /app/logs && chown -R node:node /app
 
 # ✅ не root
 USER node

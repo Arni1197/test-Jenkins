@@ -22,16 +22,20 @@
     
     # only prod deps
     COPY package*.json ./
+    COPY prisma ./prisma
     RUN npm ci --omit=dev
+    
+    # ✅ Prisma runtime engines/client
+    RUN npx prisma generate
     
     # app build
     COPY --from=builder /app/dist ./dist
     
-    # prisma runtime bits
-    COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-    COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+    # ✅ ✅ ✅ ДОБАВЛЕНО: папка для file-логов + права под node
+    RUN mkdir -p /app/logs && chown -R node:node /app
     
-    # если вдруг в рантайме нужны файлы prisma:
-    # COPY --from=builder /app/prisma ./prisma
+    # ✅ non-root
+    USER node
     
+    EXPOSE 3000
     CMD ["node", "dist/main.js"]
