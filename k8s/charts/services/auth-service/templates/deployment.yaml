@@ -16,10 +16,15 @@ spec:
     spec:
       containers:
         - name: auth-service
-          image: "{{ .Values.image.repository }}{{- if .Values.image.digest }}@{{ .Values.image.digest }}{{- else }}:{{ .Values.image.tag | default "latest" }}{{- end }}"          imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
+          image: {{- if .Values.image.digest -}}
+            {{ printf "%s@%s" .Values.image.repository .Values.image.digest | quote }}
+          {{- else -}}
+            {{ printf "%s:%s" .Values.image.repository (.Values.image.tag | default "latest") | quote }}
+          {{- end }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" | quote }}
           ports:
             - name: http
               containerPort: {{ .Values.service.port | default 3001 }}
           env:
             - name: NODE_ENV
-              value: "{{ .Values.env.NODE_ENV | default "development" }}"
+              value: {{ .Values.env.NODE_ENV | default "development" | quote }}
