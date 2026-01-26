@@ -14,7 +14,7 @@ spec:
         - ../../../environments/local/values/services/user-service.yaml
   destination:
     server: https://kubernetes.default.svc
-    namespace: user
+    namespace: auth
   syncPolicy:
     syncOptions:
       - CreateNamespace=true

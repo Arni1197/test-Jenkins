@@ -14,7 +14,7 @@ spec:
         - ../../../environments/local/values/services/frontend.yaml
   destination:
     server: https://kubernetes.default.svc
-    namespace: frontend
+    namespace: auth
   syncPolicy:
     syncOptions:
       - CreateNamespace=true
