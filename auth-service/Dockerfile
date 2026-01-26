@@ -43,6 +43,9 @@ COPY --from=prod-deps /app/prisma ./prisma
 COPY --from=build /app/dist ./dist
 COPY package*.json ./
 
+# ✅ ✅ ✅ ДОБАВЛЕНО: папка для file-логов + права под пользователя node
+RUN mkdir -p /app/logs && chown -R node:node /app/logs
+
 EXPOSE 3000
 
 # ✅ Не root: у node:20-alpine уже есть пользователь "node"
