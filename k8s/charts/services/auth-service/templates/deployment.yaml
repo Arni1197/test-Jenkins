@@ -5,7 +5,7 @@ metadata:
   labels:
     app.kubernetes.io/name: auth-service
 spec:
-  replicas: {{ .Values.replicaCount | default 1 }}
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       app.kubernetes.io/name: auth-service
@@ -16,15 +16,17 @@ spec:
     spec:
       containers:
         - name: auth-service
-          image: {{- if .Values.image.digest -}}
-            {{ printf "%s@%s" .Values.image.repository .Values.image.digest | quote }}
-          {{- else -}}
-            {{ printf "%s:%s" .Values.image.repository (.Values.image.tag | default "latest") | quote }}
-          {{- end }}
-          imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" | quote }}
+          image: >
+            {{- if .Values.image.digest -}}
+            {{ .Values.image.repository }}@{{ .Values.image.digest }}
+            {{- else -}}
+            {{ .Values.image.repository }}:{{ .Values.image.tag }}
+            {{- end -}}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - name: http
-              containerPort: {{ .Values.service.port | default 3001 }}
+            - containerPort: {{ .Values.service.port }}
           env:
             - name: NODE_ENV
-              value: {{ .Values.env.NODE_ENV | default "development" | quote }}
+              value: "{{ .Values.env.NODE_ENV }}"
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
