@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: arnold2343/user-service
+  repository: ghcr.io/arni1197/user-service
   # 🏷️ Человеческая версия (удобно смотреть в UI/логах)
   tag: sha-c3ba8cf3332fe65d2d83c6b08fe872b9e4739c9a
   # 🔒 Истина для деплоя (если chart настроен на digest)

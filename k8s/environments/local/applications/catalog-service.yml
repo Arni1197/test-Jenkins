@@ -14,7 +14,7 @@ spec:
         - ../../../environments/local/values/services/catalog-service.yaml
   destination:
     server: https://kubernetes.default.svc
-    namespace: catalog
+    namespace: auth
   syncPolicy:
     syncOptions:
       - CreateNamespace=true
