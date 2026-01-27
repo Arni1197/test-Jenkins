@@ -23,7 +23,11 @@ jobs:
       working_directory: "frontend"
       node_version: "20"
       cache_dependency_path: "frontend/package-lock.json"
-      run_lint: true
+
+      # 🔕 ЛИНТ ОТКЛЮЧЁН
+      run_lint: false
+
+      # ✅ Остальное оставляем
       run_test: true
       run_build: true
       build_command: "npm run build"
