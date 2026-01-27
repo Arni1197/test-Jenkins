@@ -14,7 +14,10 @@ spec:
         - ../../../environments/local/values/services/catalog-service.yaml
   destination:
     server: https://kubernetes.default.svc
-    namespace: auth
+    namespace: game-services
   syncPolicy:
     syncOptions:
       - CreateNamespace=true
+    automated:
+      prune: true
+      selfHeal: true
