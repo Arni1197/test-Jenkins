@@ -14,4 +14,4 @@ env:
   NODE_ENV: "development"
 
 secrets:
-  envSecretName: secret-auth
+  envSecretName: secret-auth-service
