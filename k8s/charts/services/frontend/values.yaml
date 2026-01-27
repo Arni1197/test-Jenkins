@@ -1,0 +1,17 @@
+replicaCount: 1  # минимально, чтобы chart стартовал
+
+image:
+  repository: ghcr.io/arni1197/frontend
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 3001
+
+resources: {}    # ✅ вообще пусто — чтобы не навязывать лимиты
+
+env:
+  NODE_ENV: "development"
+
+secrets:
+  envSecretName: frontend
