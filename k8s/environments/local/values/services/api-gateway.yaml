@@ -2,8 +2,8 @@ replicaCount: 1
 
 image:
   repository: ghcr.io/arni1197/api-gateway
-  tag: sha-80d39f73a2e3208056d02134e589c409af7012ac
-  digest: "sha256:bdafa2e25c96e98b2a2c285250ceead23a3237bc9457e1af78820db2d579ab38"
+  tag: sha-fd278b2ed637afd9d8178bb2e699096c211bbf4c
+  digest: "sha256:e0d597181b50ad798c5eae21c903c9eda81457f0aa7ae49cf0f4ff53659d9b4f"
   pullPolicy: IfNotPresent
 
 service:
