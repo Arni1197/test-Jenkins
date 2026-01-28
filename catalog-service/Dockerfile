@@ -48,5 +48,5 @@ RUN mkdir -p /app/logs && chown -R node:node /app
 # ✅ не root
 USER node
 
-EXPOSE 3000
+EXPOSE 3003
 CMD ["node", "dist/main.js"]
