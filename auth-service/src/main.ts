@@ -40,30 +40,12 @@ async function bootstrap() {
   // ✅ (опционально) версионирование: /v1/...
   app.enableVersioning({ type: VersioningType.URI });
 
-  // ✅ CORS multi-env
-  const fallbackFrontend = 'http://localhost:3002';
-  const frontendUrl = process.env.FRONTEND_URL ?? fallbackFrontend;
-
-  // Можно передавать список:
-  // FRONTEND_URLS="http://localhost:3002,https://staging.gameproject.com"
-  const frontendUrls = (process.env.FRONTEND_URLS ?? frontendUrl)
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-  app.enableCors({
-    origin: (origin, callback) => {
-      // ✅ запросы без Origin (health/curl)
-      if (!origin) return callback(null, true);
-
-      if (frontendUrls.includes(origin)) return callback(null, true);
-
-      return callback(new Error(`CORS blocked for origin: ${origin}`), false);
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  });
+  // =========================
+  // ✅ ВАЖНО: CORS УБРАН ИЗ AUTH-SERVICE
+  // =========================
+  // CORS должен быть только на edge (API Gateway / Ingress),
+  // иначе микросервис начинает "видеть браузер" и может падать по Origin.
+  // app.enableCors(...) — УДАЛЕНО
 
   // ✅ health-check (минимально и корректно для Express)
   const expressApp = app.getHttpAdapter().getInstance();
