@@ -20,23 +20,23 @@ async function bootstrap() {
   // =========================
   const frontendUrls = (process.env.FRONTEND_URLS ?? 'http://localhost:3000')
     .split(',')
-    .map((s) => s.trim())
+    .map((s) => s.trim().replace(/\/$/, '')) // убираем пробелы и trailing slash
     .filter(Boolean);
 
   app.enableCors({
     origin: (origin, callback) => {
-      // запросы без Origin (health/curl)
+      // запросы без Origin (health/curl/server-to-server)
       if (!origin) return callback(null, true);
 
-      if (frontendUrls.includes(origin)) return callback(null, true);
+      const normalizedOrigin = origin.trim().replace(/\/$/, '');
+      const ok = frontendUrls.includes(normalizedOrigin);
 
-      return callback(new Error(`CORS blocked for origin: ${origin}`), false);
+      // ✅ Важно: не кидаем Error, иначе это превращается в 500
+      // Если ok=false — браузер сам заблокирует по CORS, но сервер не упадёт.
+      return callback(null, ok);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-
-    // ✅ ВАЖНО: чтобы не ловить "Ошибка CORS"
-    // когда фронт добавляет cache-control/pragma и т.п.
     allowedHeaders: [
       'Content-Type',
       'Authorization',
@@ -91,8 +91,6 @@ async function bootstrap() {
       preserveHeaderKeyCase: true,
       pathRewrite: (path) =>
         path.startsWith('/api/users') ? path : `/api/users${path}`,
-
-      // ✅ Правильный хук для твоих типов TS
       on: {
         proxyReq: (proxyReq, req) => {
           const userId = (req as any).userId;
