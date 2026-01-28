@@ -15,7 +15,7 @@ function RegisterPage() {
 
   const validatePassword = (value: string) => {
     if (value.length < 8) return "Пароль должен быть минимум 8 символов.";
-    if (!/[a-z]/.test(value)) return "Добавьте хотя бы одну строчную букву.";
+    if (!/[a-z]/.test(value)) return "Добавьте хотя бы одну строчную букву.!";
     if (!/[A-Z]/.test(value)) return "Добавьте хотя бы одну заглавную букву.";
     if (!/[0-9]/.test(value)) return "Добавьте хотя бы одну цифру.";
     if (!/[^A-Za-z0-9]/.test(value)) return "Добавьте хотя бы один спецсимвол.";
