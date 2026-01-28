@@ -2,8 +2,8 @@ replicaCount: 1
 
 image:
   repository: ghcr.io/arni1197/frontend
-  tag: sha-84d229cd04fec5b521514ce40f5d0e3be5bd361f
-  digest: "sha256:2d33e7277f861ee448f5cd9248f48503b67ed0dce9ab825c7ad736e3fbddf53d"
+  tag: sha-9bf864243d218c2d81ddc302bd226ee28ca9a8d4
+  digest: "sha256:108562a00c198da8a5d56a9e569dfb576b74a11297d2fb5f354b3dbcfb7071a7"
   pullPolicy: IfNotPresent
 
 service:
