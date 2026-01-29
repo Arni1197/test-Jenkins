@@ -1,24 +1,15 @@
-# ====== Build stage ======
-FROM node:20-alpine AS build
+FROM node:20-alpine
 WORKDIR /app
 
-# 1) deps (детерминированно)
+# 🛡️ Делает npm более устойчивым к сетевым обрывам
+RUN npm config set fetch-retries 5 \
+ && npm config set fetch-retry-mintimeout 20000 \
+ && npm config set fetch-retry-maxtimeout 120000 \
+ && npm config set fetch-timeout 300000
+
 COPY package*.json ./
-RUN npm ci --no-audit --no-fund
+RUN npm ci
 
-# 2) код + билд
 COPY . .
-RUN npm run build
-
-
-# ====== Runtime stage ======
-FROM nginx:alpine
-
-# SPA-конфиг, чтобы react-router работал (иначе 404 на прямых ссылках)
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# статические файлы
-COPY --from=build /app/build /usr/share/nginx/html
-
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+EXPOSE 3000
+CMD ["npm", "start"]
