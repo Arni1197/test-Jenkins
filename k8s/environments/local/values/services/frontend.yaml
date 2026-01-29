@@ -1,14 +1,14 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/arni1197/api-gateway
-  tag: sha-fd278b2ed637afd9d8178bb2e699096c211bbf4c
-  digest: "sha256:e0d597181b50ad798c5eae21c903c9eda81457f0aa7ae49cf0f4ff53659d9b4f"
+  repository: ghcr.io/arni1197/frontend
+  tag: sha-9bf864243d218c2d81ddc302bd226ee28ca9a8d4
+  digest: "sha256:108562a00c198da8a5d56a9e569dfb576b74a11297d2fb5f354b3dbcfb7071a7"
   pullPolicy: IfNotPresent
 
 service:
   type: ClusterIP
-  port: 3000
+  port: 80
 
 resources:
   requests:
