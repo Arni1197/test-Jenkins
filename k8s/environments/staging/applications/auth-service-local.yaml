@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: auth-service-staging
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/Arni1197/test-Jenkins.git
+    targetRevision: main
+    path: k8s/charts/services/auth-service
+    helm:
+      valueFiles:
+        - ../../../environments/staging/values/services/auth-service.yaml
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: game-services-staging
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - PruneLast=true
