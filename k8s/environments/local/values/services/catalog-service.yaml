@@ -20,3 +20,5 @@ resources:
 
 env:
   NODE_ENV: "development"
+autoscaling:
+  enabled: false
