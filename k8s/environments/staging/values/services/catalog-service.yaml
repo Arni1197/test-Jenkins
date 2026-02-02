@@ -20,3 +20,5 @@ resources:
 
 env:
   NODE_ENV: "staging"
+autoscaling:
+  enabled: false
