@@ -1,0 +1,52 @@
+# Куда ставим сами ServiceMonitor/PrometheusRule (обычно namespace, где живёт Prometheus Operator)
+namespace: observability
+
+# Лейбл, по которому Prometheus Operator выбирает ServiceMonitor'ы
+# Часто это Helm release kube-prometheus-stack, например: "monitoring" или "kube-prometheus-stack"
+prometheusOperator:
+  releaseLabel: monitoring
+
+global:
+  interval: 30s
+  scrapeTimeout: 10s
+
+services:
+  auth:
+    enabled: true
+    # где живёт Service (в каком namespace у тебя деплоится сервис)
+    namespace: game-services-staging
+    # имя Kubernetes Service
+    serviceName: auth-service
+    # label selector, по которому ServiceMonitor найдёт Service
+    matchLabels:
+      app.kubernetes.io/name: auth-service
+    # имя порта в Service.spec.ports[].name
+    portName: http
+    # путь метрик
+    path: /api/metrics
+    interval: ""        # пусто = использовать global.interval
+    scrapeTimeout: ""   # пусто = использовать global.scrapeTimeout
+
+  apiGateway:
+    enabled: true
+    namespace: game-services-staging
+    serviceName: api-gateway
+    matchLabels:
+      app.kubernetes.io/name: api-gateway
+    portName: http
+    # если у тебя у gateway метрики тоже под /api/metrics — просто поменяй тут
+    path: /metrics
+    interval: ""
+    scrapeTimeout: ""
+
+rules:
+  enabled: true
+
+  # В алертах мы будем использовать namespace сервисов (staging/prod можно переопределять values)
+  serviceNamespace: game-services-staging
+
+  # Порог рестартов за 10 минут
+  restartThreshold10m: 3
+
+  # Поднимать ли алерт "нет метрик/таргет down"
+  alertOnTargetDown: true

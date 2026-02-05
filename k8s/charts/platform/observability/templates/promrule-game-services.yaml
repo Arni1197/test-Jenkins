@@ -1,0 +1,39 @@
+{{- if and .Values.rules.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: game-services-rules
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/name: observability
+    release: {{ .Values.prometheusOperator.releaseLabel | quote }}
+spec:
+  groups:
+    - name: game-services.basic
+      rules:
+        {{- if .Values.rules.alertOnTargetDown }}
+        - alert: GameServiceTargetDown
+          expr: |
+            sum by (job, namespace) (up{namespace="{{ .Values.rules.serviceNamespace }}"} == 0) > 0
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "One or more scrape targets are down"
+            description: "Prometheus cannot scrape some targets in namespace {{ .Values.rules.serviceNamespace }} for >2m."
+        {{- end }}
+
+        - alert: GameServiceHighRestarts
+          expr: |
+            sum by (pod, namespace) (
+              increase(kube_pod_container_status_restarts_total{namespace="{{ .Values.rules.serviceNamespace }}"}[10m])
+            ) >= {{ .Values.rules.restartThreshold10m }}
+          for: 0m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod is restarting frequently"
+            description: "Pod {{`{{ $labels.pod }}`}} in {{`{{ $labels.namespace }}`}} restarted >= {{ .Values.rules.restartThreshold10m }} times in 10m."
+{{- end }}

@@ -1,0 +1,24 @@
+{{- if .Values.services.auth.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: auth-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/name: observability
+    release: {{ .Values.prometheusOperator.releaseLabel | quote }}
+spec:
+  namespaceSelector:
+    matchNames:
+      - {{ .Values.services.auth.namespace }}
+  selector:
+    matchLabels:
+      {{- toYaml .Values.services.auth.matchLabels | nindent 6 }}
+  endpoints:
+    - port: {{ .Values.services.auth.portName }}
+      path: {{ .Values.services.auth.path }}
+      interval: {{ default .Values.global.interval .Values.services.auth.interval }}
+      scrapeTimeout: {{ default .Values.global.scrapeTimeout .Values.services.auth.scrapeTimeout }}
+{{- end }}
