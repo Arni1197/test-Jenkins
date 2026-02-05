@@ -1,0 +1,302 @@
+{
+    "uid": "ops-plus-live",
+    "title": "Ops+ (No NoData) — Top Pods, Namespace Totals, FS, Node Net, Drops/Errors",
+    "timezone": "browser",
+    "schemaVersion": 39,
+    "version": 1,
+    "refresh": "10s",
+    "tags": ["training", "kubernetes", "prometheus", "ops-plus"],
+    "time": { "from": "now-1h", "to": "now" },
+    "templating": {
+      "list": [
+        {
+          "name": "DS_PROMETHEUS",
+          "type": "datasource",
+          "label": "Prometheus",
+          "query": "prometheus",
+          "current": { "text": "Prometheus", "value": "Prometheus" }
+        },
+        {
+          "name": "namespace",
+          "type": "query",
+          "label": "Namespace",
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "query": { "query": "label_values(container_cpu_usage_seconds_total, namespace)", "refId": "ns" },
+          "refresh": 2,
+          "sort": 1,
+          "includeAll": true,
+          "allValue": ".*",
+          "current": { "text": "All", "value": ".*" }
+        },
+        {
+          "name": "pod",
+          "type": "query",
+          "label": "Pod",
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "query": { "query": "label_values(container_cpu_usage_seconds_total{namespace=~\"$namespace\"}, pod)", "refId": "pod" },
+          "refresh": 2,
+          "sort": 1,
+          "includeAll": true,
+          "allValue": ".*",
+          "current": { "text": "All", "value": ".*" }
+        },
+        {
+          "name": "container",
+          "type": "query",
+          "label": "Container",
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "query": {
+            "query": "label_values(container_cpu_usage_seconds_total{namespace=~\"$namespace\", pod=~\"$pod\"}, container)",
+            "refId": "ctr"
+          },
+          "refresh": 2,
+          "sort": 1,
+          "includeAll": true,
+          "allValue": ".*",
+          "current": { "text": "All", "value": ".*" }
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 101,
+        "type": "stat",
+        "title": "CPU Total (cores) — selected scope",
+        "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\", pod=~\"$pod\", container=~\"$container\"}[1m]))"
+          }
+        ],
+        "fieldConfig": { "defaults": { "unit": "cores" }, "overrides": [] },
+        "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
+      },
+      {
+        "id": 102,
+        "type": "stat",
+        "title": "RAM Total — Working Set",
+        "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          { "refId": "A", "expr": "sum(container_memory_working_set_bytes{namespace=~\"$namespace\", pod=~\"$pod\", container=~\"$container\"})" }
+        ],
+        "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+        "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
+      },
+      {
+        "id": 103,
+        "type": "stat",
+        "title": "CPU Peak (cores) — last 1h",
+        "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "max_over_time(sum(rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\", pod=~\"$pod\", container=~\"$container\"}[1m]))[1h:1m])"
+          }
+        ],
+        "fieldConfig": { "defaults": { "unit": "cores" }, "overrides": [] },
+        "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
+      },
+      {
+        "id": 104,
+        "type": "stat",
+        "title": "RAM Peak — last 1h",
+        "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          { "refId": "A", "expr": "max_over_time(sum(container_memory_working_set_bytes{namespace=~\"$namespace\", pod=~\"$pod\", container=~\"$container\"})[1h:1m])" }
+        ],
+        "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+        "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
+      },
+  
+      {
+        "id": 201,
+        "type": "timeseries",
+        "title": "Top-5 Pods by CPU (cores)",
+        "gridPos": { "x": 0, "y": 4, "w": 12, "h": 7 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          { "refId": "A", "expr": "topk(5, sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\"}[1m])))" }
+        ],
+        "fieldConfig": { "defaults": { "unit": "cores" }, "overrides": [] },
+        "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+      },
+      {
+        "id": 202,
+        "type": "timeseries",
+        "title": "Top-5 Pods by Memory Working Set",
+        "gridPos": { "x": 12, "y": 4, "w": 12, "h": 7 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          { "refId": "A", "expr": "topk(5, sum by (pod) (container_memory_working_set_bytes{namespace=~\"$namespace\"}))" }
+        ],
+        "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+        "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+      },
+  
+      {
+        "id": 301,
+        "type": "timeseries",
+        "title": "CPU Total by Namespace (cores)",
+        "gridPos": { "x": 0, "y": 11, "w": 12, "h": 7 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          { "refId": "A", "expr": "sum by (namespace) (rate(container_cpu_usage_seconds_total[1m]))" }
+        ],
+        "fieldConfig": { "defaults": { "unit": "cores" }, "overrides": [] },
+        "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+      },
+      {
+        "id": 302,
+        "type": "timeseries",
+        "title": "Memory Total by Namespace (Working Set)",
+        "gridPos": { "x": 12, "y": 11, "w": 12, "h": 7 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          { "refId": "A", "expr": "sum by (namespace) (container_memory_working_set_bytes)" }
+        ],
+        "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+        "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+      },
+  
+      {
+        "id": 401,
+        "type": "timeseries",
+        "title": "CPU Usage (cores) — selected scope",
+        "gridPos": { "x": 0, "y": 18, "w": 12, "h": 7 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          { "refId": "A", "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\", pod=~\"$pod\", container=~\"$container\"}[1m]))" }
+        ],
+        "fieldConfig": { "defaults": { "unit": "cores" }, "overrides": [] },
+        "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+      },
+      {
+        "id": 402,
+        "type": "timeseries",
+        "title": "Memory Working Set — selected scope",
+        "gridPos": { "x": 12, "y": 18, "w": 12, "h": 7 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          { "refId": "A", "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=~\"$namespace\", pod=~\"$pod\", container=~\"$container\"})" }
+        ],
+        "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+        "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+      },
+  
+      {
+        "id": 501,
+        "type": "timeseries",
+        "title": "FS Reads Total (bytes/s) — selected scope",
+        "gridPos": { "x": 0, "y": 25, "w": 12, "h": 7 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          { "refId": "A", "expr": "sum(rate(container_fs_reads_bytes_total{namespace=~\"$namespace\", pod=~\"$pod\", container=~\"$container\"}[1m]))" }
+        ],
+        "fieldConfig": { "defaults": { "unit": "Bps" }, "overrides": [] },
+        "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+      },
+      {
+        "id": 502,
+        "type": "timeseries",
+        "title": "FS Writes Total (bytes/s) — selected scope",
+        "gridPos": { "x": 12, "y": 25, "w": 12, "h": 7 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          { "refId": "A", "expr": "sum(rate(container_fs_writes_bytes_total{namespace=~\"$namespace\", pod=~\"$pod\", container=~\"$container\"}[1m]))" }
+        ],
+        "fieldConfig": { "defaults": { "unit": "Bps" }, "overrides": [] },
+        "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+      },
+  
+      {
+        "id": 601,
+        "type": "timeseries",
+        "title": "Network RX Total (bytes/s) by Interface (node-level)",
+        "gridPos": { "x": 0, "y": 32, "w": 12, "h": 7 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          { "refId": "A", "expr": "sum by (interface) (rate(container_network_receive_bytes_total[1m]))" }
+        ],
+        "fieldConfig": { "defaults": { "unit": "Bps" }, "overrides": [] },
+        "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+      },
+      {
+        "id": 602,
+        "type": "timeseries",
+        "title": "Network TX Total (bytes/s) by Interface (node-level)",
+        "gridPos": { "x": 12, "y": 32, "w": 12, "h": 7 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          { "refId": "A", "expr": "sum by (interface) (rate(container_network_transmit_bytes_total[1m]))" }
+        ],
+        "fieldConfig": { "defaults": { "unit": "Bps" }, "overrides": [] },
+        "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+      },
+  
+      {
+        "id": 701,
+        "type": "stat",
+        "title": "Drops Total (pps) — all interfaces",
+        "gridPos": { "x": 0, "y": 39, "w": 6, "h": 4 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "sum(rate(container_network_receive_packets_dropped_total[5m]) + rate(container_network_transmit_packets_dropped_total[5m]))"
+          }
+        ],
+        "fieldConfig": { "defaults": { "unit": "pps" }, "overrides": [] },
+        "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
+      },
+      {
+        "id": 702,
+        "type": "stat",
+        "title": "Errors Total (pps) — all interfaces",
+        "gridPos": { "x": 6, "y": 39, "w": 6, "h": 4 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "sum(rate(container_network_receive_errors_total[5m]) + rate(container_network_transmit_errors_total[5m]))"
+          }
+        ],
+        "fieldConfig": { "defaults": { "unit": "pps" }, "overrides": [] },
+        "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
+      },
+      {
+        "id": 703,
+        "type": "timeseries",
+        "title": "Drops (pps) by Interface",
+        "gridPos": { "x": 12, "y": 39, "w": 12, "h": 7 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "sum by (interface) (rate(container_network_receive_packets_dropped_total[5m]) + rate(container_network_transmit_packets_dropped_total[5m]))"
+          }
+        ],
+        "fieldConfig": { "defaults": { "unit": "pps" }, "overrides": [] },
+        "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+      },
+      {
+        "id": 704,
+        "type": "timeseries",
+        "title": "Errors (pps) by Interface",
+        "gridPos": { "x": 0, "y": 46, "w": 12, "h": 7 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "sum by (interface) (rate(container_network_receive_errors_total[5m]) + rate(container_network_transmit_errors_total[5m]))"
+          }
+        ],
+        "fieldConfig": { "defaults": { "unit": "pps" }, "overrides": [] },
+        "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+      }
+    ]
+  }

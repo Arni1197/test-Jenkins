@@ -1,0 +1,31 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: k6-flow-user-journey
+  namespace: game-services
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 1200
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: k6
+          image: grafana/k6:0.49.0
+          args: ["run", "/scripts/flow-user-journey.js"]
+          env:
+            - name: BASE_URL
+              value: "http://api-gateway.game-services.svc.cluster.local:3000"
+
+            # ⚠️ Укажи тестового пользователя (лучше НЕ продового)
+            - name: TEST_EMAIL
+              value: "test@example.com"
+            - name: TEST_PASSWORD
+              value: "test1234"
+          volumeMounts:
+            - name: k6-scripts
+              mountPath: /scripts
+      volumes:
+        - name: k6-scripts
+          configMap:
+            name: k6-scripts
