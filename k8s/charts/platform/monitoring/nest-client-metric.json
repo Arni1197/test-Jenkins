@@ -1,0 +1,234 @@
+{
+    "uid": "app-metrics-nest",
+    "title": "App Metrics (NestJS) — Traffic · Latency · Errors",
+    "timezone": "browser",
+    "schemaVersion": 39,
+    "version": 1,
+    "refresh": "10s",
+    "tags": ["app-metrics", "nestjs", "prometheus", "golden-signals"],
+    "time": { "from": "now-1h", "to": "now" },
+  
+    "templating": {
+      "list": [
+        {
+          "name": "DS_PROMETHEUS",
+          "type": "datasource",
+          "label": "Prometheus",
+          "query": "prometheus",
+          "current": { "text": "Prometheus", "value": "Prometheus" }
+        },
+        {
+          "name": "namespace",
+          "type": "query",
+          "label": "Namespace",
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "query": { "query": "label_values(http_request_duration_seconds_bucket, namespace)", "refId": "ns" },
+          "refresh": 2,
+          "sort": 1,
+          "includeAll": true,
+          "allValue": ".*",
+          "current": { "text": "All", "value": ".*" }
+        },
+        {
+          "name": "pod",
+          "type": "query",
+          "label": "Pod",
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "query": { "query": "label_values(http_request_duration_seconds_bucket{namespace=~\"$namespace\"}, pod)", "refId": "pod" },
+          "refresh": 2,
+          "sort": 1,
+          "includeAll": true,
+          "allValue": ".*",
+          "current": { "text": "All", "value": ".*" }
+        },
+        {
+          "name": "route",
+          "type": "query",
+          "label": "Route",
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "query": {
+            "query": "label_values(http_request_duration_seconds_bucket{namespace=~\"$namespace\", pod=~\"$pod\"}, route)",
+            "refId": "rt"
+          },
+          "refresh": 2,
+          "sort": 1,
+          "includeAll": true,
+          "allValue": ".*",
+          "current": { "text": "All", "value": ".*" }
+        },
+        {
+          "name": "method",
+          "type": "query",
+          "label": "Method",
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "query": {
+            "query": "label_values(http_request_duration_seconds_count{namespace=~\"$namespace\", pod=~\"$pod\", route=~\"$route\"}, method)",
+            "refId": "m"
+          },
+          "refresh": 2,
+          "sort": 1,
+          "includeAll": true,
+          "allValue": ".*",
+          "current": { "text": "All", "value": ".*" }
+        }
+      ]
+    },
+  
+    "panels": [
+      {
+        "id": 1,
+        "type": "stat",
+        "title": "Traffic — RPS (req/s)",
+        "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "sum(rate(http_request_duration_seconds_count{namespace=~\"$namespace\", pod=~\"$pod\", route=~\"$route\", method=~\"$method\"}[5m]))"
+          }
+        ],
+        "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+        "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
+      },
+  
+      {
+        "id": 2,
+        "type": "stat",
+        "title": "Errors — 5xx rate",
+        "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "sum(rate(http_request_duration_seconds_count{namespace=~\"$namespace\", pod=~\"$pod\", route=~\"$route\", method=~\"$method\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_request_duration_seconds_count{namespace=~\"$namespace\", pod=~\"$pod\", route=~\"$route\", method=~\"$method\"}[5m])), 1e-9)"
+          }
+        ],
+        "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 }, "overrides": [] },
+        "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
+      },
+  
+      {
+        "id": 3,
+        "type": "stat",
+        "title": "Latency — p95 (s)",
+        "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{namespace=~\"$namespace\", pod=~\"$pod\", route=~\"$route\", method=~\"$method\"}[5m])))"
+          }
+        ],
+        "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+        "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
+      },
+  
+      {
+        "id": 4,
+        "type": "stat",
+        "title": "Latency — p99 (s)",
+        "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{namespace=~\"$namespace\", pod=~\"$pod\", route=~\"$route\", method=~\"$method\"}[5m])))"
+          }
+        ],
+        "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+        "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
+      },
+  
+      {
+        "id": 11,
+        "type": "timeseries",
+        "title": "Traffic — RPS by status",
+        "gridPos": { "x": 0, "y": 4, "w": 12, "h": 7 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "sum by (status) (rate(http_request_duration_seconds_count{namespace=~\"$namespace\", pod=~\"$pod\", route=~\"$route\", method=~\"$method\"}[5m]))"
+          }
+        ],
+        "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+        "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+      },
+  
+      {
+        "id": 12,
+        "type": "timeseries",
+        "title": "Errors — 4xx & 5xx (req/s)",
+        "gridPos": { "x": 12, "y": 4, "w": 12, "h": 7 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "sum(rate(http_request_duration_seconds_count{namespace=~\"$namespace\", pod=~\"$pod\", route=~\"$route\", method=~\"$method\", status=~\"4..\"}[5m]))"
+          },
+          {
+            "refId": "B",
+            "expr": "sum(rate(http_request_duration_seconds_count{namespace=~\"$namespace\", pod=~\"$pod\", route=~\"$route\", method=~\"$method\", status=~\"5..\"}[5m]))"
+          }
+        ],
+        "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+        "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+      },
+  
+      {
+        "id": 21,
+        "type": "timeseries",
+        "title": "Latency — p50 / p95 / p99 (seconds)",
+        "gridPos": { "x": 0, "y": 11, "w": 24, "h": 8 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "histogram_quantile(0.50, sum by (le) (rate(http_request_duration_seconds_bucket{namespace=~\"$namespace\", pod=~\"$pod\", route=~\"$route\", method=~\"$method\"}[5m])))"
+          },
+          {
+            "refId": "B",
+            "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{namespace=~\"$namespace\", pod=~\"$pod\", route=~\"$route\", method=~\"$method\"}[5m])))"
+          },
+          {
+            "refId": "C",
+            "expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{namespace=~\"$namespace\", pod=~\"$pod\", route=~\"$route\", method=~\"$method\"}[5m])))"
+          }
+        ],
+        "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+        "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+      },
+  
+      {
+        "id": 31,
+        "type": "timeseries",
+        "title": "Traffic — Top 10 routes by RPS",
+        "gridPos": { "x": 0, "y": 19, "w": 12, "h": 8 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "topk(10, sum by (route) (rate(http_request_duration_seconds_count{namespace=~\"$namespace\", pod=~\"$pod\", method=~\"$method\"}[5m])))"
+          }
+        ],
+        "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+        "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+      },
+  
+      {
+        "id": 32,
+        "type": "timeseries",
+        "title": "Latency — Top 10 routes by p95 (seconds)",
+        "gridPos": { "x": 12, "y": 19, "w": 12, "h": 8 },
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "topk(10, histogram_quantile(0.95, sum by (le, route) (rate(http_request_duration_seconds_bucket{namespace=~\"$namespace\", pod=~\"$pod\", method=~\"$method\"}[5m]))))"
+          }
+        ],
+        "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+        "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+      }
+    ]
+  }

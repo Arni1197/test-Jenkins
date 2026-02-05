@@ -1,0 +1,42 @@
+name: Load test (staging)
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Base URL"
+        required: true
+        default: "http://api-gateway.game-services.svc.cluster.local:3000"
+
+jobs:
+  loadtest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+
+      - name: Update k6 scripts ConfigMap
+        run: |
+          kubectl -n game-services create configmap k6-scripts \
+            --from-file=api.js=loadtests/api.js \
+            --from-file=auth.js=loadtests/auth.js \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Run k6 Job
+        run: |
+          kubectl apply -f k8s/loadtests/k6-api-job.yaml
+
+      - name: Wait for completion
+        run: |
+          kubectl -n game-services wait \
+            --for=condition=complete job/k6-api-smoke \
+            --timeout=10m
+
+      - name: Show logs
+        run: |
+          kubectl -n game-services logs job/k6-api-smoke

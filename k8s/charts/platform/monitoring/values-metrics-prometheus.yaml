@@ -1,0 +1,70 @@
+# values.yaml — "plus-base" для обучения метрикам Kubernetes
+# Цель: оживить стандартные Kubernetes dashboards (Compute + Networking) в Grafana
+
+kube-state-metrics:
+  enabled: true
+
+prometheus-node-exporter:
+  enabled: true
+
+# Ключевой блок: kubelet + cAdvisor = pod CPU/mem/network метрики
+kubelet:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    metricRelabelings: []
+
+    # Главное: убираем фильтрацию cAdvisor метрик
+    cAdvisorMetricRelabelings: []
+
+    # ✅ ВКЛЮЧАЕМ cAdvisor (container_* метрики: CPU/RAM/Network/FS)
+    cAdvisor: true
+
+    # Docker Desktop часто требует HTTPS к kubelet (10250)
+    https: true
+    insecureSkipVerify: true
+
+    # Иногда полезно, если вдруг будут проблемы с сертификатами/авторизацией
+    # (обычно достаточно insecureSkipVerify)
+    honorLabels: true
+
+# Prometheus настройки (чтобы удобно тренироваться)
+prometheus:
+  prometheusSpec:
+    # Храним чуть подольше, чтобы видеть историю во время тренировок
+    retention: 7d
+
+    # Немного ограничим объём на локалке
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 2Gi
+
+    # Чтобы ServiceMonitors/PodMonitors работали во всех namespace
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+    # Полезно для тренировок: видеть таргеты и метрики "как в проде"
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+
+grafana:
+  enabled: true
+  # Оставляем встроенные dashboards от kube-prometheus-stack
+  defaultDashboardsEnabled: true
+  # Поднимаем Grafana с ресурсами, чтобы не подлагивала на Mac
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      cpu: 300m
+      memory: 1Gi
+
+# Alertmanager можешь оставить включенным — полезно для будущих тренировок
+alertmanager:
+  enabled: true
