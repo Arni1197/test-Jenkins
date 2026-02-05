@@ -1,0 +1,24 @@
+{{- if .Values.services.apiGateway.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: api-gateway
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/name: observability
+    release: {{ .Values.prometheusOperator.releaseLabel | quote }}
+spec:
+  namespaceSelector:
+    matchNames:
+      - {{ .Values.services.apiGateway.namespace }}
+  selector:
+    matchLabels:
+      {{- toYaml .Values.services.apiGateway.matchLabels | nindent 6 }}
+  endpoints:
+    - port: {{ .Values.services.apiGateway.portName }}
+      path: {{ .Values.services.apiGateway.path }}
+      interval: {{ default .Values.global.interval .Values.services.apiGateway.interval }}
+      scrapeTimeout: {{ default .Values.global.scrapeTimeout .Values.services.apiGateway.scrapeTimeout }}
+{{- end }}
