@@ -13,6 +13,6 @@ dependencies:
     version: "1.x.x"
     repository: https://grafana.github.io/helm-charts
 
-  - name: loki
-    version: "5.x.x"
-    repository: https://grafana.github.io/helm-charts
+  # - name: loki
+  #   version: "5.x.x"
+  #   repository: https://grafana.github.io/helm-charts
