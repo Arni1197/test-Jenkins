@@ -1,0 +1,19 @@
+kube-prometheus-stack:
+  prometheus:
+    prometheusSpec:
+      retention: 2d
+      scrapeInterval: 30s
+
+  grafana:
+    enabled: true
+    defaultDashboardsEnabled: true
+
+tempo:
+  enabled: true
+  persistence:
+    enabled: false
+
+loki:
+  enabled: true
+  persistence:
+    enabled: false

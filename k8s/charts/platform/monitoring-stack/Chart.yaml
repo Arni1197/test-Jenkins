@@ -1,0 +1,18 @@
+apiVersion: v2
+name: platform-monitoring
+description: Monitoring stack (Prometheus, Grafana, Tempo, Loki)
+type: application
+version: 0.1.0
+
+dependencies:
+  - name: kube-prometheus-stack
+    version: "58.x.x"
+    repository: https://prometheus-community.github.io/helm-charts
+
+  - name: tempo
+    version: "1.x.x"
+    repository: https://grafana.github.io/helm-charts
+
+  - name: loki
+    version: "5.x.x"
+    repository: https://grafana.github.io/helm-charts
