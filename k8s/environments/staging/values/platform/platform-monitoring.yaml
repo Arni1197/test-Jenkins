@@ -1,0 +1,22 @@
+kube-prometheus-stack:
+  prometheus:
+    prometheusSpec:
+      retention: 5d
+      scrapeInterval: 30s
+      externalLabels:
+        cluster: staging
+
+  grafana:
+    enabled: true
+    adminPassword: "staging-admin"
+    defaultDashboardsEnabled: true
+
+tempo:
+  enabled: true
+  metricsGenerator:
+    enabled: true
+
+loki:
+  enabled: true
+  persistence:
+    enabled: false
