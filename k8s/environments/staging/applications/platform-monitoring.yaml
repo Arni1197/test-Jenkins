@@ -12,7 +12,7 @@ spec:
     path: k8s/charts/platform/monitoring-stack
     helm:
       valueFiles:
-        - ../../environments/staging/values/platfrom/platform-monitoring.yaml
+        - ../../environments/staging/values/platform/platform-monitoring.yaml
 
   destination:
     server: https://kubernetes.default.svc
