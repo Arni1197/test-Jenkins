@@ -15,8 +15,3 @@ tempo:
   enabled: true
   metricsGenerator:
     enabled: true
-
-loki:
-  enabled: true
-  persistence:
-    enabled: false
