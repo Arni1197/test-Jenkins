@@ -13,3 +13,5 @@ tempo:
   persistence:
     enabled: false
 
+loki:
+  enabled: false
