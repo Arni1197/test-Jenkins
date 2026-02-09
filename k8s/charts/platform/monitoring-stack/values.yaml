@@ -1,12 +1,15 @@
 kube-prometheus-stack:
   prometheus:
     prometheusSpec:
-      retention: 2d
+      retention: 12h
       scrapeInterval: 30s
 
   grafana:
     enabled: true
     defaultDashboardsEnabled: true
+
+  prometheus-node-exporter:
+    enabled: false
 
 tempo:
   enabled: true
