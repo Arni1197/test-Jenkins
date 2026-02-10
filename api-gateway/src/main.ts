@@ -7,9 +7,8 @@ import cookieParser from 'cookie-parser';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { attachUserIdFromJwt } from './auth/userid.middleware';
 
-// ✅ метрики
+// ✅ METRICS
 import { Registry } from 'prom-client';
-import type { RegistryContentType } from 'prom-client';
 import { createHttpMetricsMiddleware } from './metrics/http-metrics.middleware';
 
 async function bootstrap() {
@@ -18,11 +17,10 @@ async function bootstrap() {
   // ✅ Единый префикс
   app.setGlobalPrefix('api');
 
-  // ✅ cookie нужны, если auth пишет jwt/refresh в cookie
   app.use(cookieParser());
 
   // =========================
-  // ✅ CORS ТОЛЬКО НА GATEWAY
+  // ✅ CORS
   // =========================
   const frontendUrls = (process.env.FRONTEND_URLS ?? 'http://localhost:3000')
     .split(',')
@@ -32,24 +30,12 @@ async function bootstrap() {
   app.enableCors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-
-      const normalizedOrigin = origin.trim().replace(/\/$/, '');
-      const ok = frontendUrls.includes(normalizedOrigin);
-
+      const ok = frontendUrls.includes(origin.replace(/\/$/, ''));
       return callback(null, ok);
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-      'Cache-Control',
-      'Pragma',
-      'X-Requested-With',
-    ],
   });
 
-  // ✅ Валидация
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -60,9 +46,9 @@ async function bootstrap() {
   const expressApp = app.getHttpAdapter().getInstance();
 
   // =========================
-  // ✅ HTTP METRICS (middleware)
+  // ✅ HTTP METRICS (ВАЖНО: ДО proxy!)
   // =========================
-  const registry = app.get(Registry) as Registry<RegistryContentType>;
+  const registry = app.get(Registry);
   expressApp.use(createHttpMetricsMiddleware(registry));
 
   // =========================
@@ -70,20 +56,16 @@ async function bootstrap() {
   // =========================
   const authTarget = process.env.AUTH_SERVICE_URL ?? 'http://localhost:3001';
   const userTarget = process.env.USER_SERVICE_URL ?? 'http://localhost:3002';
-  const catalogTarget =
-    process.env.CATALOG_SERVICE_URL ?? 'http://localhost:3003';
+  const catalogTarget = process.env.CATALOG_SERVICE_URL ?? 'http://localhost:3003';
 
   // =========================
-  // ✅ AUTH (просто прокси)
+  // ✅ AUTH
   // =========================
   expressApp.use(
     '/api/auth',
     createProxyMiddleware({
       target: authTarget,
       changeOrigin: true,
-      preserveHeaderKeyCase: true,
-      pathRewrite: (path) =>
-        path.startsWith('/api/auth') ? path : `/api/auth${path}`,
     }),
   );
 
@@ -96,9 +78,6 @@ async function bootstrap() {
     createProxyMiddleware({
       target: userTarget,
       changeOrigin: true,
-      preserveHeaderKeyCase: true,
-      pathRewrite: (path) =>
-        path.startsWith('/api/users') ? path : `/api/users${path}`,
       on: {
         proxyReq: (proxyReq, req) => {
           const userId = (req as any).userId;
@@ -116,25 +95,20 @@ async function bootstrap() {
     createProxyMiddleware({
       target: catalogTarget,
       changeOrigin: true,
-      preserveHeaderKeyCase: true,
-      pathRewrite: (path) =>
-        path.startsWith('/api/catalog') ? path : `/api/catalog${path}`,
     }),
   );
 
   // =========================
-  // ✅ Health-check gateway
+  // ✅ HEALTH
   // =========================
-  expressApp.get('/api/health', (req, res) => {
-    res.status(200).json({ status: 'ok', service: 'api-gateway' });
+  expressApp.get('/api/health', (_req, res) => {
+    res.json({ status: 'ok', service: 'api-gateway' });
   });
 
   const port = Number(process.env.PORT ?? 8081);
   await app.listen(port, '0.0.0.0');
 
-  console.log(`🚀 API Gateway running on http://localhost:${port}`);
-  console.log('Allowed frontend URLs:', frontendUrls);
-  console.log('Targets:', { authTarget, userTarget, catalogTarget });
+  console.log(`🚀 API Gateway running on :${port}`);
 }
 
 bootstrap();
