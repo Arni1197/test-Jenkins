@@ -6,6 +6,10 @@ metadata:
 spec:
   project: default
 
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+
   source:
     repoURL: https://github.com/Arni1197/test-Jenkins.git
     targetRevision: main
@@ -14,19 +18,27 @@ spec:
       valueFiles:
         - values.yaml
 
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: observability
-
   syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - RespectIgnoreDifferences=true
 
   ignoreDifferences:
-    - group: apps
-      kind: DaemonSet
-      name: platform-monitoring-prometheus-node-exporter
-      namespace: observability
+    - group: monitoring.coreos.com
+      kind: Prometheus
+      jsonPointers: ["/status"]
+    - group: monitoring.coreos.com
+      kind: Alertmanager
+      jsonPointers: ["/status"]
+    - group: monitoring.coreos.com
+      kind: ServiceMonitor
+      jsonPointers: ["/status"]
+    - group: monitoring.coreos.com
+      kind: PodMonitor
+      jsonPointers: ["/status"]
+    - group: monitoring.coreos.com
+      kind: PrometheusRule
+      jsonPointers: ["/status"]
+    - group: ""
+      kind: Endpoints
+      jqPathExpressions: [".subsets"]
