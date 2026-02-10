@@ -24,3 +24,9 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+
+  ignoreDifferences:
+    - group: apps
+      kind: DaemonSet
+      name: platform-monitoring-prometheus-node-exporter
+      namespace: observability
