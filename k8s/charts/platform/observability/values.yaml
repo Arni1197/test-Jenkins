@@ -4,7 +4,7 @@ namespace: observability
 # Лейбл, по которому Prometheus Operator выбирает ServiceMonitor'ы
 # Часто это Helm release kube-prometheus-stack, например: "monitoring" или "kube-prometheus-stack"
 prometheusOperator:
-  releaseLabel: monitoring
+  releaseLabel: platform-monitoring
 
 global:
   interval: 30s
