@@ -35,7 +35,7 @@ services:
       app.kubernetes.io/name: api-gateway
     portName: http
     # если у тебя у gateway метрики тоже под /api/metrics — просто поменяй тут
-    path: /metrics
+    path: /api/metrics
     interval: ""
     scrapeTimeout: ""
 
