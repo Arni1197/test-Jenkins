@@ -1,6 +1,7 @@
+// src/metrics/http-metrics.middleware.ts
 import type { Request, Response, NextFunction } from 'express';
-import type { Registry, RegistryContentType } from 'prom-client';
 import { Counter, Histogram } from 'prom-client';
+import type { Registry } from 'prom-client';
 
 function normalizeRoute(req: Request): string {
   const path = (req.originalUrl || req.url || '').split('?')[0] || 'unknown';
@@ -10,7 +11,7 @@ function normalizeRoute(req: Request): string {
     .replace(/\/[0-9a-f]{8,}(?=\/|$)/gi, '/:id');
 }
 
-export function createHttpMetricsMiddleware(registry: Registry<RegistryContentType>) {
+export function createHttpMetricsMiddleware(registry: Registry) {
   const httpRequestsTotal = new Counter({
     name: 'http_requests_total',
     help: 'Total number of HTTP requests',
@@ -23,15 +24,18 @@ export function createHttpMetricsMiddleware(registry: Registry<RegistryContentTy
     help: 'HTTP request duration in seconds',
     labelNames: ['method', 'route', 'status', 'service'],
     registers: [registry],
-    buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
+    buckets: [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
   });
 
   return (req: Request, res: Response, next: NextFunction) => {
-    const path = (req.originalUrl || req.url || '').split('?')[0];
+    const path = req.originalUrl || req.url || '';
 
-    if (path === '/api/metrics' || path === '/api/health') return next();
+    // ❌ не считаем служебные эндпоинты
+    if (path.startsWith('/api/metrics') || path.startsWith('/api/health')) {
+      return next();
+    }
 
-    const end = httpRequestDuration.startTimer();
+    const endTimer = httpRequestDuration.startTimer();
 
     res.on('finish', () => {
       const labels = {
@@ -42,7 +46,7 @@ export function createHttpMetricsMiddleware(registry: Registry<RegistryContentTy
       };
 
       httpRequestsTotal.inc(labels);
-      end(labels);
+      endTimer(labels);
     });
 
     next();
