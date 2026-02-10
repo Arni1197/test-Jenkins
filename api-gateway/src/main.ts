@@ -1,3 +1,4 @@
+// src/main.ts
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
@@ -5,6 +6,11 @@ import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { attachUserIdFromJwt } from './auth/userid.middleware';
+
+// ✅ метрики
+import { Registry } from 'prom-client';
+import type { RegistryContentType } from 'prom-client';
+import { createHttpMetricsMiddleware } from './metrics/http-metrics.middleware';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -20,19 +26,16 @@ async function bootstrap() {
   // =========================
   const frontendUrls = (process.env.FRONTEND_URLS ?? 'http://localhost:3000')
     .split(',')
-    .map((s) => s.trim().replace(/\/$/, '')) // убираем пробелы и trailing slash
+    .map((s) => s.trim().replace(/\/$/, ''))
     .filter(Boolean);
 
   app.enableCors({
     origin: (origin, callback) => {
-      // запросы без Origin (health/curl/server-to-server)
       if (!origin) return callback(null, true);
 
       const normalizedOrigin = origin.trim().replace(/\/$/, '');
       const ok = frontendUrls.includes(normalizedOrigin);
 
-      // ✅ Важно: не кидаем Error, иначе это превращается в 500
-      // Если ok=false — браузер сам заблокирует по CORS, но сервер не упадёт.
       return callback(null, ok);
     },
     credentials: true,
@@ -46,7 +49,7 @@ async function bootstrap() {
     ],
   });
 
-  // ✅ Валидация (на будущее)
+  // ✅ Валидация
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -55,6 +58,12 @@ async function bootstrap() {
   );
 
   const expressApp = app.getHttpAdapter().getInstance();
+
+  // =========================
+  // ✅ HTTP METRICS (middleware)
+  // =========================
+  const registry = app.get(Registry) as Registry<RegistryContentType>;
+  expressApp.use(createHttpMetricsMiddleware(registry));
 
   // =========================
   // ✅ TARGETS
@@ -79,8 +88,7 @@ async function bootstrap() {
   );
 
   // =========================
-  // ✅ USERS (вариант A)
-  // JWT на gateway → достаём userId → пробрасываем в user-service
+  // ✅ USERS
   // =========================
   expressApp.use(
     '/api/users',
@@ -94,16 +102,14 @@ async function bootstrap() {
       on: {
         proxyReq: (proxyReq, req) => {
           const userId = (req as any).userId;
-          if (userId) {
-            proxyReq.setHeader('x-user-id', userId);
-          }
+          if (userId) proxyReq.setHeader('x-user-id', userId);
         },
       },
     }),
   );
 
   // =========================
-  // ✅ CATALOG (пока без auth)
+  // ✅ CATALOG
   // =========================
   expressApp.use(
     '/api/catalog',
