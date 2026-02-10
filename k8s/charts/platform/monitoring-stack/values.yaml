@@ -1,3 +1,5 @@
+# k8s/charts/platform/monitoring-stack/values.yaml
+
 kube-prometheus-stack:
   prometheus:
     prometheusSpec:
@@ -8,15 +10,18 @@ kube-prometheus-stack:
     enabled: true
     defaultDashboardsEnabled: true
 
-  # ✅ FIX for Docker Desktop (Mac): disable node-exporter (hostPath "/" mount breaks)
+  # если node-exporter идет как часть kube-prometheus-stack
   prometheus-node-exporter:
     enabled: false
+
+# если node-exporter идет отдельной зависимостью (у тебя похоже именно так)
+prometheus-node-exporter:
+  enabled: false
 
 tempo:
   enabled: true
   persistence:
     enabled: false
 
-# ⛔ Loki тут не используется, пока нет зависимости loki в Chart.yaml
-# loki:
-#   enabled: false
+loki:
+  enabled: false
