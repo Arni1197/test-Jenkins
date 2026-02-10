@@ -8,6 +8,7 @@ kube-prometheus-stack:
     enabled: true
     defaultDashboardsEnabled: true
 
+  # ✅ FIX for Docker Desktop (Mac): disable node-exporter (hostPath "/" mount breaks)
   prometheus-node-exporter:
     enabled: false
 
@@ -16,5 +17,6 @@ tempo:
   persistence:
     enabled: false
 
-loki:
-  enabled: false
+# ⛔ Loki тут не используется, пока нет зависимости loki в Chart.yaml
+# loki:
+#   enabled: false
