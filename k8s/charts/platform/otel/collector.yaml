@@ -1,0 +1,30 @@
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: otel-gateway
+  namespace: jaeger
+spec:
+  mode: deployment
+  replicas: 1
+  config:
+    receivers:
+      otlp:
+        protocols:
+          grpc: {}
+          http: {}
+
+    processors:
+      batch: {}
+
+    exporters:
+      otlp/jaeger:
+        endpoint: jaeger.jaeger.svc.cluster.local:4317
+        tls:
+          insecure: true
+
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [otlp/jaeger]
