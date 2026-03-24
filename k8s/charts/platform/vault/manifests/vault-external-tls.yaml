@@ -6,7 +6,7 @@ metadata:
 spec:
   secretName: vault-external-tls
   issuerRef:
-    name: letsencrypt-staging
+    name: letsencrypt-prod
     kind: ClusterIssuer
   commonName: vault.90.156.210.86.nip.io
   dnsNames:
