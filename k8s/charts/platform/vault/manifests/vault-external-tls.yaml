@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: vault-external-cert
+  namespace: vault
+spec:
+  secretName: vault-external-tls
+  issuerRef:
+    name: letsencrypt-staging
+    kind: ClusterIssuer
+  commonName: vault.90.156.210.86.nip.io
+  dnsNames:
+    - vault.90.156.210.86.nip.io
