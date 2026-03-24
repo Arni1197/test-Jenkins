@@ -1,0 +1,128 @@
+grafana:
+  enabled: true
+
+  adminUser: admin
+  adminPassword: "change-me-strong-password"
+
+  service:
+    type: ClusterIP
+    port: 80
+
+  ingress:
+    enabled: false
+
+  persistence:
+    enabled: false
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+alertmanager:
+  enabled: true
+
+  ingress:
+    enabled: false
+
+  alertmanagerSpec:
+    replicas: 1
+
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: nvme.network-drives.csi.timeweb.cloud
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 5Gi
+
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 300m
+        memory: 256Mi
+
+prometheus:
+  ingress:
+    enabled: false
+
+  prometheusSpec:
+    replicas: 1
+
+    retention: 2d
+
+    remoteWrite:
+      - url: http://vmsingle-vm-single.victoria-metrics.svc.cluster.local:8428/api/v1/write
+
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: nvme.network-drives.csi.timeweb.cloud
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 20Gi
+
+    resources:
+      requests:
+        cpu: 300m
+        memory: 1Gi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+
+prometheusOperator:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+
+kube-state-metrics:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+prometheus-node-exporter:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+defaultRules:
+  create: true
+
+kubeApiServer:
+  enabled: true
+
+kubeControllerManager:
+  enabled: true
+
+kubeScheduler:
+  enabled: true
+
+kubeEtcd:
+  enabled: false
+
+kubeProxy:
+  enabled: true
+
+kubelet:
+  enabled: true

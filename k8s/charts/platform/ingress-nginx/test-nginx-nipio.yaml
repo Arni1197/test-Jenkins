@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: test-nginx
+  namespace: default
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+spec:
+  ingressClassName: nginx
+
+  tls:
+    - hosts:
+        - 90.156.210.86.nip.io
+      secretName: nip-io-tls
+
+  rules:
+    - host: 90.156.210.86.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: test-nginx
+                port:
+                  number: 80

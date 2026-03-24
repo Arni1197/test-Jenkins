@@ -1,0 +1,31 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMSingle
+metadata:
+  name: vm-single
+  namespace: victoria-metrics
+spec:
+  retentionPeriod: "30d"
+  replicaCount: 1
+
+  image:
+    repository: victoriametrics/victoria-metrics
+
+  storage:
+    accessModes:
+      - ReadWriteOnce
+    storageClassName: nvme.network-drives.csi.timeweb.cloud
+    resources:
+      requests:
+        storage: 30Gi
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+
+  serviceSpec:
+    spec:
+      type: ClusterIPc
