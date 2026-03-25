@@ -7,7 +7,7 @@ injector:
   replicas: 1
   authPath: "auth/kubernetes"
   webhook:
-    failurePolicy: Ignore
+    failurePolicy: Fail
   resources:
     requests:
       cpu: "100m"
@@ -45,7 +45,7 @@ server:
     accessMode: ReadWriteOnce
 
   auditStorage:
-    enabled: true
+    enabled: false
     size: 10Gi
     mountPath: "/vault/audit"
     storageClass: "nvme.network-drives.csi.timeweb.cloud"
@@ -57,9 +57,28 @@ server:
   standalone:
     enabled: false
 
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - vault
+          topologyKey: "kubernetes.io/hostname"
+
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: vault
+
   ha:
     enabled: true
-    replicas: 3
+    replicas: 1
 
     raft:
       enabled: true
@@ -73,7 +92,6 @@ server:
 
           tls_cert_file = "/vault/userconfig/vault-server-tls/tls.crt"
           tls_key_file = "/vault/userconfig/vault-server-tls/tls.key"
-          tls_client_ca_file = "/vault/userconfig/vault-server-tls/ca.crt"
         }
 
         storage "raft" {
