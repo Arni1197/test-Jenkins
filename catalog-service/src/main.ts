@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from './prisma/prisma.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -17,7 +17,7 @@ async function bootstrap() {
   );
 
   const prismaService = app.get(PrismaService);
-  await prismaService.enableShutdownHooks(app);
+  prismaService.enableShutdownHooks(app);
 
   const port = Number(process.env.PORT ?? 3003);
   await app.listen(port, '0.0.0.0');
@@ -25,4 +25,4 @@ async function bootstrap() {
   console.log(`🚀 Catalog Service running on http://localhost:${port}`);
 }
 
-bootstrap();
+void bootstrap();

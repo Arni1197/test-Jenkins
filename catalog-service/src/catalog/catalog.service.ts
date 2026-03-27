@@ -65,7 +65,7 @@ export class CatalogService {
         },
       });
 
-      await this.eventsPublisher.publish('catalog.product.viewed', {
+      this.eventsPublisher.publish('catalog.product.viewed', {
         eventType: 'ProductViewed',
         userId,
         productId,
@@ -157,7 +157,7 @@ export class CatalogService {
       },
     });
 
-    await this.eventsPublisher.publish('catalog.favorite.added', {
+    this.eventsPublisher.publish('catalog.favorite.added', {
       eventType: 'FavoriteAdded',
       userId,
       productId,
@@ -194,7 +194,7 @@ export class CatalogService {
       },
     });
 
-    await this.eventsPublisher.publish('catalog.favorite.removed', {
+    this.eventsPublisher.publish('catalog.favorite.removed', {
       eventType: 'FavoriteRemoved',
       userId,
       productId,
@@ -284,7 +284,7 @@ export class CatalogService {
         },
       });
 
-      await this.eventsPublisher.publish('catalog.cart.item_added', {
+      this.eventsPublisher.publish('catalog.cart.item_added', {
         eventType: 'CartItemQuantityIncreased',
         userId,
         productId,
@@ -314,7 +314,7 @@ export class CatalogService {
       },
     });
 
-    await this.eventsPublisher.publish('catalog.cart.item_added', {
+    this.eventsPublisher.publish('catalog.cart.item_added', {
       eventType: 'CartItemAdded',
       userId,
       productId,
@@ -377,7 +377,7 @@ export class CatalogService {
       },
     });
 
-    await this.eventsPublisher.publish('catalog.cart.item.updated', {
+    this.eventsPublisher.publish('catalog.cart.item.updated', {
       eventType: 'CartItemUpdated',
       userId,
       productId,
@@ -415,7 +415,7 @@ export class CatalogService {
       },
     });
 
-    await this.eventsPublisher.publish('catalog.cart.item.removed', {
+    this.eventsPublisher.publish('catalog.cart.item.removed', {
       eventType: 'CartItemRemoved',
       userId,
       productId,
