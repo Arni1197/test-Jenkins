@@ -1,4 +1,3 @@
-// src/modules/auth/auth.service.ts
 import {
   Injectable,
   UnauthorizedException,
@@ -34,9 +33,16 @@ export class AuthService {
     private readonly userEventsPublisher: UserEventsPublisher,
   ) {}
 
-  // -------------------------
-  // Регистрация
-  // -------------------------
+  private isEmailConfirmationRequired(): boolean {
+    const raw = this.config.get<string | boolean>(
+      'EMAIL_CONFIRMATION_REQUIRED',
+      'true',
+    );
+
+    if (typeof raw === 'boolean') return raw;
+    return String(raw).trim().toLowerCase() === 'true';
+  }
+
   async register(dto: {
     email: string;
     username: string;
@@ -44,33 +50,31 @@ export class AuthService {
   }): Promise<DomainUser> {
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
+    const emailConfirmationRequired = this.isEmailConfirmationRequired();
+
     const user = await this.usersService.createUser({
       email: dto.email,
       username: dto.username,
       password: hashedPassword,
+      emailVerified: !emailConfirmationRequired,
     });
 
-    // 📨 Отправляем письмо подтверждения
-    await this.emailConfirmationService.sendEmailConfirmation(user);
-
-    // ✅ EDA: событие о регистрации (producer)
-    await this.userEventsPublisher.publishUserRegistered({
-      userId: user.id, // у тебя string — ок
-      email: user.email,
-      username: user.username ?? undefined, // на случай null
-    });
+    if (emailConfirmationRequired) {
+      await this.userEventsPublisher.publishUserRegistered({
+        userId: user.id,
+        email: user.email,
+        username: user.username ?? undefined,
+        sendConfirmationEmail: true,
+      });
+    }
 
     return user;
   }
 
-  // -------------------------
-  // Логин
-  // -------------------------
   async login(dto: { email: string; password: string }) {
     const maxAttempts = 5;
     const blockTimeSeconds = 60 * 15;
 
-    // ✅ исправлено: без лишних пробелов
     const attemptsKey = `login_attempts:${dto.email}`;
 
     const attempts = await this.redisClient.get(attemptsKey);
@@ -80,7 +84,6 @@ export class AuthService {
 
     const user = await this.usersService.findByEmail(dto.email);
 
-    // если пользователя нет — считаем это неуспешной попыткой
     if (!user) {
       await this.redisClient.incr(attemptsKey);
       await this.redisClient.expire(attemptsKey, blockTimeSeconds);
@@ -94,7 +97,6 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // пароль ок → обнуляем счётчик
     await this.redisClient.del(attemptsKey);
 
     if (!user.emailVerified) {
@@ -103,7 +105,6 @@ export class AuthService {
       );
     }
 
-    // 2FA включена → не выдаём токены, отдаём только twoFaToken
     if (user.twoFactorEnabled) {
       const twoFaToken = this.tokenService.generateTwoFaToken(user.id);
       return {
@@ -112,7 +113,6 @@ export class AuthService {
       };
     }
 
-    // 2FA не включена → обычный flow
     const accessToken = this.tokenService.generateAccessToken(
       user.id,
       user.email,
@@ -128,11 +128,7 @@ export class AuthService {
     };
   }
 
-  // -------------------------
-  // Завершение 2FA логина
-  // -------------------------
   async completeTwoFaLogin(dto: { twoFaToken: string; code: string }) {
-    // 1) проверяем twoFaToken
     const payload = this.tokenService.verifyTwoFaToken(dto.twoFaToken);
     if (payload.type !== '2fa') {
       throw new UnauthorizedException('Неверный 2FA токен');
@@ -140,13 +136,11 @@ export class AuthService {
 
     const userId = payload.sub;
 
-    // 2) проверяем 2FA-код
     const isValid = await this.twoFaService.verifyCode(userId, dto.code);
     if (!isValid) {
       throw new UnauthorizedException('Неверный 2FA код');
     }
 
-    // 3) достаём пользователя
     const user = await this.usersService.findById(userId);
     if (!user) {
       throw new UnauthorizedException('Увы, Пользователь не найден');
@@ -156,7 +150,6 @@ export class AuthService {
       throw new UnauthorizedException('К сожалению, Email не подтверждён');
     }
 
-    // 4) генерируем обычные токены
     const accessToken = this.tokenService.generateAccessToken(
       user.id,
       user.email,
@@ -172,9 +165,6 @@ export class AuthService {
     };
   }
 
-  // -------------------------
-  // Обновление access token через refresh token
-  // -------------------------
   async refreshToken(token: string) {
     try {
       const payload = this.tokenService.verifyRefreshToken(token) as {
@@ -194,9 +184,6 @@ export class AuthService {
     }
   }
 
-  // -------------------------
-  // Сброс пароля — запрос
-  // -------------------------
   async requestPasswordReset(email: string) {
     const user = await this.usersService.findByEmail(email);
     if (!user) return;
@@ -221,9 +208,6 @@ export class AuthService {
     await this.mailService.sendMail(user.email, 'Сброс пароля', html);
   }
 
-  // -------------------------
-  // Сброс пароля — подтверждение
-  // -------------------------
   async resetPassword(token: string, newPassword: string) {
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
     const userId = await this.redisClient.get(`reset:${tokenHash}`);

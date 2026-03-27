@@ -1,6 +1,7 @@
 import { Injectable, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DomainUser } from '../types/user.types';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
@@ -57,6 +58,7 @@ export class UsersService {
     email: string;
     username?: string;
     password: string; // уже hashed
+    emailVerified?: boolean;
   }): Promise<DomainUser> {
     try {
       const created = await this.prisma.user.create({
@@ -65,16 +67,26 @@ export class UsersService {
           username: data.username ?? null,
           passwordHash: data.password,
 
-          // ✅ emailVerified НЕ трогаем — берём default(false)
-          // ✅ 2FA тоже default(false)
+          emailVerified: data.emailVerified ?? false,
+
+          // 2FA
           twoFactorSecret: null,
+
+          // password meta
           passwordChangedAt: null,
         },
       });
 
       return this.toDomain(created)!;
     } catch (e: any) {
-      throw new ConflictException('User already exists');
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2002'
+      ) {
+        throw new ConflictException('User already exists');
+      }
+
+      throw e;
     }
   }
 
@@ -95,14 +107,17 @@ export class UsersService {
 
     if (update.email !== undefined) data.email = update.email;
     if (update.username !== undefined) data.username = update.username;
-    if (update.emailVerified !== undefined)
+    if (update.emailVerified !== undefined) {
       data.emailVerified = update.emailVerified;
+    }
 
-    if (update.twoFactorEnabled !== undefined)
+    if (update.twoFactorEnabled !== undefined) {
       data.twoFactorEnabled = update.twoFactorEnabled;
+    }
 
-    if (update.twoFactorSecret !== undefined)
+    if (update.twoFactorSecret !== undefined) {
       data.twoFactorSecret = update.twoFactorSecret;
+    }
 
     const user = await this.prisma.user.update({
       where: { id: userId },

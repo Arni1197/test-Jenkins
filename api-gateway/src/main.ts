@@ -1,4 +1,3 @@
-// src/main.ts
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
@@ -46,7 +45,7 @@ async function bootstrap() {
   const expressApp = app.getHttpAdapter().getInstance();
 
   // =========================
-  // ✅ HTTP METRICS (ВАЖНО: ДО proxy!)
+  // ✅ HTTP METRICS
   // =========================
   const registry = app.get(Registry);
   expressApp.use(createHttpMetricsMiddleware(registry));
@@ -66,6 +65,7 @@ async function bootstrap() {
     createProxyMiddleware({
       target: authTarget,
       changeOrigin: true,
+      pathRewrite: (path) => `/api/auth${path.replace('/api/auth', '')}`,
     }),
   );
 
@@ -78,23 +78,87 @@ async function bootstrap() {
     createProxyMiddleware({
       target: userTarget,
       changeOrigin: true,
+      pathRewrite: (path) => `/api/users${path.replace('/api/users', '')}`,
       on: {
         proxyReq: (proxyReq, req) => {
           const userId = (req as any).userId;
-          if (userId) proxyReq.setHeader('x-user-id', userId);
+          if (userId) {
+            proxyReq.setHeader('x-user-id', userId);
+          }
         },
       },
     }),
   );
 
   // =========================
-  // ✅ CATALOG
+  // ✅ CATALOG PRIVATE
+  // =========================
+  expressApp.use(
+    [
+      '/api/catalog/me',
+      '/api/catalog/favorites',
+      '/api/catalog/cart',
+      '/api/catalog/recently-viewed',
+    ],
+    attachUserIdFromJwt,
+    createProxyMiddleware({
+      target: catalogTarget,
+      changeOrigin: true,
+      pathRewrite: (_path, req) => {
+        return (req as any).originalUrl;
+      },
+      on: {
+        proxyReq: (proxyReq, req) => {
+          const userId = (req as any).userId;
+          if (userId) {
+            proxyReq.setHeader('x-user-id', userId);
+          }
+        },
+      },
+    }),
+  );
+
+  // =========================
+  // ✅ CATALOG PUBLIC
   // =========================
   expressApp.use(
     '/api/catalog',
     createProxyMiddleware({
       target: catalogTarget,
       changeOrigin: true,
+      pathRewrite: (_path, req) => {
+        return (req as any).originalUrl;
+      },
+      on: {
+        proxyReq: (proxyReq, req) => {
+          try {
+            const auth = req.headers.authorization;
+            const tokenFromHeader =
+              auth && auth.startsWith('Bearer ') ? auth.slice(7).trim() : null;
+
+            const tokenFromCookie =
+              (req as any).cookies?.accessToken ||
+              (req as any).cookies?.jwt ||
+              null;
+
+            const token = tokenFromHeader || tokenFromCookie;
+            if (!token) return;
+
+            const secret = process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
+            if (!secret) return;
+
+            const payload = require('jsonwebtoken').verify(token, secret);
+            const userId = payload.sub ?? payload.userId ?? payload.id;
+
+            if (userId) {
+              proxyReq.setHeader('x-user-id', userId);
+            }
+          } catch {
+            // публичный маршрут остаётся публичным:
+            // если токен отсутствует или битый, просто не прокидываем userId
+          }
+        },
+      },
     }),
   );
 
