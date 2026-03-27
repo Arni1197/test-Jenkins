@@ -35,7 +35,7 @@ export class CatalogEventsPublisher implements OnModuleInit, OnModuleDestroy {
     await this.connection?.close();
   }
 
-  async publish(routingKey: string, payload: Record<string, unknown>) {
+  publish(routingKey: string, payload: Record<string, unknown>): void {
     if (!this.channel) {
       this.logger.warn(`Publish skipped. Channel is not ready. routingKey=${routingKey}`);
       return;

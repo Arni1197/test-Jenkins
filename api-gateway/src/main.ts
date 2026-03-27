@@ -4,11 +4,18 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import { createProxyMiddleware } from 'http-proxy-middleware';
+import jwt from 'jsonwebtoken';
 import { attachUserIdFromJwt } from './auth/userid.middleware';
 
 // ✅ METRICS
 import { Registry } from 'prom-client';
 import { createHttpMetricsMiddleware } from './metrics/http-metrics.middleware';
+
+type JwtPayload = {
+  sub?: string;
+  userId?: string;
+  id?: string;
+};
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -147,7 +154,7 @@ async function bootstrap() {
             const secret = process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
             if (!secret) return;
 
-            const payload = require('jsonwebtoken').verify(token, secret);
+            const payload = jwt.verify(token, secret) as JwtPayload;
             const userId = payload.sub ?? payload.userId ?? payload.id;
 
             if (userId) {
@@ -175,4 +182,4 @@ async function bootstrap() {
   console.log(`🚀 API Gateway running on :${port}`);
 }
 
-bootstrap();
+void bootstrap();
