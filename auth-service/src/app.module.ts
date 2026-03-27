@@ -1,4 +1,3 @@
-// src/app.module.ts
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import {
@@ -7,13 +6,9 @@ import {
   makeHistogramProvider,
 } from '@willsoto/nestjs-prometheus';
 
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { BullModule } from '@nestjs/bullmq';
+import { ConfigModule } from '@nestjs/config';
 
 import { AuthModule } from './modules/auth/auth.module';
-// ✅ УБРАЛ прямой импорт UsersModule отсюда:
-// если он нужен AuthService — он должен приходить через AuthModule imports.
-// Так AppModule остаётся “чистым” для auth-service.
 import { RedisModule } from './modules/redis/redis.module';
 import { envValidationSchema } from './config/env.validation';
 import { ValidationExceptionFilter } from './common/filters/validation-exception.filter';
@@ -25,48 +20,19 @@ import { HttpMetricsMiddleware } from './metrics/http-metrics.middleware';
 
 @Module({
   imports: [
-    // 1) ENV
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
       validationSchema: envValidationSchema,
     }),
 
-    // 2) Metrics
     PrometheusModule.register({
       defaultMetrics: { enabled: true },
       path: '/metrics',
     }),
 
-    // 3) Redis module (как клиент/utility)
     RedisModule,
-
-    // 4) Prisma (auth schema)
     PrismaModule,
-
-    // 5) BullMQ (очереди поверх Redis)
-    BullModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (cfg: ConfigService) => {
-        const url = cfg.get<string>('REDIS_URL');
-    
-        return {
-          connection: url
-            ? { url }
-            : {
-                host: cfg.get('REDIS_HOST', 'localhost'),
-                port: Number(cfg.get('REDIS_PORT', 6379)),
-              },
-        };
-      },
-    }),
-
-    // очередь для событий пользователей
-    BullModule.registerQueue({
-      name: 'user-events',
-    }),
-
-    // 6) Domain module
     AuthModule,
   ],
   providers: [

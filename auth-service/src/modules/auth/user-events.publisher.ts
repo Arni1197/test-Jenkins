@@ -1,13 +1,12 @@
-// src/modules/auth/user-events.publisher.ts
-import { Injectable } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import * as amqp from 'amqplib';
 
-// ✅ У тебя user.id = string (cuid/uuid), поэтому userId здесь тоже string
 export type UserRegisteredPayload = {
   userId: string;
   email: string;
   username?: string | null;
+  sendConfirmationEmail?: boolean;
 };
 
 export type UserEmailVerifiedPayload = {
@@ -16,43 +15,61 @@ export type UserEmailVerifiedPayload = {
 };
 
 @Injectable()
-export class UserEventsPublisher {
-  constructor(
-    @InjectQueue('user-events') private readonly queue: Queue,
-  ) {}
+export class UserEventsPublisher implements OnModuleInit, OnModuleDestroy {
+  private connection?: amqp.ChannelModel;
+  private channel?: amqp.Channel;
+
+  constructor(private readonly config: ConfigService) {}
+
+  private get queueName(): string {
+    return (
+      this.config.get<string>('RABBITMQ_USER_REGISTERED_QUEUE') ??
+      'user.registered'
+    );
+  }
+
+  private get rabbitUrl(): string {
+    return (
+      this.config.get<string>('RABBITMQ_URL') ??
+      'amqp://guest:guest@localhost:5672'
+    );
+  }
+
+  async onModuleInit() {
+    this.connection = await amqp.connect(this.rabbitUrl);
+    this.channel = await this.connection.createChannel();
+    await this.channel.assertQueue(this.queueName, { durable: true });
+  }
+
+  async onModuleDestroy() {
+    await this.channel?.close();
+    await this.connection?.close();
+  }
 
   async publishUserRegistered(payload: UserRegisteredPayload) {
-    await this.queue.add(
-      'UserRegistered',
+    if (!this.channel) {
+      throw new Error('RabbitMQ channel is not initialized');
+    }
+
+    await this.channel.assertQueue(this.queueName, { durable: true });
+
+    this.channel.sendToQueue(
+      this.queueName,
+      Buffer.from(
+        JSON.stringify({
+          ...payload,
+          username: payload.username ?? undefined,
+          createdAt: new Date().toISOString(),
+        }),
+      ),
       {
-        ...payload,
-        // нормализуем username, чтобы не тащить null туда, где не ждёшь
-        username: payload.username ?? undefined,
-        createdAt: new Date().toISOString(),
-      },
-      {
-        attempts: 5,
-        backoff: { type: 'exponential', delay: 1000 },
-        removeOnComplete: 1000,
-        removeOnFail: 1000,
+        persistent: true,
+        contentType: 'application/json',
       },
     );
   }
 
-  // на будущее:
-  async publishUserEmailVerified(payload: UserEmailVerifiedPayload) {
-    await this.queue.add(
-      'UserEmailVerified',
-      {
-        ...payload,
-        verifiedAt: new Date().toISOString(),
-      },
-      {
-        attempts: 5,
-        backoff: { type: 'exponential', delay: 1000 },
-        removeOnComplete: 1000,
-        removeOnFail: 1000,
-      },
-    );
+  async publishUserEmailVerified(_payload: UserEmailVerifiedPayload) {
+    return;
   }
 }
