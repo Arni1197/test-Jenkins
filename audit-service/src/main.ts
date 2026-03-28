@@ -5,7 +5,7 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppModule);
 
-  console.log('🚀 11111Audit Service worker started');
+  console.log('🚀 11Audit Service worker started');
   
   const shutdown = async () => {
     await app.close();
