@@ -1,0 +1,102 @@
+test_pod:
+  enabled: false
+
+loki:
+  enabled: true
+  isDefault: false
+  url: http://{{(include "loki.serviceName" .)}}:{{ .Values.loki.service.port }}
+
+  readinessProbe:
+    httpGet:
+      path: /ready
+      port: http-metrics
+    initialDelaySeconds: 45
+
+  livenessProbe:
+    httpGet:
+      path: /ready
+      port: http-metrics
+    initialDelaySeconds: 45
+
+  datasource:
+    jsonData: "{}"
+    uid: ""
+
+  persistence:
+    enabled: true
+    accessModes:
+      - ReadWriteOnce
+    size: 10Gi
+    storageClassName: nvme.network-drives.csi.timeweb.cloud
+
+  extraEnvFrom:
+    - secretRef:
+        name: loki-s3-credentials
+
+  config:
+    auth_enabled: false
+
+    server:
+      http_listen_port: 3100
+
+    common:
+      path_prefix: /data/loki
+      replication_factor: 1
+      ring:
+        kvstore:
+          store: inmemory
+
+    schema_config:
+      configs:
+        - from: "2026-03-20"
+          store: boltdb-shipper
+          object_store: s3
+          schema: v12
+          index:
+            prefix: index_
+            period: 24h
+
+    storage_config:
+      boltdb_shipper:
+        active_index_directory: /data/loki/index
+        cache_location: /data/loki/boltdb-cache
+        shared_store: s3
+      aws:
+        bucketnames: "s3-loki"
+        endpoint: "s3.twcstorage.ru"
+        region: "ru-1"
+        access_key_id: "W64XKK5RZ1DTXABRLOWO"
+        secret_access_key: "jnxeofHMXGnYQUINJgR9PGQKpyTNu8pNrjdPXOyQ"
+        s3forcepathstyle: true
+        insecure: false
+
+    compactor:
+      working_directory: /data/loki/compactor
+      shared_store: s3
+
+    limits_config:
+      retention_period: 168h
+
+promtail:
+  enabled: false
+
+fluent-bit:
+  enabled: false
+
+grafana:
+  enabled: false
+
+prometheus:
+  enabled: false
+  isDefault: false
+
+filebeat:
+  enabled: false
+
+logstash:
+  enabled: false
+
+proxy:
+  http_proxy: ""
+  https_proxy: ""
+  no_proxy: ""
