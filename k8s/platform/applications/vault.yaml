@@ -5,6 +5,7 @@ metadata:
   namespace: argocd
 spec:
   project: default
+
   source:
     repoURL: https://github.com/Arni1197/test-Jenkins.git
     targetRevision: main
@@ -12,9 +13,17 @@ spec:
     helm:
       valueFiles:
         - ../../../platform/values/vault.yaml
+
   destination:
     server: https://kubernetes.default.svc
     namespace: vault
+
   syncPolicy:
     syncOptions:
       - CreateNamespace=true
+
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      jqPathExpressions:
+        - '.webhooks[].clientConfig.caBundle'
