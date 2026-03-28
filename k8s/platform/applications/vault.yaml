@@ -5,17 +5,13 @@ metadata:
   namespace: argocd
 spec:
   project: default
-  sources:
-    - repoURL: https://helm.releases.hashicorp.com
-      chart: vault
-      targetRevision: 0.32.0
-      helm:
-        releaseName: vault
-        valueFiles:
-          - $values/k8s/platform/values/vault.yaml
-    - repoURL: https://github.com/Arni1197/test-Jenkins.git
-      targetRevision: main
-      ref: values
+  source:
+    repoURL: https://github.com/Arni1197/test-Jenkins.git
+    targetRevision: main
+    path: k8s/charts/platform/vault
+    helm:
+      valueFiles:
+        - ../../../platform/values/vault.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: vault
