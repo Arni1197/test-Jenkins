@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: jaeger
+  namespace: argocd
+spec:
+  project: default
+
+  sources:
+    - repoURL: https://jaegertracing.github.io/helm-charts
+      chart: jaeger
+      targetRevision: 4.6.0
+      helm:
+        releaseName: jaeger
+        valueFiles:
+          - $values/k8s/platform/values/jaeger.yaml
+
+    - repoURL: https://github.com/Arni1197/test-Jenkins.git
+      targetRevision: main
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: jaeger
+
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
