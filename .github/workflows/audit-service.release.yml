@@ -1,9 +1,9 @@
-name: frontend | release (trivy -> retag & sign)
+name: audit-service | release (trivy -> retag & sign)
 
 on:
   push:
     tags:
-      - "frontend-v*.*.*"
+      - "audit-service-v*.*.*"
 
 permissions:
   contents: read
@@ -11,12 +11,12 @@ permissions:
   id-token: write
 
 concurrency:
-  group: release-frontend-${{ github.ref }}
+  group: release-audit-service-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   trivy_gate:
-    name: frontend | Trivy gate (sha tag)
+    name: audit-service | Trivy gate (sha tag)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -33,7 +33,7 @@ jobs:
       - name: Wait until sha image exists in registry
         run: |
           set -e
-          IMG="ghcr.io/${{ github.repository_owner }}/frontend:sha-${{ github.sha }}"
+          IMG="ghcr.io/${{ github.repository_owner }}/audit-service:sha-${{ github.sha }}"
           echo "Checking image exists: $IMG"
           for i in $(seq 1 30); do
             if docker manifest inspect "$IMG" >/dev/null 2>&1; then
@@ -46,22 +46,22 @@ jobs:
           echo "❌ Image not found after retries: $IMG"
           exit 1
 
-      - name: Trivy scan (fail on CRITICAL)
-        uses: aquasecurity/trivy-action@0.24.0
+      - name: Trivy scan (fail on HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ghcr.io/${{ github.repository_owner }}/frontend:sha-${{ github.sha }}
+          image-ref: ghcr.io/${{ github.repository_owner }}/audit-service:sha-${{ github.sha }}
           format: table
           exit-code: 1
-          severity: CRITICAL
+          severity: CRITICAL,HIGH
           ignore-unfixed: true
 
-  release:
-    name: frontend | Retag & sign (release)
+  retag_sign:
+    name: audit-service | Retag & sign (release)
     needs: [trivy_gate]
     uses: ./.github/workflows/_lib-release-retag-sign.yml
     with:
-      service_name: "frontend"
-      image: "ghcr.io/${{ github.repository_owner }}/frontend"
+      service_name: "audit-service"
+      image: "ghcr.io/${{ github.repository_owner }}/audit-service"
       source_tag: "sha-${{ github.sha }}"
       release_tag: "${{ github.ref_name }}"
       registry: "ghcr.io"
