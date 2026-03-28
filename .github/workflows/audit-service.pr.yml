@@ -1,0 +1,28 @@
+name: audit-service | PR checks
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "audit-service/**"
+      - ".github/workflows/pr/audit-service.pr.yml"
+      - ".github/workflows/_lib-node-pr-checks.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-audit-service-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    uses: ./.github/workflows/_lib-node-pr-checks.yml
+    with:
+      service_name: "audit-service"
+      working_directory: "audit-service"
+      node_version: "20"
+      cache_dependency_path: "audit-service/package-lock.json"
+      run_lint: true
+      run_test: true
+      run_build: false

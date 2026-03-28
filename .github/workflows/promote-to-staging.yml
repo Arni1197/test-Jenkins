@@ -1,3 +1,4 @@
+# .github/workflows/promote-dev-to-staging.yml
 name: promote | dev -> staging (PR)
 
 on:
@@ -68,6 +69,18 @@ jobs:
       base_branch: "main"
       source_values_file: "k8s/environments/local/values/services/frontend.yaml"
       target_values_file: "k8s/environments/staging/values/services/frontend.yaml"
+      pr_branch_prefix: "promote"
+      pr_labels: "promotion,staging"
+      skip_if_exists: true
+
+  audit_service:
+    uses: ./.github/workflows/_lib-promote-pr.yml
+    with:
+      service_name: "audit-service"
+      target_env: "staging"
+      base_branch: "main"
+      source_values_file: "k8s/environments/local/values/services/audit-service.yaml"
+      target_values_file: "k8s/environments/staging/values/services/audit-service.yaml"
       pr_branch_prefix: "promote"
       pr_labels: "promotion,staging"
       skip_if_exists: true

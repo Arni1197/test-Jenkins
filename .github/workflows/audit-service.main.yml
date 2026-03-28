@@ -1,11 +1,11 @@
-name: frontend | main build & dev deploy (via PR)
+name: audit-service | main build & dev deploy (via PR)
 
 on:
   push:
     branches: ["main"]
     paths:
-      - "frontend/**"
-      - ".github/workflows/main/frontend.main.yml"
+      - "audit-service/**"
+      - ".github/workflows/main/audit-service.main.yml"
 
 permissions:
   contents: write
@@ -13,36 +13,36 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: main-frontend-${{ github.ref }}
+  group: main-audit-service-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build_push:
-    name: frontend | Docker build & push
+    name: audit-service | Docker build & push
     uses: ./.github/workflows/_lib-docker-build-push.yml
     permissions:
       contents: read
       packages: write
     with:
-      service_name: "frontend"
-      context: "frontend"
-      dockerfile: "frontend/Dockerfile"
-      image: "ghcr.io/arni1197/frontend"
+      service_name: "audit-service"
+      context: "audit-service"
+      dockerfile: "audit-service/Dockerfile"
+      image: "ghcr.io/arni1197/audit-service"
       tag: "sha-${{ github.sha }}"
       push: true
       platforms: linux/amd64,linux/arm64
 
   update_dev_values_pr:
-    name: frontend | PR update dev values
+    name: audit-service | PR update dev values
     needs: [build_push]
     uses: ./.github/workflows/_lib-promote-pr.yml
     permissions:
       contents: write
       pull-requests: write
     with:
-      service_name: "frontend"
+      service_name: "audit-service"
       target_env: "dev"
-      target_values_file: "k8s/environments/local/values/services/frontend.yaml"
+      target_values_file: "k8s/environments/local/values/services/audit-service.yaml"
       new_tag: "sha-${{ github.sha }}"
       new_digest: "${{ needs.build_push.outputs.digest }}"
       base_branch: "main"
