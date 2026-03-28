@@ -1,0 +1,54 @@
+controller:
+  replicaCount: 1
+
+  ingressClass: nginx
+
+  ingressClassResource:
+    enabled: true
+    name: nginx
+    default: true
+    controllerValue: k8s.io/ingress-nginx
+
+  publishService:
+    enabled: true
+
+  service:
+    type: LoadBalancer
+    enabled: true
+    external:
+      enabled: true
+    ports:
+      http: 80
+      https: 443
+    targetPorts:
+      http: http
+      https: https
+
+  admissionWebhooks:
+    enabled: true
+    patch:
+      enabled: true
+
+  metrics:
+    enabled: false
+
+  autoscaling:
+    enabled: false
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 90Mi
+
+  nodeSelector:
+    kubernetes.io/os: linux
+
+defaultBackend:
+  enabled: false
+
+rbac:
+  create: true
+
+serviceAccount:
+  create: true
+  automountServiceAccountToken: true
