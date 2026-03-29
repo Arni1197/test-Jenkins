@@ -1,15 +1,23 @@
-output "app_postgres_host" {
-  value = twc_database_cluster.app_postgres.host
+output "app_postgres_cluster_id" {
+  value = twc_database_cluster.app_postgres.id
 }
 
-output "audit_postgres_host" {
-  value = twc_database_cluster.audit_postgres.host
+output "audit_postgres_cluster_id" {
+  value = twc_database_cluster.audit_postgres.id
 }
 
-output "app_postgres_user" {
-  value = twc_database_user.app_user.name
+output "app_postgres_location" {
+  value = twc_database_cluster.app_postgres.location
 }
 
-output "audit_postgres_user" {
-  value = twc_database_user.audit_user.name
+output "audit_postgres_location" {
+  value = twc_database_cluster.audit_postgres.location
+}
+
+output "app_postgres_port" {
+  value = twc_database_cluster.app_postgres.port
+}
+
+output "audit_postgres_port" {
+  value = twc_database_cluster.audit_postgres.port
 }
