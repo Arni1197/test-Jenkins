@@ -6,6 +6,10 @@ loki:
   isDefault: false
   url: http://{{(include "loki.serviceName" .)}}:{{ .Values.loki.service.port }}
 
+  # 🔥 закрепляем Loki на observability-ноды
+  nodeSelector:
+    workload: observability
+
   readinessProbe:
     httpGet:
       path: /ready
@@ -28,10 +32,6 @@ loki:
       - ReadWriteOnce
     size: 10Gi
     storageClassName: nvme.network-drives.csi.timeweb.cloud
-
-  extraEnvFrom:
-    - secretRef:
-        name: loki-s3-credentials
 
   config:
     auth_enabled: false
@@ -61,12 +61,13 @@ loki:
         active_index_directory: /data/loki/index
         cache_location: /data/loki/boltdb-cache
         shared_store: s3
+
       aws:
         bucketnames: "s3-loki"
         endpoint: "s3.twcstorage.ru"
         region: "ru-1"
-        access_key_id: "W64XKK5RZ1DTXABRLOWO"
-        secret_access_key: "jnxeofHMXGnYQUINJgR9PGQKpyTNu8pNrjdPXOyQ"
+        access_key_id: "ТВОЙ_ACCESS_KEY"
+        secret_access_key: "ТВОЙ_SECRET_KEY"
         s3forcepathstyle: true
         insecure: false
 
