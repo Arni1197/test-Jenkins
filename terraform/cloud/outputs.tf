@@ -21,3 +21,12 @@ output "app_postgres_port" {
 output "audit_postgres_port" {
   value = twc_database_cluster.audit_postgres.port
 }
+
+
+output "app_postgres_networks" {
+  value = twc_database_cluster.app_postgres.networks
+}
+
+output "audit_postgres_networks" {
+  value = twc_database_cluster.audit_postgres.networks
+}
