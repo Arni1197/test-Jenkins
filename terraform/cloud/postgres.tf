@@ -1,6 +1,6 @@
 data "twc_database_preset" "app_postgres_preset" {
   location = var.region
-  type     = "postgres16"
+  type     = "postgres"
 
   cpu  = 2
   ram  = 4096
@@ -15,7 +15,7 @@ resource "twc_database_cluster" "app_postgres" {
 
 data "twc_database_preset" "audit_postgres_preset" {
   location = var.region
-  type     = "postgres16"
+  type     = "postgres"
 
   cpu  = 2
   ram  = 4096
