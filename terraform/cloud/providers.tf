@@ -1,3 +1,3 @@
-provider "timeweb-cloud" {
+provider "twc" {
   token = var.timeweb_token
 }
