@@ -27,3 +27,19 @@ variable "prod_namespace" {
   type        = string
   default     = "prod"
 }
+variable "kubernetes_host" {
+  description = "Kubernetes API server URL for Vault auth backend"
+  type        = string
+}
+
+variable "kubernetes_ca_cert" {
+  description = "Kubernetes CA certificate for Vault auth backend"
+  type        = string
+  sensitive   = true
+}
+
+variable "kubernetes_token_reviewer_jwt" {
+  description = "Token reviewer JWT for Vault Kubernetes auth backend"
+  type        = string
+  sensitive   = true
+}
