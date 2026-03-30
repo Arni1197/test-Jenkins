@@ -16,7 +16,7 @@ spec:
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: game-services
+    namespace: dev
 
   syncPolicy:
     automated:
