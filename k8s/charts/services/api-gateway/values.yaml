@@ -1,17 +1,15 @@
-replicaCount: 1  # минимально, чтобы chart стартовал
+replicaCount: 1
 
 image:
   repository: ghcr.io/arni1197/api-gateway
+  tag: "latest"
   pullPolicy: IfNotPresent
 
 service:
   type: ClusterIP
   port: 3001
 
-resources: {}    # ✅ вообще пусто — чтобы не навязывать лимиты
-
-env:
-  NODE_ENV: "development"
+resources: {}
 
 secrets:
   envSecretName: secret-api-gateway
