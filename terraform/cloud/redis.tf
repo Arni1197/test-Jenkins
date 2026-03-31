@@ -8,7 +8,4 @@ resource "twc_database_cluster" "app_redis" {
   type      = "redis7"
   preset_id = data.twc_database_preset.app_redis_preset.id
 
-  network {
-    id = var.vpc_id
-  }
 }
