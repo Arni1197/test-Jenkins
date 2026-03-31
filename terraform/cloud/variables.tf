@@ -15,3 +15,15 @@ variable "postgres_version" {
   type        = string
   default     = "15"
 }
+
+
+variable "vpc_id" {
+  description = "VPC ID for private network"
+  type        = string
+}
+
+variable "redis_version" {
+  description = "Redis version label for documentation/reference"
+  type        = string
+  default     = "redis7"
+}
