@@ -1,4 +1,12 @@
 terraform {
+  cloud {
+    organization = "LAB-DEVOPS1997"
+
+    workspaces {
+      name = "cloud-dev"
+    }
+  }
+
   required_version = ">= 1.5.0"
 
   required_providers {
