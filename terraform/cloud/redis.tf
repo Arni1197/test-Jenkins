@@ -5,7 +5,7 @@ data "twc_database_preset" "app_redis_preset" {
 
 resource "twc_database_cluster" "app_redis" {
   name      = "app-redis"
-  type      = "redis7"
+  type      = "redis8"
   preset_id = data.twc_database_preset.app_redis_preset.id
 
 }
