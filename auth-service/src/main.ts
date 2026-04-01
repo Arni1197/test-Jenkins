@@ -115,7 +115,7 @@ async function bootstrap() {
   await app.listen(port, '0.0.0.0');
 
   // eslint-disable-next-line no-console
-  console.log(`🚀 Auth-service running on http://localhost:${port}`);
+  console.log(`🚀 Auth-service running on port ${port}`);
 }
 
 bootstrap();
