@@ -1,0 +1,24 @@
+fullnameOverride: victoria-metrics-operator
+
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 300m
+    memory: 256Mi
+
+service:
+  type: ClusterIP
+
+operator:
+  disable_prometheus_converter: false
+  enable_converter_ownership: false
+  useCustomConfigReloader: false
+
+admissionWebhooks:
+  enabled: true
+  certManager:
+    enabled: false
