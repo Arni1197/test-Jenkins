@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: victoria-metrics-operator
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://victoriametrics.github.io/helm-charts/
+      chart: victoria-metrics-operator
+      targetRevision: 0.49.1
+      helm:
+        releaseName: victoriametrics
+        valueFiles:
+          - $values/k8s/platform/values/victoria-metrics-operator.yaml
+    - repoURL: https://github.com/Arni1197/test-Jenkins.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: victoria-metrics-operator
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
