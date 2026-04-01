@@ -4,20 +4,9 @@ metadata:
   name: vm-single
   namespace: victoria-metrics
 spec:
-  retentionPeriod: "30d"
-  replicaCount: 1
-
   image:
     repository: victoriametrics/victoria-metrics
-
-  storage:
-    accessModes:
-      - ReadWriteOnce
-    storageClassName: nvme.network-drives.csi.timeweb.cloud
-    resources:
-      requests:
-        storage: 30Gi
-
+  replicaCount: 1
   resources:
     requests:
       cpu: 250m
@@ -25,7 +14,14 @@ spec:
     limits:
       cpu: 1000m
       memory: 2Gi
-
+  retentionPeriod: 30d
   serviceSpec:
     spec:
-      type: ClusterIPc
+      type: ClusterIP
+  storage:
+    accessModes:
+      - ReadWriteOnce
+    storageClassName: nvme.network-drives.csi.timeweb.cloud
+    resources:
+      requests:
+        storage: 30Gi

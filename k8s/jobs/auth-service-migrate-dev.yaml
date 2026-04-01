@@ -1,0 +1,20 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: auth-service-migrate
+  namespace: dev
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: ghcr.io/arni1197/auth-service@sha256:f42c45229db9b712d3fe2a67e057e5d9009db006d10f4c665f235df88e404393
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - secretRef:
+                name: secret-auth-service
+          command: ["/bin/sh", "-c"]
+          args:
+            - npx prisma migrate deploy
