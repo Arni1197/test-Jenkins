@@ -13,6 +13,7 @@ async function bootstrap() {
     new ValidationPipe({
       whitelist: true,
       transform: true,
+      forbidNonWhitelisted: false,
     }),
   );
 
@@ -20,9 +21,11 @@ async function bootstrap() {
   prismaService.enableShutdownHooks(app);
 
   const port = Number(process.env.PORT ?? 3003);
+
   await app.listen(port, '0.0.0.0');
 
   console.log(`🚀 Catalog Service running on http://localhost:${port}`);
+  console.log(`📊 Metrics available at http://localhost:${port}/api/metrics`);
 }
 
 void bootstrap();
