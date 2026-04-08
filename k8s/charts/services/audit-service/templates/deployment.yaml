@@ -13,6 +13,8 @@ spec:
 
   template:
     metadata:
+      annotations:
+        instrumentation.opentelemetry.io/inject-nodejs: "jaeger/nodejs-instrumentation"
       labels:
         app: audit-service
 
@@ -24,6 +26,10 @@ spec:
 
           ports:
             - containerPort: {{ .Values.containerPort }}
+
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: "audit-service"
 
           envFrom:
             - secretRef:

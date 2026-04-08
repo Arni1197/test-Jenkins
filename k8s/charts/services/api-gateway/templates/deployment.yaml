@@ -11,6 +11,8 @@ spec:
       app.kubernetes.io/name: api-gateway
   template:
     metadata:
+      annotations:
+        instrumentation.opentelemetry.io/inject-nodejs: "jaeger/nodejs-instrumentation"
       labels:
         app.kubernetes.io/name: api-gateway
     spec:
@@ -21,6 +23,10 @@ spec:
 
           ports:
             - containerPort: {{ .Values.service.port }}
+
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: "api-gateway"
 
           envFrom:
             - secretRef:
