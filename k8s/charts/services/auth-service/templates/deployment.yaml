@@ -11,6 +11,8 @@ spec:
       app.kubernetes.io/name: auth-service
   template:
     metadata:
+      annotations:
+        instrumentation.opentelemetry.io/inject-nodejs: "jaeger/nodejs-instrumentation"
       labels:
         app.kubernetes.io/name: auth-service
     spec:
@@ -20,6 +22,10 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
           ports:
             - containerPort: {{ .Values.service.port }}
+
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: "auth-service"
 
           # ✅ Забираем ВСЕ переменные из Kubernetes Secret
           envFrom:
