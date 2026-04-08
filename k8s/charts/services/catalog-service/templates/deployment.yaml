@@ -13,6 +13,8 @@ spec:
       app.kubernetes.io/name: catalog-service
   template:
     metadata:
+      annotations:
+        instrumentation.opentelemetry.io/inject-nodejs: "jaeger/nodejs-instrumentation"
       labels:
         app.kubernetes.io/name: catalog-service
     spec:
