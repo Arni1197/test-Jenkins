@@ -25,6 +25,10 @@ spec:
           ports:
             - containerPort: {{ .Values.service.port }}
 
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: "catalog-service"
+
           # ✅ Забираем ВСЕ переменные из Kubernetes Secret
           envFrom:
             - secretRef:
