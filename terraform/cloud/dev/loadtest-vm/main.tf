@@ -12,7 +12,7 @@ terraform {
     organization = "LAB-DEVOPS1997"
 
     workspaces {
-      name = "game-platform-loadtest-dev"
+      name = "LOAD_VM"
     }
   }
 }
@@ -37,7 +37,6 @@ resource "twc_server" "loadtest_vm" {
   name                      = var.server_name
   os_id                     = data.twc_os.debian_13.id
   availability_zone         = var.availability_zone
-  location                  = var.location
   ssh_keys_ids              = [data.twc_ssh_keys.main.id]
   is_root_password_required = false
   comment                   = "Persistent VM for k6 load testing and future GitHub self-hosted runner"

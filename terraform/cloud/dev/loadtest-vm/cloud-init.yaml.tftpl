@@ -1,39 +1,8 @@
-#cloud-config
-package_update: true
-package_upgrade: true
-
-users:
-  - default
-  - name: ${admin_user}
-    groups: sudo
-    shell: /bin/bash
-    sudo: ALL=(ALL) NOPASSWD:ALL
-
-packages:
-  - curl
-  - jq
-  - git
-  - unzip
-  - ca-certificates
-  - gnupg
-  - apt-transport-https
-
-write_files:
-  - path: /etc/motd
-    permissions: "0644"
-    content: |
-      game-platform loadtest VM
-      tools: k6, curl, jq, git
-      purpose: external load testing for Kubernetes ingress/services
-
-runcmd:
-  - mkdir -p /etc/apt/keyrings
-  - bash -lc 'curl -fsSL https://dl.k6.io/key.gpg | gpg --dearmor -o /etc/apt/keyrings/k6.gpg'
-  - bash -lc 'echo "deb [signed-by=/etc/apt/keyrings/k6.gpg] https://dl.k6.io/deb stable main" > /etc/apt/sources.list.d/k6.list'
-  - apt-get update
-  - apt-get install -y k6
-  - mkdir -p /opt/loadtests
-  - chown -R ${admin_user}:${admin_user} /opt/loadtests
-  - systemctl restart ssh || true
-
-final_message: "cloud-init finished for ${admin_user}"
+server_name       = "game-platform-loadtest-dev"
+location          = "ru-1"
+availability_zone = "spb-3"
+cpu               = 2
+ram_mb            = 2048
+disk_mb           = 40960
+admin_user        = "devops"
+ssh_key_name      = "sherlock97@Noutbuk-Arnold.local"
