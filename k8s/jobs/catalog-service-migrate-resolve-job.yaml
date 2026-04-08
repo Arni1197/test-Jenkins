@@ -1,18 +1,18 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: catalog-service-migrate
+  name: catalog-service-migrate-resolve
   namespace: dev
 spec:
   backoffLimit: 1
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: catalog-service-migrate
+        app.kubernetes.io/name: catalog-service-migrate-resolve
     spec:
       restartPolicy: Never
       containers:
-        - name: catalog-service-migrate
+        - name: catalog-service-migrate-resolve
           image: ghcr.io/arni1197/catalog-service@sha256:ca5f89c082b71b7845c967bc061367f87d1c3bdfe0c0662556fb4f07d5bdc819
           imagePullPolicy: IfNotPresent
           envFrom:
@@ -22,5 +22,5 @@ spec:
             - sh
             - -c
             - |
-              echo "Running catalog migrations..."
-              npx prisma migrate deploy
+              echo "Resolving failed migration..."
+              npx prisma migrate resolve --rolled-back 20260327083824_init_catalog
