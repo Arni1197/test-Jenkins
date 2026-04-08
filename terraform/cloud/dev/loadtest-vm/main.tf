@@ -52,13 +52,3 @@ resource "twc_server" "loadtest_vm" {
     admin_user = var.admin_user
   })
 }
-
-resource "twc_floating_ip" "loadtest_ip" {
-  availability_zone = var.availability_zone
-  comment           = "Floating IP for ${var.server_name}"
-
-  resource {
-    type = "server"
-    id   = twc_server.loadtest_vm.id
-  }
-}

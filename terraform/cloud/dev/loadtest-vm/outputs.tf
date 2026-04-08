@@ -13,12 +13,3 @@ output "main_ipv4" {
   value       = twc_server.loadtest_vm.main_ipv4
 }
 
-output "floating_ip" {
-  description = "Floating public IP"
-  value       = twc_floating_ip.loadtest_ip.ip
-}
-
-output "floating_ip_id" {
-  description = "Floating IP resource ID"
-  value       = twc_floating_ip.loadtest_ip.id
-}
