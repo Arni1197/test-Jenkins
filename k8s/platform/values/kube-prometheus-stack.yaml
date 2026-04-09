@@ -30,7 +30,6 @@ alertmanager:
 
   alertmanagerSpec:
     replicas: 1
-
     storage:
       volumeClaimTemplate:
         spec:
@@ -40,7 +39,6 @@ alertmanager:
           resources:
             requests:
               storage: 5Gi
-
     resources:
       requests:
         cpu: 50m
@@ -57,9 +55,15 @@ prometheus:
     replicas: 1
     retention: 24h
 
-    resources: {}
+    resources:
+      requests:
+        cpu: 300m
+        memory: 1Gi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
 
-    additionalScrapeConfigsSecret:
+    additionalScrapeConfigs:
       name: additional-scrape-configs
       key: additional-scrape-configs.yaml
 
