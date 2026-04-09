@@ -30,6 +30,7 @@ alertmanager:
 
   alertmanagerSpec:
     replicas: 1
+
     storage:
       volumeClaimTemplate:
         spec:
@@ -39,6 +40,7 @@ alertmanager:
           resources:
             requests:
               storage: 5Gi
+
     resources:
       requests:
         cpu: 50m
@@ -64,8 +66,37 @@ prometheus:
         memory: 2Gi
 
     additionalScrapeConfigs:
-      name: additional-scrape-configs
-      key: additional-scrape-configs.yaml
+      - job_name: timeweb-app-postgres
+        scrape_interval: 30s
+        scheme: https
+        metrics_path: /d2676bd4-e66e-46b2-86c5-73a635f59e90/service/metrics
+        static_configs:
+          - targets:
+              - dbs-exporter.timeweb.cloud
+
+      - job_name: timeweb-audit-postgres
+        scrape_interval: 30s
+        scheme: https
+        metrics_path: /03190b4c-1d91-4b21-b8e6-e3e8aa325a12/service/metrics
+        static_configs:
+          - targets:
+              - dbs-exporter.timeweb.cloud
+
+      - job_name: timeweb-redis
+        scrape_interval: 30s
+        scheme: https
+        metrics_path: /ebf82e48-b020-4f37-960f-5ac0fb7454f6/service/metrics
+        static_configs:
+          - targets:
+              - dbs-exporter.timeweb.cloud
+
+      - job_name: timeweb-rabbitmq
+        scrape_interval: 30s
+        scheme: https
+        metrics_path: /766021f5-91ad-458c-a366-683c9a307aa8/service/metrics
+        static_configs:
+          - targets:
+              - dbs-exporter.timeweb.cloud
 
 prometheusOperator:
   resources:
