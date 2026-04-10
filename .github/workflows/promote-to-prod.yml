@@ -33,7 +33,7 @@ jobs:
       service_name: "${{ inputs.service }}"
       target_env: "prod"
       base_branch: "main"
-      target_values_file: "k8s/envs/prod/values/${{ inputs.service }}.yaml"
+      target_values_file: "k8s/environments/production/values/${{ inputs.service }}.yaml"
       new_tag: "${{ inputs.release_tag }}"
       pr_branch_prefix: "promote"
       pr_labels: "promotion,prod"
