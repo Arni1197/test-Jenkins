@@ -16,7 +16,7 @@ spec:
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: game-services-staging
+    namespace: staging
 
   syncPolicy:
     automated:

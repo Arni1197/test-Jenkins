@@ -14,7 +14,7 @@ spec:
         - ../../../environments/staging/values/services/api-gateway.yaml
   destination:
     server: https://kubernetes.default.svc
-    namespace: game-services-staging
+    namespace: staging
   syncPolicy:
     syncOptions:
       - CreateNamespace=true
