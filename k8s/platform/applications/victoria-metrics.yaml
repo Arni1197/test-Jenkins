@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/Arni1197/test-Jenkins.git
     targetRevision: main
-    path: k8s/charts/platform/victoria-metrics
+    path: k8s/platform/manifests/victoria-metrics
   destination:
     server: https://kubernetes.default.svc
     namespace: victoria-metrics

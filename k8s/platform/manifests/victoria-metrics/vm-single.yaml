@@ -1,0 +1,42 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMSingle
+metadata:
+  name: vm-single
+  namespace: victoria-metrics
+spec:
+  replicaCount: 1
+
+  image:
+    repository: victoriametrics/victoria-metrics
+
+  retentionPeriod: 30d
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+
+  serviceSpec:
+    spec:
+      type: ClusterIP
+
+  storage:
+    accessModes:
+      - ReadWriteOnce
+    storageClassName: nvme.network-drives.csi.timeweb.cloud
+    resources:
+      requests:
+        storage: 30Gi
+
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: workload
+                operator: In
+                values:
+                  - observability
