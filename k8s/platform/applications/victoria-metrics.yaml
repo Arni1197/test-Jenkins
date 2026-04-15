@@ -3,15 +3,17 @@ kind: Application
 metadata:
   name: victoria-metrics
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/tracking-id: root-platform:argoproj.io/Application:argocd/victoria-metrics
 spec:
   project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: victoria-metrics
   source:
     repoURL: https://github.com/Arni1197/test-Jenkins.git
     targetRevision: main
     path: k8s/platform/manifests/victoria-metrics
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: victoria-metrics
   syncPolicy:
     syncOptions:
       - CreateNamespace=true
