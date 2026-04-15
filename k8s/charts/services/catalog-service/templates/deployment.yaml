@@ -18,6 +18,10 @@ spec:
       labels:
         app.kubernetes.io/name: catalog-service
     spec:
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: catalog-service
           image: "{{ .Values.image.repository }}{{- if .Values.image.digest }}@{{ .Values.image.digest }}{{- else }}:{{ .Values.image.tag }}{{- end }}"
@@ -29,7 +33,6 @@ spec:
             - name: OTEL_SERVICE_NAME
               value: "catalog-service"
 
-          # ✅ Забираем ВСЕ переменные из Kubernetes Secret
           envFrom:
             - secretRef:
                 name: {{ .Values.secrets.envSecretName | default "secret-catalog" | quote }}

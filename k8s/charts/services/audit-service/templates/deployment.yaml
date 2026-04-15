@@ -19,6 +19,10 @@ spec:
         app: audit-service
 
     spec:
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: audit-service
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
