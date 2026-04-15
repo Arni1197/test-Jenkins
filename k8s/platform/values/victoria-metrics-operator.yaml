@@ -2,6 +2,16 @@ fullnameOverride: victoria-metrics-operator
 
 replicaCount: 1
 
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: workload
+              operator: In
+              values:
+                - observability
+
 resources:
   requests:
     cpu: 100m
@@ -9,16 +19,3 @@ resources:
   limits:
     cpu: 300m
     memory: 256Mi
-
-service:
-  type: ClusterIP
-
-operator:
-  disable_prometheus_converter: false
-  enable_converter_ownership: false
-  useCustomConfigReloader: false
-
-admissionWebhooks:
-  enabled: true
-  certManager:
-    enabled: false

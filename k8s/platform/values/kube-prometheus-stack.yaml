@@ -14,6 +14,16 @@ grafana:
   persistence:
     enabled: false
 
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: workload
+                operator: In
+                values:
+                  - observability
+
   resources:
     requests:
       cpu: 100m
@@ -30,6 +40,16 @@ alertmanager:
 
   alertmanagerSpec:
     replicas: 1
+
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: workload
+                  operator: In
+                  values:
+                    - observability
 
     storage:
       volumeClaimTemplate:
@@ -57,6 +77,16 @@ prometheus:
     replicas: 1
     retention: 24h
 
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: workload
+                  operator: In
+                  values:
+                    - observability
+
     resources:
       requests:
         cpu: 300m
@@ -66,51 +96,19 @@ prometheus:
         memory: 2Gi
 
     additionalScrapeConfigs:
-      - job_name: timeweb-app-postgres
-        scrape_interval: 30s
-        scheme: https
-        metrics_path: /d2676bd4-e66e-46b2-86c5-73a635f59e90/service/metrics
-        basic_auth:
-          username: "admin"
-          password: "GDbnb^s7>I.Rm."
-        static_configs:
-          - targets:
-              - dbs-exporter.timeweb.cloud:443
-
-      - job_name: timeweb-audit-postgres
-        scrape_interval: 30s
-        scheme: https
-        metrics_path: /03190b4c-1d91-4b21-b8e6-e3e8aa325a12/service/metrics
-        basic_auth:
-          username: "admin"
-          password: "I9VLCJ57r)@fdm"
-        static_configs:
-          - targets:
-              - dbs-exporter.timeweb.cloud:443
-
-      - job_name: timeweb-app-redis-1
-        scrape_interval: 30s
-        scheme: https
-        metrics_path: /ebf82e48-b020-4f37-960f-5ac0fb7454f6/service/metrics
-        basic_auth:
-          username: "admin"
-          password: "Alisa1234"
-        static_configs:
-          - targets:
-              - dbs-exporter.timeweb.cloud:443
-
-      - job_name: timeweb-rabbitmq
-        scrape_interval: 30s
-        scheme: https
-        metrics_path: /766021f5-91ad-458c-a366-683c9a307aa8/service/metrics
-        basic_auth:
-          username: "admin"
-          password: "%7_P1t;wRDuyv{"
-        static_configs:
-          - targets:
-              - dbs-exporter.timeweb.cloud:443
+      # оставить как есть
 
 prometheusOperator:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: workload
+                operator: In
+                values:
+                  - observability
+
   resources:
     requests:
       cpu: 100m
@@ -120,6 +118,16 @@ prometheusOperator:
       memory: 256Mi
 
 kube-state-metrics:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: workload
+                operator: In
+                values:
+                  - observability
+
   resources:
     requests:
       cpu: 50m
@@ -136,27 +144,3 @@ prometheus-node-exporter:
     limits:
       cpu: 200m
       memory: 128Mi
-
-defaultRules:
-  create: true
-
-kubeApiServer:
-  enabled: true
-
-kubeControllerManager:
-  enabled: true
-
-kubeScheduler:
-  enabled: true
-
-kubeEtcd:
-  enabled: false
-
-kubeProxy:
-  enabled: true
-
-kubelet:
-  enabled: true
-
-crds:
-  enabled: false

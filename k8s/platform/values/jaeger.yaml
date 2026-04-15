@@ -1,24 +1,20 @@
-provisionDataStore:
-  cassandra: false
-  elasticsearch: false
-  kafka: false
-
-storage:
-  type: badger
-  badger:
-    ephemeral: false
-    persistence:
-      enabled: true
-      storageClass: nvme.network-drives.csi.timeweb.cloud
-      accessModes:
-        - ReadWriteOnce
-      size: 10Gi
-
 allInOne:
   enabled: true
   replicaCount: 1
+
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: workload
+                operator: In
+                values:
+                  - observability
+
   image:
     tag: "1.53"
+
   extraEnv:
     - name: BADGER_EPHEMERAL
       value: "false"
@@ -26,6 +22,7 @@ allInOne:
       value: /badger/data
     - name: BADGER_DIRECTORY_KEY
       value: /badger/key
+
   resources:
     requests:
       cpu: 100m
@@ -33,24 +30,3 @@ allInOne:
     limits:
       cpu: 500m
       memory: 1Gi
-
-agent:
-  enabled: false
-
-collector:
-  enabled: false
-
-query:
-  enabled: false
-
-ingester:
-  enabled: false
-
-sampling:
-  enabled: false
-
-hotrod:
-  enabled: false
-
-spark:
-  enabled: false
