@@ -12,6 +12,16 @@ service:
   type: ClusterIP
   port: 3002
 
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: workload
+              operator: In
+              values:
+                - apps
 resources:
   requests:
     cpu: 50m
