@@ -87,6 +87,9 @@ prometheus:
                   values:
                     - observability
 
+    remoteWrite:
+      - url: http://vmsingle-vm-single.victoria-metrics:8429/api/v1/write
+
     resources:
       requests:
         cpu: 300m
