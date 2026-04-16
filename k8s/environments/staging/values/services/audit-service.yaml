@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ghcr.io/arni1197/audit-service
-  tag: sha-REPLACE_ME
+  tag: sha-9d3103fce33cc17ee085fb86b48ea37d4455779e
   pullPolicy: IfNotPresent
 
 containerPort: 3000
