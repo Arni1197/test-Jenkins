@@ -79,45 +79,22 @@ async function bootstrap() {
   // =========================
   // ✅ USERS (debug version)
   // =========================
+  // =========================
+  // ✅ USERS
+  // =========================
   expressApp.use(
     '/api/users',
-    (req, _res, next) => {
-      console.log(
-        'DEBUG USERS ROUTE HIT',
-        req.method,
-        (req as any).originalUrl ?? req.url,
-        'target=',
-        userTarget,
-      );
-      next();
-    },
+    attachUserIdFromJwt,
     createProxyMiddleware({
       target: userTarget,
       changeOrigin: true,
       pathRewrite: (path) => `/api/users${path.replace('/api/users', '')}`,
       on: {
-        proxyReq: (_proxyReq, req) => {
-          console.log(
-            'DEBUG USERS PROXY REQ',
-            req.method,
-            (req as any).originalUrl ?? req.url,
-          );
-        },
-        proxyRes: (proxyRes, req) => {
-          console.log(
-            'DEBUG USERS PROXY RES',
-            req.method,
-            (req as any).originalUrl ?? req.url,
-            proxyRes.statusCode,
-          );
-        },
-        error: (err, req) => {
-          console.error(
-            'DEBUG USERS PROXY ERROR',
-            req.method,
-            req.url,
-            err.message,
-          );
+        proxyReq: (proxyReq, req) => {
+          const userId = (req as any).userId;
+          if (userId) {
+            proxyReq.setHeader('x-user-id', userId);
+          }
         },
       },
     }),
