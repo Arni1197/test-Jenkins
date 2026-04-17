@@ -81,19 +81,10 @@ async function bootstrap() {
   // =========================
   expressApp.use(
     '/api/users',
-    attachUserIdFromJwt,
     createProxyMiddleware({
       target: userTarget,
       changeOrigin: true,
       pathRewrite: (path) => `/api/users${path.replace('/api/users', '')}`,
-      on: {
-        proxyReq: (proxyReq, req) => {
-          const userId = (req as any).userId;
-          if (userId) {
-            proxyReq.setHeader('x-user-id', userId);
-          }
-        },
-      },
     }),
   );
 
