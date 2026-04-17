@@ -77,14 +77,49 @@ async function bootstrap() {
   );
 
   // =========================
-  // ✅ USERS
+  // ✅ USERS (debug version)
   // =========================
   expressApp.use(
     '/api/users',
+    (req, _res, next) => {
+      console.log(
+        'DEBUG USERS ROUTE HIT',
+        req.method,
+        (req as any).originalUrl ?? req.url,
+        'target=',
+        userTarget,
+      );
+      next();
+    },
     createProxyMiddleware({
       target: userTarget,
       changeOrigin: true,
       pathRewrite: (path) => `/api/users${path.replace('/api/users', '')}`,
+      on: {
+        proxyReq: (_proxyReq, req) => {
+          console.log(
+            'DEBUG USERS PROXY REQ',
+            req.method,
+            (req as any).originalUrl ?? req.url,
+          );
+        },
+        proxyRes: (proxyRes, req) => {
+          console.log(
+            'DEBUG USERS PROXY RES',
+            req.method,
+            (req as any).originalUrl ?? req.url,
+            proxyRes.statusCode,
+          );
+        },
+        error: (err, req) => {
+          console.error(
+            'DEBUG USERS PROXY ERROR',
+            req.method,
+            req.url,
+            err.message,
+          );
+        },
+      },
     }),
   );
 
@@ -152,8 +187,7 @@ async function bootstrap() {
               proxyReq.setHeader('x-user-id', userId);
             }
           } catch {
-            // публичный маршрут остаётся публичным:
-            // если токен отсутствует или битый, просто не прокидываем userId
+            // публичный маршрут остаётся публичным
           }
         },
       },

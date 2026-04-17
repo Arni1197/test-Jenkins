@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: user-service-migrate
+  namespace: staging
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: user-service-migrate
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: ghcr.io/arni1197/user-service@sha256:de259e0292d0f061f976cef142f68d6d9f754a07956d228250f6fee8bc97b9c2
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c"]
+          args:
+            - npx prisma migrate deploy
+          envFrom:
+            - secretRef:
+                name: secret-user-service
