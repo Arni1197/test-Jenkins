@@ -1,0 +1,87 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: timeweb-app-postgres
+  namespace: kube-prometheus-stack
+  labels:
+    release: kube-prometheus-stack
+spec:
+  jobName: timeweb-app-postgres
+  scheme: HTTPS
+  metricsPath: /d2676bd4-e66e-46b2-86c5-73a635f59e90/service/metrics
+  staticConfigs:
+    - targets:
+        - dbs-exporter.timeweb.cloud:443
+  basicAuth:
+    username:
+      name: timeweb-app-postgres-auth
+      key: username
+    password:
+      name: timeweb-app-postgres-auth
+      key: password
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: timeweb-audit-postgres
+  namespace: kube-prometheus-stack
+  labels:
+    release: kube-prometheus-stack
+spec:
+  jobName: timeweb-audit-postgres
+  scheme: HTTPS
+  metricsPath: /03190b4c-1d91-4b21-b8e6-e3e8aa325a12/service/metrics
+  staticConfigs:
+    - targets:
+        - dbs-exporter.timeweb.cloud:443
+  basicAuth:
+    username:
+      name: timeweb-audit-postgres-auth
+      key: username
+    password:
+      name: timeweb-audit-postgres-auth
+      key: password
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: timeweb-app-redis-1
+  namespace: kube-prometheus-stack
+  labels:
+    release: kube-prometheus-stack
+spec:
+  jobName: timeweb-app-redis-1
+  scheme: HTTPS
+  metricsPath: /ebf82e48-b020-4f37-960f-5ac0fb7454f6/service/metrics
+  staticConfigs:
+    - targets:
+        - dbs-exporter.timeweb.cloud:443
+  basicAuth:
+    username:
+      name: timeweb-app-redis-auth
+      key: username
+    password:
+      name: timeweb-app-redis-auth
+      key: password
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: timeweb-rabbitmq
+  namespace: kube-prometheus-stack
+  labels:
+    release: kube-prometheus-stack
+spec:
+  jobName: timeweb-rabbitmq
+  scheme: HTTPS
+  metricsPath: /766021f5-91ad-458c-a366-683c9a307aa8/service/metrics
+  staticConfigs:
+    - targets:
+        - dbs-exporter.timeweb.cloud:443
+  basicAuth:
+    username:
+      name: timeweb-rabbitmq-auth
+      key: username
+    password:
+      name: timeweb-rabbitmq-auth
+      key: password

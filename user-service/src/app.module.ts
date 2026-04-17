@@ -18,20 +18,18 @@ import { AppController } from './app.controller';
     MetricsModule,
     HealthModule,
 
-    // ✅ BullMQ root
     BullModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (cfg: ConfigService) => ({
         connection: {
-          host: cfg.get('REDIS_HOST', 'redis'),
-          port: Number(cfg.get('REDIS_PORT', 6379)),
-          // или если используешь URL:
-          // url: cfg.get('REDIS_URL'),
+          host: cfg.get<string>('REDIS_HOST', 'redis'),
+          port: Number(cfg.get<string>('REDIS_PORT', '6379')),
+          username: cfg.get<string>('REDIS_USERNAME'),
+          password: cfg.get<string>('REDIS_PASSWORD'),
         },
       }),
     }),
 
-    // ✅ очередь событий пользователей
     BullModule.registerQueue({
       name: 'user-events',
     }),
