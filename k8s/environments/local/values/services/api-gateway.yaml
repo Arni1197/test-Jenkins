@@ -35,3 +35,21 @@ env:
 
 secrets:
   envSecretName: secret-api-gateway
+
+readinessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 2
+  failureThreshold: 3
+
+livenessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 15
+  periodSeconds: 20
+  timeoutSeconds: 2
+  failureThreshold: 3
