@@ -1,4 +1,4 @@
-replicaCount: 1
+replicaCount: 2
 
 image:
   repository: ghcr.io/arni1197/api-gateway
@@ -23,14 +23,34 @@ affinity:
                 - apps
 resources:
   requests:
-    cpu: 50m
+    cpu: 300m
     memory: 128Mi
   limits:
-    cpu: 250m
+    cpu: 500m
     memory: 256Mi
 autoscaling:
   enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70
 
+readinessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 2
+  failureThreshold: 3
+
+livenessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 15
+  periodSeconds: 20
+  timeoutSeconds: 2
+  failureThreshold: 3
 
 env:
   NODE_ENV: "staging"

@@ -1,4 +1,4 @@
-replicaCount: 1
+replicaCount: 2
 
 image:
   repository: ghcr.io/arni1197/catalog-service
@@ -23,13 +23,35 @@ affinity:
 
 resources:
   requests:
-    cpu: 50m
+    cpu: 200m
     memory: 128Mi
   limits:
-    cpu: 250m
+    cpu: 500m
     memory: 256Mi
 
 env:
   NODE_ENV: "staging"
+
+readinessProbe:
+  httpGet:
+    path: /api/health
+    port: 3003
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 2
+  failureThreshold: 3
+
+livenessProbe:
+  httpGet:
+    path: /api/health
+    port: 3003
+  initialDelaySeconds: 15
+  periodSeconds: 20
+  timeoutSeconds: 2
+  failureThreshold: 3
+
 autoscaling:
-  enabled: false
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70
