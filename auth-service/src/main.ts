@@ -11,6 +11,9 @@ import { ValidationError } from 'class-validator';
 
 import { AppModule } from './app.module';
 import { logger } from './logger';
+import { registerPrismaTracing } from './tracing/prisma';
+
+registerPrismaTracing();
 
 // 🔧 утилита для извлечения сообщений из вложенных ошибок валидации
 function collectValidationMessages(errors: ValidationError[] = []): string[] {
