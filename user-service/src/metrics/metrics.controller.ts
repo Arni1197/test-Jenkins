@@ -1,6 +1,4 @@
-import { Controller, Get, Res } from '@nestjs/common';
-// ⬇️ вот так, с `import type`
-import type { Response } from 'express';
+import { Controller, Get, Header } from '@nestjs/common';
 import { MetricsService } from './metrics.service';
 
 @Controller('metrics')
@@ -8,9 +6,8 @@ export class MetricsController {
   constructor(private readonly metricsService: MetricsService) {}
 
   @Get()
-  async getMetrics(@Res() res: Response) {
-    const registry = this.metricsService.getRegistry();
-    res.setHeader('Content-Type', registry.contentType);
-    res.send(await registry.metrics());
+  @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
+  async getMetrics(): Promise<string> {
+    return this.metricsService.getRegistry().metrics();
   }
 }
