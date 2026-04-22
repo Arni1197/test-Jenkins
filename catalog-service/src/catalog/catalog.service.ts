@@ -6,12 +6,14 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CatalogEventsPublisher } from './catalog-events.publisher';
+import { MetricsService } from '../metrics/metrics.service';
 
 @Injectable()
 export class CatalogService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventsPublisher: CatalogEventsPublisher,
+    private readonly metricsService: MetricsService,
   ) {}
 
   private readonly productSelect = {
@@ -58,12 +60,25 @@ export class CatalogService {
     const product = await this.getProductById(productId);
 
     if (userId) {
-      await this.prisma.recentlyViewed.create({
-        data: {
-          userId,
-          productId,
-        },
-      });
+      try {
+        await this.prisma.recentlyViewed.create({
+          data: {
+            userId,
+            productId,
+          },
+        });
+
+        this.metricsService.catalogDbWriteSuccessTotal.inc({
+          service: 'catalog-service',
+          operation: 'add_recently_viewed',
+        });
+      } catch (error) {
+        this.metricsService.catalogDbWriteFailedTotal.inc({
+          service: 'catalog-service',
+          operation: 'add_recently_viewed',
+        });
+        throw error;
+      }
 
       this.eventsPublisher.publish('catalog.product.viewed', {
         eventType: 'ProductViewed',
@@ -141,30 +156,48 @@ export class CatalogService {
       throw new ConflictException('Product already in favorites');
     }
 
-    const favorite = await this.prisma.favorite.create({
-      data: {
+    try {
+      const favorite = await this.prisma.favorite.create({
+        data: {
+          userId,
+          productId,
+        },
+        select: {
+          id: true,
+          userId: true,
+          productId: true,
+          createdAt: true,
+          product: {
+            select: this.productSelect,
+          },
+        },
+      });
+
+      this.metricsService.catalogFavoritesAddSuccessTotal.inc({
+        service: 'catalog-service',
+      });
+
+      this.metricsService.catalogDbWriteSuccessTotal.inc({
+        service: 'catalog-service',
+        operation: 'add_favorite',
+      });
+
+      this.eventsPublisher.publish('catalog.favorite.added', {
+        eventType: 'FavoriteAdded',
         userId,
         productId,
-      },
-      select: {
-        id: true,
-        userId: true,
-        productId: true,
-        createdAt: true,
-        product: {
-          select: this.productSelect,
-        },
-      },
-    });
+        favoriteId: favorite.id,
+      });
 
-    this.eventsPublisher.publish('catalog.favorite.added', {
-      eventType: 'FavoriteAdded',
-      userId,
-      productId,
-      favoriteId: favorite.id,
-    });
+      return favorite;
+    } catch (error) {
+      this.metricsService.catalogDbWriteFailedTotal.inc({
+        service: 'catalog-service',
+        operation: 'add_favorite',
+      });
 
-    return favorite;
+      throw error;
+    }
   }
 
   async removeFavorite(userId: string, productId: string) {
@@ -185,26 +218,44 @@ export class CatalogService {
       };
     }
 
-    await this.prisma.favorite.delete({
-      where: {
-        userId_productId: {
-          userId,
-          productId,
+    try {
+      await this.prisma.favorite.delete({
+        where: {
+          userId_productId: {
+            userId,
+            productId,
+          },
         },
-      },
-    });
+      });
 
-    this.eventsPublisher.publish('catalog.favorite.removed', {
-      eventType: 'FavoriteRemoved',
-      userId,
-      productId,
-    });
+      this.metricsService.catalogFavoritesRemoveSuccessTotal.inc({
+        service: 'catalog-service',
+      });
 
-    return {
-      success: true,
-      removed: true,
-      productId,
-    };
+      this.metricsService.catalogDbWriteSuccessTotal.inc({
+        service: 'catalog-service',
+        operation: 'remove_favorite',
+      });
+
+      this.eventsPublisher.publish('catalog.favorite.removed', {
+        eventType: 'FavoriteRemoved',
+        userId,
+        productId,
+      });
+
+      return {
+        success: true,
+        removed: true,
+        productId,
+      };
+    } catch (error) {
+      this.metricsService.catalogDbWriteFailedTotal.inc({
+        service: 'catalog-service',
+        operation: 'remove_favorite',
+      });
+
+      throw error;
+    }
   }
 
   async getCart(userId: string) {
@@ -261,15 +312,64 @@ export class CatalogService {
         throw new BadRequestException('Requested quantity exceeds available stock');
       }
 
-      const updated = await this.prisma.cartItem.update({
-        where: {
-          userId_productId: {
-            userId,
-            productId,
+      try {
+        const updated = await this.prisma.cartItem.update({
+          where: {
+            userId_productId: {
+              userId,
+              productId,
+            },
           },
-        },
+          data: {
+            quantity: newQuantity,
+          },
+          select: {
+            id: true,
+            userId: true,
+            productId: true,
+            quantity: true,
+            createdAt: true,
+            updatedAt: true,
+            product: {
+              select: this.productSelect,
+            },
+          },
+        });
+
+        this.metricsService.catalogCartUpdateSuccessTotal.inc({
+          service: 'catalog-service',
+        });
+
+        this.metricsService.catalogDbWriteSuccessTotal.inc({
+          service: 'catalog-service',
+          operation: 'increase_cart_item_quantity',
+        });
+
+        this.eventsPublisher.publish('catalog.cart.item_added', {
+          eventType: 'CartItemQuantityIncreased',
+          userId,
+          productId,
+          quantity: updated.quantity,
+          cartItemId: updated.id,
+        });
+
+        return updated;
+      } catch (error) {
+        this.metricsService.catalogDbWriteFailedTotal.inc({
+          service: 'catalog-service',
+          operation: 'increase_cart_item_quantity',
+        });
+
+        throw error;
+      }
+    }
+
+    try {
+      const created = await this.prisma.cartItem.create({
         data: {
-          quantity: newQuantity,
+          userId,
+          productId,
+          quantity,
         },
         select: {
           id: true,
@@ -284,45 +384,32 @@ export class CatalogService {
         },
       });
 
-      this.eventsPublisher.publish('catalog.cart.item_added', {
-        eventType: 'CartItemQuantityIncreased',
-        userId,
-        productId,
-        quantity: updated.quantity,
-        cartItemId: updated.id,
+      this.metricsService.catalogCartAddSuccessTotal.inc({
+        service: 'catalog-service',
       });
 
-      return updated;
-    }
+      this.metricsService.catalogDbWriteSuccessTotal.inc({
+        service: 'catalog-service',
+        operation: 'add_cart_item',
+      });
 
-    const created = await this.prisma.cartItem.create({
-      data: {
+      this.eventsPublisher.publish('catalog.cart.item_added', {
+        eventType: 'CartItemAdded',
         userId,
         productId,
-        quantity,
-      },
-      select: {
-        id: true,
-        userId: true,
-        productId: true,
-        quantity: true,
-        createdAt: true,
-        updatedAt: true,
-        product: {
-          select: this.productSelect,
-        },
-      },
-    });
+        quantity: created.quantity,
+        cartItemId: created.id,
+      });
 
-    this.eventsPublisher.publish('catalog.cart.item_added', {
-      eventType: 'CartItemAdded',
-      userId,
-      productId,
-      quantity: created.quantity,
-      cartItemId: created.id,
-    });
+      return created;
+    } catch (error) {
+      this.metricsService.catalogDbWriteFailedTotal.inc({
+        service: 'catalog-service',
+        operation: 'add_cart_item',
+      });
 
-    return created;
+      throw error;
+    }
   }
 
   async updateCartItem(userId: string, productId: string, quantity: number) {
@@ -354,38 +441,56 @@ export class CatalogService {
       throw new BadRequestException('Requested quantity exceeds available stock');
     }
 
-    const updated = await this.prisma.cartItem.update({
-      where: {
-        userId_productId: {
-          userId,
-          productId,
+    try {
+      const updated = await this.prisma.cartItem.update({
+        where: {
+          userId_productId: {
+            userId,
+            productId,
+          },
         },
-      },
-      data: {
-        quantity,
-      },
-      select: {
-        id: true,
-        userId: true,
-        productId: true,
-        quantity: true,
-        createdAt: true,
-        updatedAt: true,
-        product: {
-          select: this.productSelect,
+        data: {
+          quantity,
         },
-      },
-    });
+        select: {
+          id: true,
+          userId: true,
+          productId: true,
+          quantity: true,
+          createdAt: true,
+          updatedAt: true,
+          product: {
+            select: this.productSelect,
+          },
+        },
+      });
 
-    this.eventsPublisher.publish('catalog.cart.item.updated', {
-      eventType: 'CartItemUpdated',
-      userId,
-      productId,
-      quantity: updated.quantity,
-      cartItemId: updated.id,
-    });
+      this.metricsService.catalogCartUpdateSuccessTotal.inc({
+        service: 'catalog-service',
+      });
 
-    return updated;
+      this.metricsService.catalogDbWriteSuccessTotal.inc({
+        service: 'catalog-service',
+        operation: 'update_cart_item',
+      });
+
+      this.eventsPublisher.publish('catalog.cart.item.updated', {
+        eventType: 'CartItemUpdated',
+        userId,
+        productId,
+        quantity: updated.quantity,
+        cartItemId: updated.id,
+      });
+
+      return updated;
+    } catch (error) {
+      this.metricsService.catalogDbWriteFailedTotal.inc({
+        service: 'catalog-service',
+        operation: 'update_cart_item',
+      });
+
+      throw error;
+    }
   }
 
   async removeCartItem(userId: string, productId: string) {
@@ -406,25 +511,39 @@ export class CatalogService {
       };
     }
 
-    await this.prisma.cartItem.delete({
-      where: {
-        userId_productId: {
-          userId,
-          productId,
+    try {
+      await this.prisma.cartItem.delete({
+        where: {
+          userId_productId: {
+            userId,
+            productId,
+          },
         },
-      },
-    });
+      });
 
-    this.eventsPublisher.publish('catalog.cart.item.removed', {
-      eventType: 'CartItemRemoved',
-      userId,
-      productId,
-    });
+      this.metricsService.catalogDbWriteSuccessTotal.inc({
+        service: 'catalog-service',
+        operation: 'remove_cart_item',
+      });
 
-    return {
-      success: true,
-      removed: true,
-      productId,
-    };
+      this.eventsPublisher.publish('catalog.cart.item.removed', {
+        eventType: 'CartItemRemoved',
+        userId,
+        productId,
+      });
+
+      return {
+        success: true,
+        removed: true,
+        productId,
+      };
+    } catch (error) {
+      this.metricsService.catalogDbWriteFailedTotal.inc({
+        service: 'catalog-service',
+        operation: 'remove_cart_item',
+      });
+
+      throw error;
+    }
   }
 }
