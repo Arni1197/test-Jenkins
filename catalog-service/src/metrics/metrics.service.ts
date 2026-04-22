@@ -21,6 +21,9 @@ export class MetricsService {
   readonly catalogDbWriteSuccessTotal: Counter<string>;
   readonly catalogDbWriteFailedTotal: Counter<string>;
 
+  readonly catalogEventPublishSuccessTotal: Counter<string>;
+  readonly catalogEventPublishFailedTotal: Counter<string>;
+
   constructor() {
     this.registry = new Registry();
 
@@ -83,6 +86,20 @@ export class MetricsService {
       name: 'catalog_db_write_failed_total',
       help: 'Total failed catalog DB write operations',
       labelNames: ['service', 'operation'],
+      registers: [this.registry],
+    });
+
+    this.catalogEventPublishSuccessTotal = new Counter({
+      name: 'catalog_event_publish_success_total',
+      help: 'Total successful catalog event publish operations',
+      labelNames: ['service', 'event', 'routing_key'],
+      registers: [this.registry],
+    });
+
+    this.catalogEventPublishFailedTotal = new Counter({
+      name: 'catalog_event_publish_failed_total',
+      help: 'Total failed catalog event publish operations',
+      labelNames: ['service', 'event', 'routing_key'],
       registers: [this.registry],
     });
   }

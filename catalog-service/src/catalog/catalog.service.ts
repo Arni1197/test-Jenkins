@@ -80,7 +80,7 @@ export class CatalogService {
         throw error;
       }
 
-      this.eventsPublisher.publish('catalog.product.viewed', {
+      await this.eventsPublisher.publish('catalog.product.viewed', {
         eventType: 'ProductViewed',
         userId,
         productId,
@@ -182,7 +182,7 @@ export class CatalogService {
         operation: 'add_favorite',
       });
 
-      this.eventsPublisher.publish('catalog.favorite.added', {
+      await this.eventsPublisher.publish('catalog.favorite.added', {
         eventType: 'FavoriteAdded',
         userId,
         productId,
@@ -237,7 +237,7 @@ export class CatalogService {
         operation: 'remove_favorite',
       });
 
-      this.eventsPublisher.publish('catalog.favorite.removed', {
+      await this.eventsPublisher.publish('catalog.favorite.removed', {
         eventType: 'FavoriteRemoved',
         userId,
         productId,
@@ -345,7 +345,7 @@ export class CatalogService {
           operation: 'increase_cart_item_quantity',
         });
 
-        this.eventsPublisher.publish('catalog.cart.item_added', {
+        await this.eventsPublisher.publish('catalog.cart.item_added', {
           eventType: 'CartItemQuantityIncreased',
           userId,
           productId,
@@ -393,7 +393,7 @@ export class CatalogService {
         operation: 'add_cart_item',
       });
 
-      this.eventsPublisher.publish('catalog.cart.item_added', {
+      await this.eventsPublisher.publish('catalog.cart.item_added', {
         eventType: 'CartItemAdded',
         userId,
         productId,
@@ -474,7 +474,7 @@ export class CatalogService {
         operation: 'update_cart_item',
       });
 
-      this.eventsPublisher.publish('catalog.cart.item.updated', {
+      await this.eventsPublisher.publish('catalog.cart.item.updated', {
         eventType: 'CartItemUpdated',
         userId,
         productId,
@@ -526,7 +526,7 @@ export class CatalogService {
         operation: 'remove_cart_item',
       });
 
-      this.eventsPublisher.publish('catalog.cart.item.removed', {
+      await this.eventsPublisher.publish('catalog.cart.item.removed', {
         eventType: 'CartItemRemoved',
         userId,
         productId,
