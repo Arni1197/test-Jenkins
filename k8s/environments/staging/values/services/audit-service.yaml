@@ -2,8 +2,8 @@ replicaCount: 2
 
 image:
   repository: ghcr.io/arni1197/audit-service
-  tag: sha-2ee7d7f3451c79243f8d7ec70fcaa8be3bb84f9c
-  digest: "sha256:b5c64191a7a0787fe53126d65b84a5b79e46d68b49feef9bb33b4c6a0413cbbf"
+  tag: sha-85de6021ede99eebc417ad9002b39b07d283462f
+  digest: "sha256:1f1125bf5560d4184cf4284bca95510ff2ee0df7e16f02ee6d49afcbee803ed4"
   pullPolicy: IfNotPresent
 
 containerPort: 3000
