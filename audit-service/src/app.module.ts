@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuditModule } from './audit/audit.module';
+import { MetricsModule } from './metrics/metrics.module';
 
 @Module({
   imports: [
@@ -9,6 +10,7 @@ import { AuditModule } from './audit/audit.module';
       isGlobal: true,
     }),
     PrismaModule,
+    MetricsModule,
     AuditModule,
   ],
 })

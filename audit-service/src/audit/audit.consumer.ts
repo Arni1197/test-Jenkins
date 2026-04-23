@@ -1,7 +1,13 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as amqp from 'amqplib';
 import { AuditService, AuditEventPayload } from './audit.service';
+import { MetricsService } from '../metrics/metrics.service';
 
 @Injectable()
 export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
@@ -14,10 +20,14 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly config: ConfigService,
     private readonly auditService: AuditService,
+    private readonly metricsService: MetricsService,
   ) {}
 
   private get rabbitUrl(): string {
-    return this.config.get<string>('RABBITMQ_URL') ?? 'amqp://guest:guest@localhost:5672';
+    return (
+      this.config.get<string>('RABBITMQ_URL') ??
+      'amqp://guest:guest@localhost:5672'
+    );
   }
 
   private get exchangeName(): string {
@@ -25,11 +35,16 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
   }
 
   private get mainQueue(): string {
-    return this.config.get<string>('RABBITMQ_AUDIT_QUEUE') ?? 'audit.log.queue';
+    return (
+      this.config.get<string>('RABBITMQ_AUDIT_QUEUE') ?? 'audit.log.queue'
+    );
   }
 
   private get retryQueue(): string {
-    return this.config.get<string>('RABBITMQ_AUDIT_RETRY_QUEUE') ?? 'audit.log.retry.queue';
+    return (
+      this.config.get<string>('RABBITMQ_AUDIT_RETRY_QUEUE') ??
+      'audit.log.retry.queue'
+    );
   }
 
   private get dlqQueue(): string {
@@ -37,11 +52,15 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
   }
 
   private get retryTtlMs(): number {
-    return Number(this.config.get<string>('RABBITMQ_AUDIT_RETRY_TTL_MS') ?? '5000');
+    return Number(
+      this.config.get<string>('RABBITMQ_AUDIT_RETRY_TTL_MS') ?? '5000',
+    );
   }
 
   private get maxRetries(): number {
-    return Number(this.config.get<string>('RABBITMQ_AUDIT_MAX_RETRIES') ?? '3');
+    return Number(
+      this.config.get<string>('RABBITMQ_AUDIT_MAX_RETRIES') ?? '3',
+    );
   }
 
   async onModuleInit() {
@@ -78,56 +97,103 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
       async (msg) => {
         if (!msg || !this.channel) return;
 
+        let payload: AuditEventPayload | undefined;
+        let eventType = 'unknown';
+        const processingEnd =
+          this.metricsService.auditEventsProcessingDurationSeconds.startTimer({
+            service: 'audit-service',
+            event: eventType,
+            result: 'unknown',
+          });
+
         try {
-          const payload = JSON.parse(msg.content.toString()) as AuditEventPayload;
+          payload = JSON.parse(msg.content.toString()) as AuditEventPayload;
+          eventType =
+            typeof payload.eventType === 'string' ? payload.eventType : 'unknown';
+
+          this.metricsService.auditEventsConsumedTotal.inc({
+            service: 'audit-service',
+            event: eventType,
+            queue: this.mainQueue,
+          });
 
           await this.auditService.saveAuditLog(payload);
 
           this.channel.ack(msg);
+
+          processingEnd({
+            service: 'audit-service',
+            event: eventType,
+            result: 'success',
+          });
         } catch (error: any) {
           const headers = msg.properties.headers ?? {};
           const retryCount = Number(headers['x-retry-count'] ?? 0);
 
+          if (payload && typeof payload.eventType === 'string') {
+            eventType = payload.eventType;
+          }
+
           this.logger.error(
-            `Failed to process audit event. retry=${retryCount}. error=${error?.message ?? error}`,
+            `Failed to process audit event. retry=${retryCount}. event=${eventType}. error=${error?.message ?? error}`,
             error?.stack,
           );
 
+          this.metricsService.auditEventsProcessingFailedTotal.inc({
+            service: 'audit-service',
+            event: eventType,
+            stage: retryCount >= this.maxRetries ? 'final_failure' : 'consume',
+          });
+
           if (retryCount >= this.maxRetries) {
-            this.channel.publish(
-              '',
-              this.dlqQueue,
-              msg.content,
-              {
-                contentType: msg.properties.contentType ?? 'application/json',
-                persistent: true,
-                headers: {
-                  ...headers,
-                  'x-retry-count': retryCount,
-                  'x-final-failure-at': new Date().toISOString(),
-                },
-              },
-            );
-
-            this.channel.ack(msg);
-            return;
-          }
-
-          this.channel.publish(
-            '',
-            this.retryQueue,
-            msg.content,
-            {
+            this.channel.publish('', this.dlqQueue, msg.content, {
               contentType: msg.properties.contentType ?? 'application/json',
               persistent: true,
               headers: {
                 ...headers,
-                'x-retry-count': retryCount + 1,
+                'x-retry-count': retryCount,
+                'x-final-failure-at': new Date().toISOString(),
               },
+            });
+
+            this.metricsService.auditEventsSentToDlqTotal.inc({
+              service: 'audit-service',
+              event: eventType,
+              queue: this.dlqQueue,
+            });
+
+            this.channel.ack(msg);
+
+            processingEnd({
+              service: 'audit-service',
+              event: eventType,
+              result: 'dlq',
+            });
+            return;
+          }
+
+          this.channel.publish('', this.retryQueue, msg.content, {
+            contentType: msg.properties.contentType ?? 'application/json',
+            persistent: true,
+            headers: {
+              ...headers,
+              'x-retry-count': retryCount + 1,
             },
-          );
+          });
+
+          this.metricsService.auditEventsSentToRetryTotal.inc({
+            service: 'audit-service',
+            event: eventType,
+            queue: this.retryQueue,
+          });
 
           this.channel.ack(msg);
+
+          processingEnd({
+            service: 'audit-service',
+            event: eventType,
+            result: 'retry',
+          });
         }
       },
       { noAck: false },

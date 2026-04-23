@@ -33,7 +33,6 @@ jobs:
         env:
           KUBE_NAMESPACE: ${{ vars.KUBE_NAMESPACE }}
           KUBE_DEPLOYMENTS: ${{ vars.KUBE_DEPLOYMENTS }}
-          KUBE_STATEFULSETS: ${{ vars.KUBE_STATEFULSETS }}
         run: node scripts/check-rollout-readiness.js
 
       - name: Run smoke auth-catalog

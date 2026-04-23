@@ -3,17 +3,11 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.createApplicationContext(AppModule);
+  const app = await NestFactory.create(AppModule);
 
-  console.log('🚀 11Audit Service worker started');
-  
-  const shutdown = async () => {
-    await app.close();
-    process.exit(0);
-  };
+  const port = Number(process.env.PORT ?? 3004);
+  await app.listen(port, '0.0.0.0');
 
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+  console.log(`🚀 Audit Service started on http://0.0.0.0:${port}`);
 }
-
 bootstrap();
