@@ -3,18 +3,38 @@ name: Dev Smoke Tests
 on:
   workflow_dispatch:
 
+concurrency:
+  group: dev-smoke
+  cancel-in-progress: true
+
 jobs:
   smoke:
-    name: Run k6 smoke tests on self-hosted runner
+    name: Run rollout checks and k6 smoke tests on self-hosted runner
     runs-on: [self-hosted, Linux, X64]
     environment: dev
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check kubectl version
+        run: kubectl version --client
+
       - name: Check k6 version
         run: k6 version
+
+      - name: Check rollout and readiness
+        env:
+          KUBE_NAMESPACE: ${{ vars.KUBE_NAMESPACE }}
+          KUBE_DEPLOYMENTS: ${{ vars.KUBE_DEPLOYMENTS }}
+          KUBE_STATEFULSETS: ${{ vars.KUBE_STATEFULSETS }}
+        run: node scripts/check-rollout-readiness.js
 
       - name: Run smoke auth-catalog
         env:
