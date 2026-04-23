@@ -14,6 +14,6 @@ spec:
       app.kubernetes.io/name: audit-service
   endpoints:
     - port: http
-      path: /api/metrics
+      path: /metrics
       interval: 15s
       scrapeTimeout: 10s
