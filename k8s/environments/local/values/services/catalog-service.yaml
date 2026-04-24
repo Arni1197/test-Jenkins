@@ -31,18 +31,20 @@ resources:
 env:
   NODE_ENV: "development"
 
+terminationGracePeriodSeconds: 30
+
 readinessProbe:
   httpGet:
-    path: /api/health
+    path: /api/health/ready
     port: 3003
   initialDelaySeconds: 5
-  periodSeconds: 10
+  periodSeconds: 5
   timeoutSeconds: 2
-  failureThreshold: 3
+  failureThreshold: 1
 
 livenessProbe:
   httpGet:
-    path: /api/health
+    path: /api/health/live
     port: 3003
   initialDelaySeconds: 15
   periodSeconds: 20
