@@ -1,0 +1,38 @@
+# k8s/platform/values/policy-reporter.yaml
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 96Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+ui:
+  enabled: true
+  replicaCount: 1
+
+  plugins:
+    kyverno: true
+
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 150m
+      memory: 128Mi
+
+plugin:
+  kyverno:
+    enabled: true
+    replicaCount: 1
+
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+      limits:
+        cpu: 150m
+        memory: 128Mi

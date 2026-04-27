@@ -1,0 +1,32 @@
+# k8s/platform/applications/policy-reporter.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: policy-reporter
+  namespace: argocd
+spec:
+  project: default
+
+  sources:
+    - repoURL: https://kyverno.github.io/policy-reporter
+      chart: policy-reporter
+      targetRevision: 3.5.0
+      helm:
+        valueFiles:
+          - $values/k8s/platform/values/policy-reporter.yaml
+
+    - repoURL: https://github.com/Arni1197/test-Jenkins.git
+      targetRevision: main
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: policy-reporter
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
