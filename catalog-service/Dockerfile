@@ -34,7 +34,7 @@ RUN npm prune --omit=dev \
   && mkdir -p /app/logs \
   && chown -R node:node /app
 
-USER node
+USER 1000
 
 EXPOSE 3003
 
