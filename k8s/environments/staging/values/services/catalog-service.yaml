@@ -51,32 +51,25 @@ containerSecurityContext:
     drop:
       - ALL
 
-startupProbe:
-  httpGet:
-    path: /api/health/live
-    port: 3003
-  initialDelaySeconds: 5
-  periodSeconds: 5
-  timeoutSeconds: 2
-  failureThreshold: 24
+
 
 readinessProbe:
   httpGet:
     path: /api/health/ready
     port: 3003
-  initialDelaySeconds: 5
+  initialDelaySeconds: 60
   periodSeconds: 5
   timeoutSeconds: 2
-  failureThreshold: 3
+  failureThreshold: 5
 
 livenessProbe:
   httpGet:
     path: /api/health/live
     port: 3003
-  initialDelaySeconds: 0
+  initialDelaySeconds: 60
   periodSeconds: 20
   timeoutSeconds: 2
-  failureThreshold: 3
+  failureThreshold: 5
 
 autoscaling:
   enabled: true
