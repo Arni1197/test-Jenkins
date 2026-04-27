@@ -5,15 +5,6 @@ metadata:
 spec:
   background: true
 
-  validationFailureAction: Audit
-  failureActionOverrides:
-    - action: Audit
-      namespaces:
-        - staging
-    - action: Enforce
-      namespaces:
-        - production
-
   rules:
     - name: disallow-latest-tag
       match:
@@ -25,6 +16,11 @@ spec:
                 - staging
                 - production
       validate:
+        failureAction: Audit
+        failureActionOverrides:
+          - action: Enforce
+            namespaces:
+              - production
         message: "Image tag 'latest' is not allowed in staging/production."
         foreach:
           - list: "request.object.spec.containers"
@@ -52,6 +48,11 @@ spec:
                 - staging
                 - production
       validate:
+        failureAction: Audit
+        failureActionOverrides:
+          - action: Enforce
+            namespaces:
+              - production
         message: "CPU/memory requests and limits are required."
         foreach:
           - list: "request.object.spec.containers"
@@ -74,6 +75,11 @@ spec:
                 - staging
                 - production
       validate:
+        failureAction: Audit
+        failureActionOverrides:
+          - action: Enforce
+            namespaces:
+              - production
         message: "Containers must set securityContext.runAsNonRoot: true."
         foreach:
           - list: "request.object.spec.containers"
@@ -91,6 +97,11 @@ spec:
                 - staging
                 - production
       validate:
+        failureAction: Audit
+        failureActionOverrides:
+          - action: Enforce
+            namespaces:
+              - production
         message: "Pod must set spec.securityContext.seccompProfile.type: RuntimeDefault."
         pattern:
           spec:
@@ -108,6 +119,11 @@ spec:
                 - staging
                 - production
       validate:
+        failureAction: Audit
+        failureActionOverrides:
+          - action: Enforce
+            namespaces:
+              - production
         message: "Privileged containers are not allowed."
         foreach:
           - list: "request.object.spec.containers"
@@ -124,6 +140,7 @@ spec:
               namespaces:
                 - production
       validate:
+        failureAction: Enforce
         message: "Production images must be pinned by digest using image@sha256:..."
         foreach:
           - list: "request.object.spec.containers"
