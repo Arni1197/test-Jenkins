@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-auth-to-external
+  namespace: staging
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: auth-service
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 192.168.0.17/32
+      ports:
+        - protocol: TCP
+          port: 5672
+    - to:
+        - ipBlock:
+            cidr: 192.168.0.18/32
+      ports:
+        - protocol: TCP
+          port: 6379
