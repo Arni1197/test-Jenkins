@@ -87,6 +87,56 @@ spec:
               securityContext:
                 runAsNonRoot: true
 
+    - name: require-run-as-user-non-zero
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - staging
+                - production
+      validate:
+        failureAction: Audit
+        failureActionOverrides:
+          - action: Enforce
+            namespaces:
+              - production
+        message: "Containers must set securityContext.runAsUser to a non-root numeric UID."
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ element.securityContext.runAsUser || `0` }}"
+                    operator: LessThanOrEquals
+                    value: 0
+
+    - name: require-run-as-group-non-zero
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - staging
+                - production
+      validate:
+        failureAction: Audit
+        failureActionOverrides:
+          - action: Enforce
+            namespaces:
+              - production
+        message: "Containers must set securityContext.runAsGroup to a non-root numeric GID."
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ element.securityContext.runAsGroup || `0` }}"
+                    operator: LessThanOrEquals
+                    value: 0
+
     - name: require-seccomp-runtime-default
       match:
         any:
@@ -130,6 +180,139 @@ spec:
             pattern:
               =(securityContext):
                 =(privileged): false
+
+    - name: disallow-privilege-escalation
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - staging
+                - production
+      validate:
+        failureAction: Audit
+        failureActionOverrides:
+          - action: Enforce
+            namespaces:
+              - production
+        message: "Containers must set allowPrivilegeEscalation: false."
+        foreach:
+          - list: "request.object.spec.containers"
+            pattern:
+              securityContext:
+                allowPrivilegeEscalation: false
+
+    - name: require-drop-all-capabilities
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - staging
+                - production
+      validate:
+        failureAction: Audit
+        failureActionOverrides:
+          - action: Enforce
+            namespaces:
+              - production
+        message: "Containers must drop all Linux capabilities."
+        foreach:
+          - list: "request.object.spec.containers"
+            pattern:
+              securityContext:
+                capabilities:
+                  drop:
+                    - ALL
+
+    - name: require-read-only-root-filesystem
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - staging
+                - production
+      validate:
+        failureAction: Audit
+        failureActionOverrides:
+          - action: Enforce
+            namespaces:
+              - production
+        message: "Containers must set readOnlyRootFilesystem: true."
+        foreach:
+          - list: "request.object.spec.containers"
+            pattern:
+              securityContext:
+                readOnlyRootFilesystem: true
+
+    - name: disallow-host-namespaces
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - staging
+                - production
+      validate:
+        failureAction: Audit
+        failureActionOverrides:
+          - action: Enforce
+            namespaces:
+              - production
+        message: "hostNetwork, hostPID, and hostIPC are not allowed."
+        pattern:
+          spec:
+            =(hostNetwork): false
+            =(hostPID): false
+            =(hostIPC): false
+
+    - name: disallow-hostpath-volumes
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - staging
+                - production
+      validate:
+        failureAction: Audit
+        failureActionOverrides:
+          - action: Enforce
+            namespaces:
+              - production
+        message: "hostPath volumes are not allowed."
+        pattern:
+          spec:
+            =(volumes):
+              - X(hostPath): "*"
+
+    - name: disallow-hostport
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - staging
+                - production
+      validate:
+        failureAction: Audit
+        failureActionOverrides:
+          - action: Enforce
+            namespaces:
+              - production
+        message: "hostPort is not allowed."
+        foreach:
+          - list: "request.object.spec.containers"
+            pattern:
+              =(ports):
+                - X(hostPort): "*"
 
     - name: require-digest-in-production
       match:
