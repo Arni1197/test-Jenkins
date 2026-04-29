@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-api-gateway-egress-to-backends
+  namespace: staging
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: api-gateway
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: auth-service
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: user-service
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: catalog-service
+      ports:
+        - protocol: TCP
+          port: 3000
+        - protocol: TCP
+          port: 3003
+        - protocol: TCP
+          port: 3001
