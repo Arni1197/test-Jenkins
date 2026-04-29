@@ -49,32 +49,40 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Retag by digest (no rebuild)
+        id: retag
         run: |
           set -e
           SRC="${{ inputs.image }}:${{ inputs.source_tag }}"
           DST="${{ inputs.image }}:${{ inputs.release_tag }}"
 
-          echo "Pulling digest for: $SRC"
-          # Resolve digest for SRC tag
+          echo "Resolving digest for: $SRC"
+
           DIGEST="$(docker buildx imagetools inspect "$SRC" --format '{{json .Manifest.Digest}}' | tr -d '"')"
+
           if [ -z "$DIGEST" ]; then
             echo "Failed to resolve digest for $SRC"
             exit 1
           fi
 
-          echo "Resolved digest: $DIGEST"
-          echo "Creating release tag without rebuild: $DST"
+          echo "Digest: $DIGEST"
+          echo "digest=$DIGEST" >> $GITHUB_OUTPUT
+
+          echo "Creating release tag: $DST"
           docker buildx imagetools create -t "$DST" "${{ inputs.image }}@${DIGEST}"
 
       - name: Install cosign
         if: ${{ inputs.sign }}
         uses: sigstore/cosign-installer@v3
 
-      - name: Cosign sign (keyless)
+      - name: Cosign sign (digest, keyless)
         if: ${{ inputs.sign }}
         env:
           COSIGN_EXPERIMENTAL: "true"
         run: |
           set -e
-          IMG="${{ inputs.image }}:${{ inputs.release_tag }}"
-          cosign sign --yes "$IMG"
+
+          DIGEST="${{ steps.retag.outputs.digest }}"
+          IMAGE="${{ inputs.image }}@${DIGEST}"
+
+          echo "Signing image: $IMAGE"
+          cosign sign --yes "$IMAGE"
