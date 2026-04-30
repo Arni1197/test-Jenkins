@@ -62,7 +62,7 @@ dblessConfig:
                   policy: local
               - name: request-size-limiting
                 config:
-                  allowed_payload_size: 0.25
+                  allowed_payload_size: 1
               - name: response-transformer
                 config:
                   remove:
@@ -83,7 +83,7 @@ dblessConfig:
                   policy: local
               - name: request-size-limiting
                 config:
-                  allowed_payload_size: 0.25
+                  allowed_payload_size: 1
               - name: response-transformer
                 config:
                   remove:
