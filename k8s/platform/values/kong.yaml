@@ -20,8 +20,9 @@ manager:
   enabled: false
 
 dblessConfig:
-  config:
+  config: |
     _format_version: "3.0"
+
     services:
       - name: api-gateway-staging
         url: http://api-gateway.staging.svc.cluster.local:3000
