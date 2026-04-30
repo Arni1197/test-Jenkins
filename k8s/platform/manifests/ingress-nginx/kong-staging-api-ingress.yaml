@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kong-staging-api
+  namespace: kong
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - kong-staging-api.90.156.210.86.nip.io
+      secretName: kong-staging-api-tls
+  rules:
+    - host: kong-staging-api.90.156.210.86.nip.io
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: kong-kong-proxy
+                port:
+                  number: 80

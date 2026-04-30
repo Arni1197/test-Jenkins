@@ -1,0 +1,41 @@
+ingressController:
+  enabled: false
+
+env:
+  database: "off"
+
+proxy:
+  type: ClusterIP
+  http:
+    enabled: true
+    servicePort: 80
+    containerPort: 8000
+  tls:
+    enabled: false
+
+admin:
+  enabled: false
+
+manager:
+  enabled: false
+
+dblessConfig:
+  config: |
+    _format_version: "3.0"
+
+    services:
+      - name: api-gateway-staging
+        url: http://api-gateway.staging.svc.cluster.local:3000
+        routes:
+          - name: api-gateway-staging-route
+            paths:
+              - /api
+            strip_path: false
+            plugins:
+              - name: rate-limiting
+                config:
+                  minute: 120
+                  policy: local
+              - name: request-size-limiting
+                config:
+                  allowed_payload_size: 2
