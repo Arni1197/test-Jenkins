@@ -1,6 +1,16 @@
 ingressController:
   enabled: false
 
+replicaCount: 2
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
 env:
   database: "off"
 
@@ -27,15 +37,100 @@ dblessConfig:
       - name: api-gateway-staging
         url: http://api-gateway.staging.svc.cluster.local:3000
         routes:
-          - name: api-gateway-staging-route
+          - name: health-route
+            paths:
+              - /api/health
+            strip_path: false
+            plugins:
+              - name: response-transformer
+                config:
+                  remove:
+                    headers:
+                      - X-Powered-By
+                  add:
+                    headers:
+                      - X-Gateway:kong
+
+          - name: auth-login-route
+            paths:
+              - /api/auth/login
+            strip_path: false
+            plugins:
+              - name: rate-limiting
+                config:
+                  minute: 10
+                  policy: local
+              - name: request-size-limiting
+                config:
+                  allowed_payload_size: 0.25
+              - name: response-transformer
+                config:
+                  remove:
+                    headers:
+                      - X-Powered-By
+                  add:
+                    headers:
+                      - X-Gateway:kong
+
+          - name: auth-register-route
+            paths:
+              - /api/auth/register
+            strip_path: false
+            plugins:
+              - name: rate-limiting
+                config:
+                  minute: 5
+                  policy: local
+              - name: request-size-limiting
+                config:
+                  allowed_payload_size: 0.25
+              - name: response-transformer
+                config:
+                  remove:
+                    headers:
+                      - X-Powered-By
+                  add:
+                    headers:
+                      - X-Gateway:kong
+
+          - name: catalog-route
+            paths:
+              - /api/catalog
+            strip_path: false
+            plugins:
+              - name: rate-limiting
+                config:
+                  minute: 300
+                  policy: local
+              - name: request-size-limiting
+                config:
+                  allowed_payload_size: 2
+              - name: response-transformer
+                config:
+                  remove:
+                    headers:
+                      - X-Powered-By
+                  add:
+                    headers:
+                      - X-Gateway:kong
+
+          - name: api-fallback-route
             paths:
               - /api
             strip_path: false
             plugins:
               - name: rate-limiting
                 config:
-                  minute: 120
+                  minute: 600
                   policy: local
               - name: request-size-limiting
                 config:
                   allowed_payload_size: 2
+              - name: response-transformer
+                config:
+                  remove:
+                    headers:
+                      - X-Powered-By
+                  add:
+                    headers:
+                      - X-Gateway:kong
