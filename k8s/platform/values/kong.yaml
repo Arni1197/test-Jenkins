@@ -1,3 +1,24 @@
+ingressController:
+  enabled: false
+
+env:
+  database: "off"
+
+proxy:
+  type: ClusterIP
+  http:
+    enabled: true
+    servicePort: 80
+    containerPort: 8000
+  tls:
+    enabled: false
+
+admin:
+  enabled: false
+
+manager:
+  enabled: false
+
 dblessConfig:
   config:
     _format_version: "3.0"
