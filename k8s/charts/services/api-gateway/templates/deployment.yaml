@@ -62,7 +62,7 @@ spec:
 
           envFrom:
             - secretRef:
-                name: {{ .Values.secrets.envSecretName | default "secret-api-gateway" | quote }}
+                name: {{ dig "secrets" "envSecretName" "secret-api-gateway" .Values | quote }}
 
           resources:
 {{ toYaml .Values.resources | indent 12 }}
