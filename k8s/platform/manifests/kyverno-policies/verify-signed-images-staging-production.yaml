@@ -1,0 +1,33 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-signed-images-staging-production
+spec:
+  webhookConfiguration:
+    timeoutSeconds: 30
+    failurePolicy: Fail
+  rules:
+    - name: verify-ghcr-images-signed-by-github-actions
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - staging
+                - production
+      verifyImages:
+        - imageReferences:
+            - "ghcr.io/arni1197/*"
+          failureAction: Audit
+          mutateDigest: false
+          verifyDigest: true
+          required: true
+          attestors:
+            - count: 1
+              entries:
+                - keyless:
+                    issuer: https://token.actions.githubusercontent.com
+                    subjectRegExp: "https://github.com/Arni1197/test-Jenkins/.*"
+                    rekor:
+                      url: https://rekor.sigstore.dev
