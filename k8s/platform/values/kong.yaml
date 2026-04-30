@@ -1,28 +1,6 @@
-ingressController:
-  enabled: false
-
-env:
-  database: "off"
-
-proxy:
-  type: ClusterIP
-  http:
-    enabled: true
-    servicePort: 80
-    containerPort: 8000
-  tls:
-    enabled: false
-
-admin:
-  enabled: false
-
-manager:
-  enabled: false
-
 dblessConfig:
-  config: |
+  config:
     _format_version: "3.0"
-
     services:
       - name: api-gateway-staging
         url: http://api-gateway.staging.svc.cluster.local:3000
