@@ -1,15 +1,15 @@
 replicaCount: 2
 
 image:
-  repository: ghcr.io/arni1197/catalog-service
-  tag: sha-258ad81c0e114a1d8b95876dc5d1946df9b7a5ff
-  digest: "sha256:b9d46525f3903a578e9eb6ab25ddb572473aa443bdfbe8604d4864f4f7b1c826"
+  repository: ghcr.io/arni1197/api-gateway
+  tag: sha-0b1632383b9050cd47e8940d68d03db4be85703c
+  digest: "sha256:b1831be1d7332184f67bc375faf69987e173266d195ac6641e5de176f63d5469"
   pullPolicy: IfNotPresent
 
 service:
   type: ClusterIP
-  port: 3003
-  targetPort: 3003
+  port: 3000
+  targetPort: 3000
 
 affinity:
   nodeAffinity:
@@ -23,7 +23,7 @@ affinity:
 
 resources:
   requests:
-    cpu: 200m
+    cpu: 300m
     memory: 128Mi
   limits:
     cpu: 500m
@@ -66,29 +66,26 @@ extraVolumeMounts:
   - name: tmp
     mountPath: /tmp
 
-
-
 readinessProbe:
   httpGet:
-    path: /api/health/ready
-    port: 3003
-  initialDelaySeconds: 60
-  periodSeconds: 5
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 5
+  periodSeconds: 10
   timeoutSeconds: 2
-  failureThreshold: 5
+  failureThreshold: 3
 
 livenessProbe:
   httpGet:
-    path: /api/health/live
-    port: 3003
-  initialDelaySeconds: 60
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 15
   periodSeconds: 20
   timeoutSeconds: 2
-  failureThreshold: 5
+  failureThreshold: 3
 
 autoscaling:
   enabled: true
   minReplicas: 2
-  maxReplicas: 4
-  targetCPUUtilizationPercentage: 70
-
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 65
