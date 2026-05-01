@@ -44,7 +44,7 @@ server:
     accessMode: ReadWriteOnce
 
   auditStorage:
-    enabled: false
+    enabled: true
     size: 10Gi
     mountPath: "/vault/audit"
     storageClass: "nvme.network-drives.csi.timeweb.cloud"
