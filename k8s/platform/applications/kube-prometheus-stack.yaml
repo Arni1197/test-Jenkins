@@ -12,6 +12,7 @@ spec:
       targetRevision: 66.2.1
       helm:
         releaseName: kube-prometheus-stack
+        skipCrds: true
         valueFiles:
           - $values/k8s/platform/values/kube-prometheus-stack.yaml
 
