@@ -40,6 +40,7 @@ alertmanager:
 
   alertmanagerSpec:
     replicas: 1
+    storage: {}
 
     affinity:
       nodeAffinity:
@@ -50,16 +51,6 @@ alertmanager:
                   operator: In
                   values:
                     - observability
-
-    storage:
-      volumeClaimTemplate:
-        spec:
-          storageClassName: nvme.network-drives.csi.timeweb.cloud
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 5Gi
 
     resources:
       requests:
@@ -76,6 +67,8 @@ prometheus:
   prometheusSpec:
     replicas: 1
     retention: 24h
+    retentionSize: 5GB
+    storageSpec: {}
 
     affinity:
       nodeAffinity:
@@ -88,7 +81,7 @@ prometheus:
                     - observability
 
     remoteWrite:
-      - url: http://vmsingle-vm-single.victoria-metrics:8429/api/v1/write
+      - url: http://vmsingle-vm-single.victoria-metrics.svc.cluster.local:8428/api/v1/write
 
     resources:
       requests:
