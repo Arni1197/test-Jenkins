@@ -28,13 +28,14 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+      - RespectIgnoreDifferences=true
 
   ignoreDifferences:
-    # 🔥 ВАЖНО — игнор CRD полностью
     - group: apiextensions.k8s.io
       kind: CustomResourceDefinition
+      jqPathExpressions:
+        - '.metadata.annotations'
 
-    # (оставляем как было)
     - group: admissionregistration.k8s.io
       kind: MutatingWebhookConfiguration
       jqPathExpressions:
