@@ -65,10 +65,10 @@ affinity:
 resources:
   requests:
     cpu: 500m
-    memory: 128Mi
+    memory: 256Mi
   limits:
     cpu: 800m
-    memory: 256Mi
+    memory: 512Mi
 
 autoscaling:
   enabled: true
@@ -78,7 +78,7 @@ autoscaling:
 
 readinessProbe:
   httpGet:
-    path: /health
+    path: /metrics
     port: 3000
   initialDelaySeconds: 5
   periodSeconds: 10
@@ -87,7 +87,7 @@ readinessProbe:
 
 livenessProbe:
   httpGet:
-    path: /health
+    path: /metrics
     port: 3000
   initialDelaySeconds: 15
   periodSeconds: 20
