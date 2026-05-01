@@ -6,7 +6,51 @@ image:
   digest: "sha256:1f1125bf5560d4184cf4284bca95510ff2ee0df7e16f02ee6d49afcbee803ed4"
   pullPolicy: IfNotPresent
 
+service:
+  port: 3000
+  targetPort: 3000
+
 containerPort: 3000
+
+secrets:
+  envSecretName: secret-audit-service
+
+env:
+  NODE_ENV: "staging"
+
+terminationGracePeriodSeconds: 30
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 0
+    maxSurge: 1
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+extraVolumes:
+  - name: tmp
+    emptyDir: {}
+
+extraVolumeMounts:
+  - name: tmp
+    mountPath: /tmp
 
 affinity:
   nodeAffinity:
@@ -31,11 +75,6 @@ autoscaling:
   minReplicas: 2
   maxReplicas: 4
   targetCPUUtilizationPercentage: 70
-
-secretName: secret-audit-service
-
-env:
-  NODE_ENV: "staging"
 
 readinessProbe:
   httpGet:
