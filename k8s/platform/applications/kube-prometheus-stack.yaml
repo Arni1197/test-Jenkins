@@ -30,10 +30,16 @@ spec:
       - ServerSideApply=true
 
   ignoreDifferences:
+    # 🔥 ВАЖНО — игнор CRD полностью
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+
+    # (оставляем как было)
     - group: admissionregistration.k8s.io
       kind: MutatingWebhookConfiguration
       jqPathExpressions:
         - '.webhooks[].clientConfig.caBundle'
+
     - group: admissionregistration.k8s.io
       kind: ValidatingWebhookConfiguration
       jqPathExpressions:
