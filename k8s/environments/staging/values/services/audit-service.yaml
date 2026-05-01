@@ -80,8 +80,8 @@ readinessProbe:
   httpGet:
     path: /metrics
     port: 3000
-  initialDelaySeconds: 5
-  periodSeconds: 10
+  initialDelaySeconds: 40
+  periodSeconds: 20
   timeoutSeconds: 2
   failureThreshold: 3
 
