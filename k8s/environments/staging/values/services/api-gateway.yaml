@@ -11,6 +11,8 @@ service:
   port: 3000
   targetPort: 3000
 
+secrets:
+  envSecretName: secret-api-gateway
 
 affinity:
   nodeAffinity:
@@ -21,6 +23,7 @@ affinity:
               operator: In
               values:
                 - apps
+
 resources:
   requests:
     cpu: 300m
@@ -28,11 +31,43 @@ resources:
   limits:
     cpu: 500m
     memory: 256Mi
-autoscaling:
-  enabled: true
-  minReplicas: 2
-  maxReplicas: 5
-  targetCPUUtilizationPercentage: 65
+
+env:
+  NODE_ENV: "staging"
+
+terminationGracePeriodSeconds: 30
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 0
+    maxSurge: 1
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+extraVolumes:
+  - name: tmp
+    emptyDir: {}
+
+extraVolumeMounts:
+  - name: tmp
+    mountPath: /tmp
 
 readinessProbe:
   httpGet:
@@ -52,5 +87,8 @@ livenessProbe:
   timeoutSeconds: 2
   failureThreshold: 3
 
-env:
-  NODE_ENV: "staging"
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 65

@@ -59,10 +59,15 @@ spec:
           env:
             - name: OTEL_SERVICE_NAME
               value: "api-gateway"
+            {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
 
+          {{- $secrets := default dict .Values.secrets }}
           envFrom:
             - secretRef:
-                name: {{ dig "secrets" "envSecretName" "secret-api-gateway" .Values | quote }}
+                name: {{ default "secret-api-gateway" $secrets.envSecretName | quote }}
 
           resources:
 {{ toYaml .Values.resources | indent 12 }}
