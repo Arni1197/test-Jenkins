@@ -9,6 +9,51 @@ image:
 service:
   type: ClusterIP
   port: 3000
+  targetPort: 3000
+
+containerPort: 3000
+
+secrets:
+  envSecretName: secret-audit-service
+
+env:
+  NODE_ENV: "development"
+
+automountServiceAccountToken: false
+
+terminationGracePeriodSeconds: 30
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 0
+    maxSurge: 1
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+extraVolumes:
+  - name: tmp
+    emptyDir: {}
+
+extraVolumeMounts:
+  - name: tmp
+    mountPath: /tmp
 
 affinity:
   nodeAffinity:
@@ -28,26 +73,23 @@ resources:
     cpu: 250m
     memory: 256Mi
 
-autoscaling:
-  enabled: false
-
-env:
-  NODE_ENV: "development"
-
 readinessProbe:
   httpGet:
-    path: /api/health
+    path: /metrics
     port: 3000
-  initialDelaySeconds: 5
-  periodSeconds: 10
+  initialDelaySeconds: 40
+  periodSeconds: 20
   timeoutSeconds: 2
   failureThreshold: 3
 
 livenessProbe:
   httpGet:
-    path: /api/health
+    path: /metrics
     port: 3000
-  initialDelaySeconds: 15
+  initialDelaySeconds: 90
   periodSeconds: 20
   timeoutSeconds: 2
   failureThreshold: 3
+
+autoscaling:
+  enabled: false

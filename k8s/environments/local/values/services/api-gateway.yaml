@@ -9,6 +9,49 @@ image:
 service:
   type: ClusterIP
   port: 3000
+  targetPort: 3000
+
+secrets:
+  envSecretName: secret-api-gateway
+
+env:
+  NODE_ENV: "development"
+
+automountServiceAccountToken: false
+
+terminationGracePeriodSeconds: 30
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 0
+    maxSurge: 1
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+extraVolumes:
+  - name: tmp
+    emptyDir: {}
+
+extraVolumeMounts:
+  - name: tmp
+    mountPath: /tmp
 
 affinity:
   nodeAffinity:
@@ -19,6 +62,7 @@ affinity:
               operator: In
               values:
                 - apps
+
 resources:
   requests:
     cpu: 50m
@@ -26,15 +70,6 @@ resources:
   limits:
     cpu: 250m
     memory: 256Mi
-
-autoscaling:
-  enabled: false
-
-env:
-  NODE_ENV: "development"
-
-secrets:
-  envSecretName: secret-api-gateway
 
 readinessProbe:
   httpGet:
@@ -53,3 +88,6 @@ livenessProbe:
   periodSeconds: 20
   timeoutSeconds: 2
   failureThreshold: 3
+
+autoscaling:
+  enabled: false
