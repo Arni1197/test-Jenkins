@@ -11,6 +11,48 @@ service:
   port: 3000
   targetPort: 3002
 
+secrets:
+  envSecretName: secret-user-service
+
+env:
+  NODE_ENV: "production"
+
+terminationGracePeriodSeconds: 30
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 0
+    maxSurge: 1
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+automountServiceAccountToken: false
+
+extraVolumes:
+  - name: tmp
+    emptyDir: {}
+
+extraVolumeMounts:
+  - name: tmp
+    mountPath: /tmp
+
 affinity:
   nodeAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
@@ -28,9 +70,6 @@ resources:
   limits:
     cpu: 500m
     memory: 256Mi
-
-env:
-  NODE_ENV: "staging"
 
 readinessProbe:
   httpGet:
