@@ -15,7 +15,7 @@ secrets:
   envSecretName: secret-auth-service
 
 env:
-  NODE_ENV: "staging"
+  NODE_ENV: "production"
 
 terminationGracePeriodSeconds: 30
 
