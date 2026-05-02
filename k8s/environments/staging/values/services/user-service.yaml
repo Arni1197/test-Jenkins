@@ -74,7 +74,7 @@ resources:
 readinessProbe:
   httpGet:
     path: /api/health
-    port: 3002
+    port: 3000
   initialDelaySeconds: 5
   periodSeconds: 10
   timeoutSeconds: 2
@@ -83,7 +83,7 @@ readinessProbe:
 livenessProbe:
   httpGet:
     path: /api/health
-    port: 3002
+    port: 3000
   initialDelaySeconds: 15
   periodSeconds: 20
   timeoutSeconds: 2
