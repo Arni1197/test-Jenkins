@@ -11,26 +11,13 @@ service:
   port: 3000
   targetPort: 3000
 
-affinity:
-  nodeAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: workload
-              operator: In
-              values:
-                - apps
-
-resources:
-  requests:
-    cpu: 300m
-    memory: 128Mi
-  limits:
-    cpu: 500m
-    memory: 256Mi
+secrets:
+  envSecretName: secret-api-gateway
 
 env:
-  NODE_ENV: "staging"
+  NODE_ENV: "production"
+
+automountServiceAccountToken: false
 
 terminationGracePeriodSeconds: 30
 
@@ -65,6 +52,24 @@ extraVolumes:
 extraVolumeMounts:
   - name: tmp
     mountPath: /tmp
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: workload
+              operator: In
+              values:
+                - apps
+
+resources:
+  requests:
+    cpu: 300m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
 
 readinessProbe:
   httpGet:
