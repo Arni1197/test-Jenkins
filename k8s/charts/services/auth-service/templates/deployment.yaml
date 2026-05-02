@@ -8,34 +8,79 @@ spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
+
+  {{- with .Values.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+
   selector:
     matchLabels:
       app.kubernetes.io/name: auth-service
+
   template:
     metadata:
       annotations:
         instrumentation.opentelemetry.io/inject-nodejs: "jaeger/nodejs-instrumentation"
       labels:
         app.kubernetes.io/name: auth-service
+
     spec:
+      automountServiceAccountToken: {{ .Values.automountServiceAccountToken | default false }}
+
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds | default 30 }}
+
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
       {{- with .Values.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+
+      {{- with .Values.extraVolumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
       containers:
         - name: auth-service
           image: "{{ .Values.image.repository }}{{- if .Values.image.digest }}@{{ .Values.image.digest }}{{- else }}:{{ .Values.image.tag }}{{- end }}"
           imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+
+          {{- with .Values.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
           ports:
-            - containerPort: {{ .Values.service.port }}
+            - containerPort: {{ .Values.service.targetPort }}
 
           env:
             - name: OTEL_SERVICE_NAME
               value: "auth-service"
+            {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
 
+          {{- $secrets := default dict .Values.secrets }}
           envFrom:
             - secretRef:
-                name: {{ .Values.secrets.envSecretName | default "secret-auth" | quote }}
+                name: {{ default "secret-auth-service" $secrets.envSecretName | quote }}
 
           resources:
 {{ toYaml .Values.resources | indent 12 }}
+
+          readinessProbe:
+{{ toYaml .Values.readinessProbe | indent 12 }}
+
+          livenessProbe:
+{{ toYaml .Values.livenessProbe | indent 12 }}
+
+          {{- with .Values.extraVolumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
