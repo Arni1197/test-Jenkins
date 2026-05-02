@@ -26,6 +26,9 @@ spec:
         app.kubernetes.io/name: catalog-service
 
     spec:
+      serviceAccountName: {{ .Values.serviceAccount.name | default "catalog-service-sa" | quote }}
+      automountServiceAccountToken: {{ .Values.automountServiceAccountToken | default false }}
+
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds | default 30 }}
 
       {{- with .Values.podSecurityContext }}
@@ -35,6 +38,11 @@ spec:
 
       {{- with .Values.affinity }}
       affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      {{- with .Values.extraVolumes }}
+      volumes:
         {{- toYaml . | nindent 8 }}
       {{- end }}
 
@@ -49,15 +57,20 @@ spec:
           {{- end }}
 
           ports:
-            - containerPort: {{ .Values.service.port }}
+            - containerPort: {{ .Values.service.targetPort | default .Values.service.port }}
 
           env:
             - name: OTEL_SERVICE_NAME
               value: "catalog-service"
+            {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
 
+          {{- $secrets := default dict .Values.secrets }}
           envFrom:
             - secretRef:
-                name: {{ .Values.secrets.envSecretName | default "secret-catalog" | quote }}
+                name: {{ default "secret-catalog-service" $secrets.envSecretName | quote }}
 
           resources:
 {{ toYaml .Values.resources | indent 12 }}
@@ -67,3 +80,8 @@ spec:
 
           livenessProbe:
 {{ toYaml .Values.livenessProbe | indent 12 }}
+
+          {{- with .Values.extraVolumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}

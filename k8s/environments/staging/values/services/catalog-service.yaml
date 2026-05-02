@@ -17,6 +17,10 @@ secrets:
 env:
   NODE_ENV: "production"
 
+serviceAccount:
+  create: true
+  name: api-gateway-sa
+
 automountServiceAccountToken: false
 
 terminationGracePeriodSeconds: 30
