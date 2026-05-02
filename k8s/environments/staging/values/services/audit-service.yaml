@@ -12,6 +12,8 @@ service:
 
 containerPort: 3000
 
+automountServiceAccountToken: false
+
 secrets:
   envSecretName: secret-audit-service
 
