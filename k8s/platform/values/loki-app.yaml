@@ -66,8 +66,8 @@ loki:
         bucketnames: "s3-loki"
         endpoint: "s3.twcstorage.ru"
         region: "ru-1"
-        access_key_id: "ТВОЙ_ACCESS_KEY"
-        secret_access_key: "ТВОЙ_SECRET_KEY"
+        access_key_id: "${AWS_ACCESS_KEY_ID}"
+        secret_access_key: "${AWS_SECRET_ACCESS_KEY}"
         s3forcepathstyle: true
         insecure: false
 
