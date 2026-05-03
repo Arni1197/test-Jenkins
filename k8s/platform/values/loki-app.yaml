@@ -6,7 +6,6 @@ loki:
   isDefault: false
   url: http://{{(include "loki.serviceName" .)}}:{{ .Values.loki.service.port }}
 
-  # 🔥 закрепляем Loki на observability-ноды
   nodeSelector:
     workload: observability
 
@@ -32,6 +31,10 @@ loki:
       - ReadWriteOnce
     size: 10Gi
     storageClassName: nvme.network-drives.csi.timeweb.cloud
+
+  extraEnvFrom:
+    - secretRef:
+        name: loki-s3-credentials
 
   config:
     auth_enabled: false
@@ -79,7 +82,11 @@ loki:
       retention_period: 168h
 
 promtail:
-  enabled: false
+  enabled: true
+
+  config:
+    clients:
+      - url: http://loki:3100/loki/api/v1/push
 
 fluent-bit:
   enabled: false
