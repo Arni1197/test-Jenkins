@@ -1,0 +1,102 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/arni1197/audit-service
+  tag: sha-85de6021ede99eebc417ad9002b39b07d283462f
+  digest: "sha256:1f1125bf5560d4184cf4284bca95510ff2ee0df7e16f02ee6d49afcbee803ed4"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 3000
+  targetPort: 3000
+
+containerPort: 3000
+
+secrets:
+  envSecretName: secret-audit-service
+
+serviceAccount:
+  create: true
+  name: audit-service-sa
+
+automountServiceAccountToken: false
+
+env:
+  NODE_ENV: "production"
+
+terminationGracePeriodSeconds: 30
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 0
+    maxSurge: 1
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+extraVolumes:
+  - name: tmp
+    emptyDir: {}
+
+extraVolumeMounts:
+  - name: tmp
+    mountPath: /tmp
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: workload
+              operator: In
+              values:
+                - apps
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+
+readinessProbe:
+  httpGet:
+    path: /metrics
+    port: 3000
+  initialDelaySeconds: 40
+  periodSeconds: 20
+  timeoutSeconds: 2
+  failureThreshold: 3
+
+livenessProbe:
+  httpGet:
+    path: /metrics
+    port: 3000
+  initialDelaySeconds: 90
+  periodSeconds: 20
+  timeoutSeconds: 2
+  failureThreshold: 3
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
