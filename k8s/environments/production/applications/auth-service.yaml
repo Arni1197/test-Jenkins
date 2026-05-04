@@ -11,7 +11,7 @@ spec:
     path: k8s/charts/services/auth-service
     helm:
       valueFiles:
-        - ../../../environments/prod/values/services/auth-service.yaml
+        - ../../../../environments/production/values/services/auth-service.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: prod

@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/Arni1197/test-Jenkins.git
     targetRevision: main
-    path: k8s/environments/prod/applications
+    path: k8s/environments/production/applications
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
