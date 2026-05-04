@@ -11,7 +11,7 @@ spec:
     path: k8s/charts/services/audit-service
     helm:
       valueFiles:
-        - ../../../../environments/production/values/services/audit-service.yaml
+        - ../../../environments/production/values/services/audit-service.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: prod

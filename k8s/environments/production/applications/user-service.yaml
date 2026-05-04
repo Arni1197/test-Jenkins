@@ -11,7 +11,7 @@ spec:
     path: k8s/charts/services/user-service
     helm:
       valueFiles:
-        - ../../../../environments/production/values/services/user-service.yaml
+        - ../../../environments/production/values/services/user-service.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: prod

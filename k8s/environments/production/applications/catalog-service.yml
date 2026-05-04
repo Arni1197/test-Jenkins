@@ -11,7 +11,7 @@ spec:
     path: k8s/charts/services/catalog-service
     helm:
       valueFiles:
-        - ../../../../environments/production/values/services/catalog-service.yaml
+        - ../../../environments/production/values/services/catalog-service.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: game-services-production
