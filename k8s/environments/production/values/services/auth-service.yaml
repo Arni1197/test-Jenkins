@@ -69,11 +69,11 @@ affinity:
 
 resources:
   requests:
-    cpu: 500m
-    memory: 256Mi
+    cpu: 200m
+    memory: 128Mi
   limits:
-    cpu: 1000m
-    memory: 512Mi
+    cpu: 800m
+    memory: 256Mi
 
 readinessProbe:
   httpGet:
