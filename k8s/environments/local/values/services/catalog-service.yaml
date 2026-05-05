@@ -10,16 +10,12 @@ service:
   type: ClusterIP
   port: 3003
 
-affinity:
-  nodeAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: workload
-              operator: In
-              values:
-                - apps
 
+serviceAccount:
+  create: true
+  name: catalog-service-sa
+
+automountServiceAccountToken: false
 resources:
   requests:
     cpu: 25m

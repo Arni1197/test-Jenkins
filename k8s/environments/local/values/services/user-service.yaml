@@ -12,16 +12,11 @@ service:
   type: ClusterIP
   port: 3002
 
+serviceAccount:
+  create: true
+  name: user-service-sa
 
-affinity:
-  nodeAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: workload
-              operator: In
-              values:
-                - apps
+automountServiceAccountToken: false
 resources:
   requests:
     cpu: 25m

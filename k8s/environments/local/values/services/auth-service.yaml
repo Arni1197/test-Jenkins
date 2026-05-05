@@ -53,15 +53,9 @@ extraVolumeMounts:
   - name: tmp
     mountPath: /tmp
 
-affinity:
-  nodeAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: workload
-              operator: In
-              values:
-                - apps
+serviceAccount:
+  create: true
+  name: auth-service-sa
 
 resources:
   requests:
