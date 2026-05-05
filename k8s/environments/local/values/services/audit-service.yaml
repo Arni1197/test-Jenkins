@@ -61,7 +61,7 @@ serviceAccount:
   name: audit-service-sa
 resources:
   requests:
-    cpu: 25m
+    cpu: 85m
     memory: 128Mi
   limits:
     cpu: 200m
