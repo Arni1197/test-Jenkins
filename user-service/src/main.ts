@@ -4,9 +4,11 @@ import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import { MetricsService } from './metrics/metrics.service';
 import { HttpMetricsInterceptor } from './metrics/metrics.interceptor';
+import { requestContextMiddleware } from './common/request-context.middleware';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.use(requestContextMiddleware);
 
   app.setGlobalPrefix('api');
   app.use(cookieParser());

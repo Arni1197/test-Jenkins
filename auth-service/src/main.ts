@@ -12,6 +12,7 @@ import { ValidationError } from 'class-validator';
 import { AppModule } from './app.module';
 import { logger } from './logger';
 import { registerPrismaTracing } from './tracing/prisma';
+import { requestContextMiddleware } from './common/request-context.middleware';
 
 registerPrismaTracing();
 
@@ -33,6 +34,7 @@ function collectValidationMessages(errors: ValidationError[] = []): string[] {
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { logger });
+  app.use(requestContextMiddleware);
 
   // ✅ cookies для refresh/me
   app.use(cookieParser());

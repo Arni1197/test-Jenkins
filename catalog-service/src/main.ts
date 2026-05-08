@@ -3,11 +3,13 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { PrismaService } from './prisma/prisma.service';
+import { requestContextMiddleware } from './common/request-context.middleware';
 
 export let isShuttingDown = false;
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.use(requestContextMiddleware);
 
   app.setGlobalPrefix('api');
 
