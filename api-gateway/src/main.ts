@@ -58,7 +58,10 @@ async function bootstrap() {
   // API Gateway health
   // =========================
   expressApp.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok', service: 'api-gateway' });
+    res.json({
+      status: 'ok',
+      service: 'api-gateway',
+    });
   });
 
   // =========================
@@ -102,7 +105,7 @@ async function bootstrap() {
   // =========================
   // Catalog private routes
   // External: /api/catalog/*
-  // Internal: /api/*
+  // Internal: /api/catalog/*
   // =========================
   expressApp.use(
     [
@@ -115,7 +118,7 @@ async function bootstrap() {
     createProxyMiddleware({
       target: catalogTarget,
       changeOrigin: true,
-      pathRewrite: (path) => `/api${path}`,
+      pathRewrite: (path) => `/api/catalog${path}`,
       on: {
         proxyReq: (proxyReq, req) => {
           const userId = (req as any).userId;
@@ -131,21 +134,23 @@ async function bootstrap() {
   // =========================
   // Catalog public routes
   // External: /api/catalog/*
-  // Internal: /api/*
+  // Internal: /api/catalog/*
   // =========================
   expressApp.use(
     '/api/catalog',
     createProxyMiddleware({
       target: catalogTarget,
       changeOrigin: true,
-      pathRewrite: (path) => `/api${path}`,
+      pathRewrite: (path) => `/api/catalog${path}`,
       on: {
         proxyReq: (proxyReq, req) => {
           try {
             const auth = req.headers.authorization;
 
             const tokenFromHeader =
-              auth && auth.startsWith('Bearer ') ? auth.slice(7).trim() : null;
+              auth && auth.startsWith('Bearer ')
+                ? auth.slice(7).trim()
+                : null;
 
             const tokenFromCookie =
               (req as any).cookies?.accessToken ||
@@ -153,13 +158,21 @@ async function bootstrap() {
               null;
 
             const token = tokenFromHeader || tokenFromCookie;
+
             if (!token) return;
 
-            const secret = process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
+            const secret =
+              process.env.JWT_ACCESS_SECRET ||
+              process.env.JWT_SECRET;
+
             if (!secret) return;
 
             const payload = jwt.verify(token, secret) as JwtPayload;
-            const userId = payload.sub ?? payload.userId ?? payload.id;
+
+            const userId =
+              payload.sub ??
+              payload.userId ??
+              payload.id;
 
             if (userId) {
               proxyReq.setHeader('x-user-id', userId);
