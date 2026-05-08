@@ -7,7 +7,6 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 import jwt from 'jsonwebtoken';
 import { attachUserIdFromJwt } from './auth/userid.middleware';
 
-// ✅ METRICS
 import { Registry } from 'prom-client';
 import { createHttpMetricsMiddleware } from './metrics/http-metrics.middleware';
 
@@ -20,14 +19,10 @@ type JwtPayload = {
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // ✅ Единый префикс
   app.setGlobalPrefix('api');
 
   app.use(cookieParser());
 
-  // =========================
-  // ✅ CORS
-  // =========================
   const frontendUrls = (process.env.FRONTEND_URLS ?? 'http://localhost:3000')
     .split(',')
     .map((s) => s.trim().replace(/\/$/, ''))
@@ -36,6 +31,7 @@ async function bootstrap() {
   app.enableCors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
+
       const ok = frontendUrls.includes(origin.replace(/\/$/, ''));
       return callback(null, ok);
     },
@@ -51,36 +47,38 @@ async function bootstrap() {
 
   const expressApp = app.getHttpAdapter().getInstance();
 
-  // =========================
-  // ✅ HTTP METRICS
-  // =========================
   const registry = app.get(Registry);
   expressApp.use(createHttpMetricsMiddleware(registry));
 
-  // =========================
-  // ✅ TARGETS
-  // =========================
   const authTarget = process.env.AUTH_SERVICE_URL ?? 'http://localhost:3001';
   const userTarget = process.env.USER_SERVICE_URL ?? 'http://localhost:3002';
   const catalogTarget = process.env.CATALOG_SERVICE_URL ?? 'http://localhost:3003';
 
   // =========================
-  // ✅ AUTH
+  // API Gateway health
+  // =========================
+  expressApp.get('/api/health', (_req, res) => {
+    res.json({ status: 'ok', service: 'api-gateway' });
+  });
+
+  // =========================
+  // Auth service
+  // External: /api/auth/*
+  // Internal: /api/auth/*
   // =========================
   expressApp.use(
     '/api/auth',
     createProxyMiddleware({
       target: authTarget,
       changeOrigin: true,
-      pathRewrite: (path) => `/api/auth${path.replace('/api/auth', '')}`,
+      pathRewrite: (path) => path,
     }),
   );
 
   // =========================
-  // ✅ USERS (debug version)
-  // =========================
-  // =========================
-  // ✅ USERS
+  // User service
+  // External: /api/users/*
+  // Internal: /api/users/*
   // =========================
   expressApp.use(
     '/api/users',
@@ -88,10 +86,11 @@ async function bootstrap() {
     createProxyMiddleware({
       target: userTarget,
       changeOrigin: true,
-      pathRewrite: (path) => `/api/users${path.replace('/api/users', '')}`,
+      pathRewrite: (path) => path,
       on: {
         proxyReq: (proxyReq, req) => {
           const userId = (req as any).userId;
+
           if (userId) {
             proxyReq.setHeader('x-user-id', userId);
           }
@@ -101,7 +100,13 @@ async function bootstrap() {
   );
 
   // =========================
-  // ✅ CATALOG PRIVATE
+  // Catalog private routes
+  // External: /api/catalog/*
+  // Internal: /api/*
+  // Example:
+  // /api/catalog/favorites -> /api/favorites
+  // /api/catalog/cart      -> /api/cart
+  // /api/catalog/me        -> /api/me
   // =========================
   expressApp.use(
     [
@@ -114,12 +119,11 @@ async function bootstrap() {
     createProxyMiddleware({
       target: catalogTarget,
       changeOrigin: true,
-      pathRewrite: (_path, req) => {
-        return (req as any).originalUrl;
-      },
+      pathRewrite: (path) => path.replace(/^\/api\/catalog/, '/api'),
       on: {
         proxyReq: (proxyReq, req) => {
           const userId = (req as any).userId;
+
           if (userId) {
             proxyReq.setHeader('x-user-id', userId);
           }
@@ -129,20 +133,24 @@ async function bootstrap() {
   );
 
   // =========================
-  // ✅ CATALOG PUBLIC
+  // Catalog public routes
+  // External: /api/catalog/*
+  // Internal: /api/*
+  // Example:
+  // /api/catalog/health   -> /api/health
+  // /api/catalog/products -> /api/products
   // =========================
   expressApp.use(
     '/api/catalog',
     createProxyMiddleware({
       target: catalogTarget,
       changeOrigin: true,
-      pathRewrite: (_path, req) => {
-        return (req as any).originalUrl;
-      },
+      pathRewrite: (path) => path.replace(/^\/api\/catalog/, '/api'),
       on: {
         proxyReq: (proxyReq, req) => {
           try {
             const auth = req.headers.authorization;
+
             const tokenFromHeader =
               auth && auth.startsWith('Bearer ') ? auth.slice(7).trim() : null;
 
@@ -164,21 +172,15 @@ async function bootstrap() {
               proxyReq.setHeader('x-user-id', userId);
             }
           } catch {
-            // публичный маршрут остаётся публичным
+            // Public catalog routes remain public.
           }
         },
       },
     }),
   );
 
-  // =========================
-  // ✅ HEALTH
-  // =========================
-  expressApp.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok', service: 'api-gateway' });
-  });
-
   const port = Number(process.env.PORT ?? 8081);
+
   await app.listen(port, '0.0.0.0');
 
   console.log(`🚀 API Gateway running on :${port}`);
