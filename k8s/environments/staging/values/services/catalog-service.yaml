@@ -12,7 +12,7 @@ service:
   targetPort: 3000
 
 secrets:
-  envSecretName: secret-api-gateway
+  envSecretName: secret-catalog-service
 
 env:
   NODE_ENV: "staging"
