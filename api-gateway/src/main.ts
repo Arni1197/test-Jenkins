@@ -71,7 +71,7 @@ async function bootstrap() {
     createProxyMiddleware({
       target: authTarget,
       changeOrigin: true,
-      pathRewrite: (path) => path,
+      pathRewrite: (path) => `/api/auth${path}`,
     }),
   );
 
@@ -86,7 +86,7 @@ async function bootstrap() {
     createProxyMiddleware({
       target: userTarget,
       changeOrigin: true,
-      pathRewrite: (path) => path,
+      pathRewrite: (path) => `/api/users${path}`,
       on: {
         proxyReq: (proxyReq, req) => {
           const userId = (req as any).userId;
@@ -103,10 +103,6 @@ async function bootstrap() {
   // Catalog private routes
   // External: /api/catalog/*
   // Internal: /api/*
-  // Example:
-  // /api/catalog/favorites -> /api/favorites
-  // /api/catalog/cart      -> /api/cart
-  // /api/catalog/me        -> /api/me
   // =========================
   expressApp.use(
     [
@@ -119,7 +115,7 @@ async function bootstrap() {
     createProxyMiddleware({
       target: catalogTarget,
       changeOrigin: true,
-      pathRewrite: (path) => path.replace(/^\/api\/catalog/, '/api'),
+      pathRewrite: (path) => `/api${path}`,
       on: {
         proxyReq: (proxyReq, req) => {
           const userId = (req as any).userId;
@@ -136,16 +132,13 @@ async function bootstrap() {
   // Catalog public routes
   // External: /api/catalog/*
   // Internal: /api/*
-  // Example:
-  // /api/catalog/health   -> /api/health
-  // /api/catalog/products -> /api/products
   // =========================
   expressApp.use(
     '/api/catalog',
     createProxyMiddleware({
       target: catalogTarget,
       changeOrigin: true,
-      pathRewrite: (path) => path.replace(/^\/api\/catalog/, '/api'),
+      pathRewrite: (path) => `/api${path}`,
       on: {
         proxyReq: (proxyReq, req) => {
           try {
