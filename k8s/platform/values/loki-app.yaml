@@ -16,13 +16,19 @@ loki:
     httpGet:
       path: /ready
       port: http-metrics
-    initialDelaySeconds: 45
+    initialDelaySeconds: 90
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 12
 
   livenessProbe:
     httpGet:
       path: /ready
       port: http-metrics
-    initialDelaySeconds: 45
+    initialDelaySeconds: 180
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 12
 
   datasource:
     jsonData: "{}"
