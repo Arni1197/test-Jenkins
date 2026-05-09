@@ -40,6 +40,10 @@ function attachRequestHeaders(proxyReq: any, req: RequestWithIds) {
   }
 }
 
+function forwardOriginalUrl(_path: string, req: any) {
+  return req.originalUrl;
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
@@ -79,7 +83,8 @@ async function bootstrap() {
 
   const authTarget = process.env.AUTH_SERVICE_URL ?? 'http://localhost:3001';
   const userTarget = process.env.USER_SERVICE_URL ?? 'http://localhost:3002';
-  const catalogTarget = process.env.CATALOG_SERVICE_URL ?? 'http://localhost:3003';
+  const catalogTarget =
+    process.env.CATALOG_SERVICE_URL ?? 'http://localhost:3003';
 
   expressApp.get('/api/health', (_req, res) => {
     res.json({
@@ -93,7 +98,7 @@ async function bootstrap() {
     createProxyMiddleware({
       target: authTarget,
       changeOrigin: true,
-      pathRewrite: (path) => `/api/auth${path}`,
+      pathRewrite: forwardOriginalUrl,
       on: {
         proxyReq: (proxyReq, req) => {
           attachRequestHeaders(proxyReq, req as RequestWithIds);
@@ -108,7 +113,7 @@ async function bootstrap() {
     createProxyMiddleware({
       target: userTarget,
       changeOrigin: true,
-      pathRewrite: (path) => `/api/users${path}`,
+      pathRewrite: forwardOriginalUrl,
       on: {
         proxyReq: (proxyReq, req) => {
           attachRequestHeaders(proxyReq, req as RequestWithIds);
@@ -128,7 +133,7 @@ async function bootstrap() {
     createProxyMiddleware({
       target: catalogTarget,
       changeOrigin: true,
-      pathRewrite: (path) => `/api/catalog${path}`,
+      pathRewrite: forwardOriginalUrl,
       on: {
         proxyReq: (proxyReq, req) => {
           attachRequestHeaders(proxyReq, req as RequestWithIds);
@@ -142,7 +147,7 @@ async function bootstrap() {
     createProxyMiddleware({
       target: catalogTarget,
       changeOrigin: true,
-      pathRewrite: (path) => `/api/catalog${path}`,
+      pathRewrite: forwardOriginalUrl,
       on: {
         proxyReq: (proxyReq, req) => {
           try {
@@ -162,16 +167,12 @@ async function bootstrap() {
 
             if (token) {
               const secret =
-                process.env.JWT_ACCESS_SECRET ||
-                process.env.JWT_SECRET;
+                process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
 
               if (secret) {
                 const payload = jwt.verify(token, secret) as JwtPayload;
 
-                const userId =
-                  payload.sub ??
-                  payload.userId ??
-                  payload.id;
+                const userId = payload.sub ?? payload.userId ?? payload.id;
 
                 if (userId) {
                   (req as any).userId = userId;
