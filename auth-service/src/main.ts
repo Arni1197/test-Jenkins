@@ -13,6 +13,7 @@ import { AppModule } from './app.module';
 import { logger } from './logger';
 import { registerPrismaTracing } from './tracing/prisma';
 import { requestContextMiddleware } from './common/request-context.middleware';
+import { httpLoggerMiddleware } from './common/http-logger.middleware';
 
 registerPrismaTracing();
 
@@ -35,6 +36,7 @@ function collectValidationMessages(errors: ValidationError[] = []): string[] {
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { logger });
   app.use(requestContextMiddleware);
+  app.use(httpLoggerMiddleware('auth-service'));
 
   // ✅ cookies для refresh/me
   app.use(cookieParser());

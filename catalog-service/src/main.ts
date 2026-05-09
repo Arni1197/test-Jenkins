@@ -4,12 +4,14 @@ import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { PrismaService } from './prisma/prisma.service';
 import { requestContextMiddleware } from './common/request-context.middleware';
+import { httpLoggerMiddleware } from './common/http-logger.middleware';
 
 export let isShuttingDown = false;
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(requestContextMiddleware);
+  app.use(httpLoggerMiddleware('catalog-service'));
 
   app.setGlobalPrefix('api');
 

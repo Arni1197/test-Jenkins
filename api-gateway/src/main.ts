@@ -16,6 +16,7 @@ import {
   RequestWithIds,
   requestIdMiddleware,
 } from './common/request-id.middleware';
+import { httpLoggerMiddleware } from './common/http-logger.middleware';
 
 type JwtPayload = {
   sub?: string;
@@ -71,6 +72,7 @@ async function bootstrap() {
   const expressApp = app.getHttpAdapter().getInstance();
 
   expressApp.use(requestIdMiddleware);
+  expressApp.use(httpLoggerMiddleware('api-gateway'));
 
   const registry = app.get(Registry);
   expressApp.use(createHttpMetricsMiddleware(registry));

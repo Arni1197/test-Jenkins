@@ -5,10 +5,12 @@ import cookieParser from 'cookie-parser';
 import { MetricsService } from './metrics/metrics.service';
 import { HttpMetricsInterceptor } from './metrics/metrics.interceptor';
 import { requestContextMiddleware } from './common/request-context.middleware';
+import { httpLoggerMiddleware } from './common/http-logger.middleware';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(requestContextMiddleware);
+  app.use(httpLoggerMiddleware('user-service'));
 
   app.setGlobalPrefix('api');
   app.use(cookieParser());
