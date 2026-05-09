@@ -67,13 +67,8 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
   ): string | undefined {
     const value = headers[key];
 
-    if (typeof value === 'string') {
-      return value;
-    }
-
-    if (Buffer.isBuffer(value)) {
-      return value.toString('utf8');
-    }
+    if (typeof value === 'string') return value;
+    if (Buffer.isBuffer(value)) return value.toString('utf8');
 
     return undefined;
   }
@@ -139,7 +134,7 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
           const existingMetadata =
             typeof parsedPayload.metadata === 'object' &&
             parsedPayload.metadata !== null
-              ? (parsedPayload.metadata as Record<string, unknown>)
+              ? parsedPayload.metadata
               : {};
 
           payload = {
@@ -163,6 +158,19 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
               ? payload.eventType
               : 'unknown';
 
+          this.logger.log(
+            JSON.stringify({
+              type: 'audit_event_received',
+              service: 'audit-service',
+              eventType,
+              requestId: payload.metadata?.requestId,
+              kongRequestId: payload.metadata?.kongRequestId,
+              userId: payload.userId,
+              routingKey: msg.fields.routingKey,
+              result: 'received',
+            }),
+          );
+
           this.metricsService.auditEventsConsumedTotal.inc({
             service: 'audit-service',
             event: eventType,
@@ -178,21 +186,10 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
               type: 'audit_event_consumed',
               service: 'audit-service',
               eventType,
-              requestId:
-                typeof payload.metadata === 'object' &&
-                payload.metadata !== null &&
-                typeof (payload.metadata as Record<string, unknown>)
-                  .requestId === 'string'
-                  ? (payload.metadata as Record<string, string>).requestId
-                  : requestId,
-              kongRequestId:
-                typeof payload.metadata === 'object' &&
-                payload.metadata !== null &&
-                typeof (payload.metadata as Record<string, unknown>)
-                  .kongRequestId === 'string'
-                  ? (payload.metadata as Record<string, string>).kongRequestId
-                  : kongRequestId,
+              requestId: payload.metadata?.requestId,
+              kongRequestId: payload.metadata?.kongRequestId,
               userId: payload.userId,
+              routingKey: msg.fields.routingKey,
               result: 'success',
             }),
           );
@@ -224,6 +221,7 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
               requestId,
               kongRequestId,
               retryCount,
+              routingKey: msg.fields.routingKey,
               error: error?.message ?? String(error),
             }),
             error?.stack,
