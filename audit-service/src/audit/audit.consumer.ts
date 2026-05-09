@@ -35,9 +35,7 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
   }
 
   private get mainQueue(): string {
-    return (
-      this.config.get<string>('RABBITMQ_AUDIT_QUEUE') ?? 'audit.log.queue'
-    );
+    return this.config.get<string>('RABBITMQ_AUDIT_QUEUE') ?? 'audit.log.queue';
   }
 
   private get retryQueue(): string {
@@ -61,6 +59,23 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
     return Number(
       this.config.get<string>('RABBITMQ_AUDIT_MAX_RETRIES') ?? '3',
     );
+  }
+
+  private getStringHeader(
+    headers: amqp.MessagePropertyHeaders,
+    key: string,
+  ): string | undefined {
+    const value = headers[key];
+
+    if (typeof value === 'string') {
+      return value;
+    }
+
+    if (Buffer.isBuffer(value)) {
+      return value.toString('utf8');
+    }
+
+    return undefined;
   }
 
   async onModuleInit() {
@@ -99,6 +114,7 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
 
         let payload: AuditEventPayload | undefined;
         let eventType = 'unknown';
+
         const processingEnd =
           this.metricsService.auditEventsProcessingDurationSeconds.startTimer({
             service: 'audit-service',
@@ -107,9 +123,45 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
           });
 
         try {
-          payload = JSON.parse(msg.content.toString()) as AuditEventPayload;
+          const headers = msg.properties.headers ?? {};
+
+          const requestId = this.getStringHeader(headers, 'x-request-id');
+          const kongRequestId = this.getStringHeader(
+            headers,
+            'x-kong-request-id',
+          );
+          const headerUserId = this.getStringHeader(headers, 'x-user-id');
+
+          const parsedPayload = JSON.parse(
+            msg.content.toString(),
+          ) as AuditEventPayload;
+
+          const existingMetadata =
+            typeof parsedPayload.metadata === 'object' &&
+            parsedPayload.metadata !== null
+              ? (parsedPayload.metadata as Record<string, unknown>)
+              : {};
+
+          payload = {
+            ...parsedPayload,
+            userId: parsedPayload.userId ?? headerUserId,
+            metadata: {
+              ...existingMetadata,
+              requestId:
+                typeof existingMetadata.requestId === 'string'
+                  ? existingMetadata.requestId
+                  : requestId,
+              kongRequestId:
+                typeof existingMetadata.kongRequestId === 'string'
+                  ? existingMetadata.kongRequestId
+                  : kongRequestId,
+            },
+          };
+
           eventType =
-            typeof payload.eventType === 'string' ? payload.eventType : 'unknown';
+            typeof payload.eventType === 'string'
+              ? payload.eventType
+              : 'unknown';
 
           this.metricsService.auditEventsConsumedTotal.inc({
             service: 'audit-service',
@@ -121,6 +173,30 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
 
           this.channel.ack(msg);
 
+          this.logger.log(
+            JSON.stringify({
+              type: 'audit_event_consumed',
+              service: 'audit-service',
+              eventType,
+              requestId:
+                typeof payload.metadata === 'object' &&
+                payload.metadata !== null &&
+                typeof (payload.metadata as Record<string, unknown>)
+                  .requestId === 'string'
+                  ? (payload.metadata as Record<string, string>).requestId
+                  : requestId,
+              kongRequestId:
+                typeof payload.metadata === 'object' &&
+                payload.metadata !== null &&
+                typeof (payload.metadata as Record<string, unknown>)
+                  .kongRequestId === 'string'
+                  ? (payload.metadata as Record<string, string>).kongRequestId
+                  : kongRequestId,
+              userId: payload.userId,
+              result: 'success',
+            }),
+          );
+
           processingEnd({
             service: 'audit-service',
             event: eventType,
@@ -130,12 +206,26 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
           const headers = msg.properties.headers ?? {};
           const retryCount = Number(headers['x-retry-count'] ?? 0);
 
+          const requestId = this.getStringHeader(headers, 'x-request-id');
+          const kongRequestId = this.getStringHeader(
+            headers,
+            'x-kong-request-id',
+          );
+
           if (payload && typeof payload.eventType === 'string') {
             eventType = payload.eventType;
           }
 
           this.logger.error(
-            `Failed to process audit event. retry=${retryCount}. event=${eventType}. error=${error?.message ?? error}`,
+            JSON.stringify({
+              type: 'audit_event_failed',
+              service: 'audit-service',
+              eventType,
+              requestId,
+              kongRequestId,
+              retryCount,
+              error: error?.message ?? String(error),
+            }),
             error?.stack,
           );
 
@@ -169,6 +259,7 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
               event: eventType,
               result: 'dlq',
             });
+
             return;
           }
 
@@ -200,6 +291,7 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
     );
 
     this.consumerTag = consumeResult.consumerTag;
+
     this.logger.log(
       `Audit consumer started. exchange=${this.exchangeName}, queue=${this.mainQueue}, retry=${this.retryQueue}, dlq=${this.dlqQueue}`,
     );
@@ -214,7 +306,16 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
       // ignore
     }
 
-    await this.channel?.close();
-    await this.connection?.close();
+    try {
+      await this.channel?.close();
+    } catch {
+      // ignore
+    }
+
+    try {
+      await this.connection?.close();
+    } catch {
+      // ignore
+    }
   }
 }

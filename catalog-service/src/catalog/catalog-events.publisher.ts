@@ -45,8 +45,21 @@ export class CatalogEventsPublisher implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy() {
-    await this.channel?.close();
-    await this.connection?.close();
+    try {
+      if (this.channel) {
+        await this.channel.close();
+      }
+    } catch {
+      // ignore: channel may already be closed
+    }
+
+    try {
+      if (this.connection) {
+        await this.connection.close();
+      }
+    } catch {
+      // ignore: connection may already be closed
+    }
   }
 
   async publish(
@@ -66,15 +79,37 @@ export class CatalogEventsPublisher implements OnModuleInit, OnModuleDestroy {
       this.logger.warn(
         `Publish skipped. Channel is not ready. routingKey=${routingKey}`,
       );
+
       throw new Error(`RabbitMQ channel is not ready. routingKey=${routingKey}`);
     }
 
-    const message = Buffer.from(
-      JSON.stringify({
-        ...payload,
-        emittedAt: new Date().toISOString(),
-      }),
-    );
+    const metadata =
+      typeof payload.metadata === 'object' && payload.metadata !== null
+        ? (payload.metadata as Record<string, unknown>)
+        : {};
+
+    const requestId =
+      typeof metadata.requestId === 'string' ? metadata.requestId : undefined;
+
+    const kongRequestId =
+      typeof metadata.kongRequestId === 'string'
+        ? metadata.kongRequestId
+        : undefined;
+
+    const userId =
+      typeof payload.userId === 'string' ? payload.userId : undefined;
+
+    const enrichedPayload = {
+      ...payload,
+      metadata: {
+        ...metadata,
+        requestId,
+        kongRequestId,
+      },
+      emittedAt: new Date().toISOString(),
+    };
+
+    const message = Buffer.from(JSON.stringify(enrichedPayload));
 
     try {
       await new Promise<void>((resolve, reject) => {
@@ -85,12 +120,19 @@ export class CatalogEventsPublisher implements OnModuleInit, OnModuleDestroy {
           {
             contentType: 'application/json',
             persistent: true,
+            headers: {
+              'x-request-id': requestId,
+              'x-kong-request-id': kongRequestId,
+              'x-user-id': userId,
+              'x-event-type': eventType,
+            },
           },
           (err) => {
             if (err) {
               reject(err);
               return;
             }
+
             resolve();
           },
         );
@@ -101,6 +143,19 @@ export class CatalogEventsPublisher implements OnModuleInit, OnModuleDestroy {
         event: eventType,
         routing_key: routingKey,
       });
+
+      this.logger.log(
+        JSON.stringify({
+          type: 'rabbit_publish',
+          service: 'catalog-service',
+          eventType,
+          routingKey,
+          requestId,
+          kongRequestId,
+          userId,
+          result: 'success',
+        }),
+      );
     } catch (error) {
       this.metricsService.catalogEventPublishFailedTotal.inc({
         service: 'catalog-service',

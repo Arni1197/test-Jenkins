@@ -8,6 +8,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CatalogEventsPublisher } from './catalog-events.publisher';
 import { MetricsService } from '../metrics/metrics.service';
 
+export type AuditContext = {
+  requestId?: string;
+  kongRequestId?: string;
+};
+
 @Injectable()
 export class CatalogService {
   constructor(
@@ -28,24 +33,24 @@ export class CatalogService {
     updatedAt: true,
   } as const;
 
+  private buildMetadata(context?: AuditContext) {
+    return {
+      requestId: context?.requestId,
+      kongRequestId: context?.kongRequestId,
+    };
+  }
+
   async getProducts() {
     return this.prisma.product.findMany({
-      where: {
-        isActive: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      where: { isActive: true },
+      orderBy: { createdAt: 'desc' },
       select: this.productSelect,
     });
   }
 
   async getProductById(productId: string) {
     const product = await this.prisma.product.findFirst({
-      where: {
-        id: productId,
-        isActive: true,
-      },
+      where: { id: productId, isActive: true },
       select: this.productSelect,
     });
 
@@ -56,16 +61,17 @@ export class CatalogService {
     return product;
   }
 
-  async getProductByIdForViewer(productId: string, userId?: string) {
+  async getProductByIdForViewer(
+    productId: string,
+    userId?: string,
+    context?: AuditContext,
+  ) {
     const product = await this.getProductById(productId);
 
     if (userId) {
       try {
         await this.prisma.recentlyViewed.create({
-          data: {
-            userId,
-            productId,
-          },
+          data: { userId, productId },
         });
 
         this.metricsService.catalogDbWriteSuccessTotal.inc({
@@ -84,6 +90,7 @@ export class CatalogService {
         eventType: 'ProductViewed',
         userId,
         productId,
+        metadata: this.buildMetadata(context),
       });
     }
 
@@ -92,12 +99,8 @@ export class CatalogService {
 
   async getRecentlyViewed(userId: string) {
     return this.prisma.recentlyViewed.findMany({
-      where: {
-        userId,
-      },
-      orderBy: {
-        viewedAt: 'desc',
-      },
+      where: { userId },
+      orderBy: { viewedAt: 'desc' },
       take: 20,
       select: {
         id: true,
@@ -113,12 +116,8 @@ export class CatalogService {
 
   async getFavorites(userId: string) {
     return this.prisma.favorite.findMany({
-      where: {
-        userId,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
       select: {
         id: true,
         userId: true,
@@ -131,12 +130,13 @@ export class CatalogService {
     });
   }
 
-  async addFavorite(userId: string, productId: string) {
+  async addFavorite(
+    userId: string,
+    productId: string,
+    context?: AuditContext,
+  ) {
     const product = await this.prisma.product.findFirst({
-      where: {
-        id: productId,
-        isActive: true,
-      },
+      where: { id: productId, isActive: true },
     });
 
     if (!product) {
@@ -158,10 +158,7 @@ export class CatalogService {
 
     try {
       const favorite = await this.prisma.favorite.create({
-        data: {
-          userId,
-          productId,
-        },
+        data: { userId, productId },
         select: {
           id: true,
           userId: true,
@@ -187,6 +184,7 @@ export class CatalogService {
         userId,
         productId,
         favoriteId: favorite.id,
+        metadata: this.buildMetadata(context),
       });
 
       return favorite;
@@ -200,7 +198,11 @@ export class CatalogService {
     }
   }
 
-  async removeFavorite(userId: string, productId: string) {
+  async removeFavorite(
+    userId: string,
+    productId: string,
+    context?: AuditContext,
+  ) {
     const existingFavorite = await this.prisma.favorite.findUnique({
       where: {
         userId_productId: {
@@ -241,6 +243,7 @@ export class CatalogService {
         eventType: 'FavoriteRemoved',
         userId,
         productId,
+        metadata: this.buildMetadata(context),
       });
 
       return {
@@ -260,12 +263,8 @@ export class CatalogService {
 
   async getCart(userId: string) {
     return this.prisma.cartItem.findMany({
-      where: {
-        userId,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
       select: {
         id: true,
         userId: true,
@@ -280,12 +279,14 @@ export class CatalogService {
     });
   }
 
-  async addCartItem(userId: string, productId: string, quantity: number) {
+  async addCartItem(
+    userId: string,
+    productId: string,
+    quantity: number,
+    context?: AuditContext,
+  ) {
     const product = await this.prisma.product.findFirst({
-      where: {
-        id: productId,
-        isActive: true,
-      },
+      where: { id: productId, isActive: true },
     });
 
     if (!product) {
@@ -320,9 +321,7 @@ export class CatalogService {
               productId,
             },
           },
-          data: {
-            quantity: newQuantity,
-          },
+          data: { quantity: newQuantity },
           select: {
             id: true,
             userId: true,
@@ -351,6 +350,7 @@ export class CatalogService {
           productId,
           quantity: updated.quantity,
           cartItemId: updated.id,
+          metadata: this.buildMetadata(context),
         });
 
         return updated;
@@ -366,11 +366,7 @@ export class CatalogService {
 
     try {
       const created = await this.prisma.cartItem.create({
-        data: {
-          userId,
-          productId,
-          quantity,
-        },
+        data: { userId, productId, quantity },
         select: {
           id: true,
           userId: true,
@@ -399,6 +395,7 @@ export class CatalogService {
         productId,
         quantity: created.quantity,
         cartItemId: created.id,
+        metadata: this.buildMetadata(context),
       });
 
       return created;
@@ -412,7 +409,12 @@ export class CatalogService {
     }
   }
 
-  async updateCartItem(userId: string, productId: string, quantity: number) {
+  async updateCartItem(
+    userId: string,
+    productId: string,
+    quantity: number,
+    context?: AuditContext,
+  ) {
     const cartItem = await this.prisma.cartItem.findUnique({
       where: {
         userId_productId: {
@@ -427,10 +429,7 @@ export class CatalogService {
     }
 
     const product = await this.prisma.product.findFirst({
-      where: {
-        id: productId,
-        isActive: true,
-      },
+      where: { id: productId, isActive: true },
     });
 
     if (!product) {
@@ -449,9 +448,7 @@ export class CatalogService {
             productId,
           },
         },
-        data: {
-          quantity,
-        },
+        data: { quantity },
         select: {
           id: true,
           userId: true,
@@ -480,6 +477,7 @@ export class CatalogService {
         productId,
         quantity: updated.quantity,
         cartItemId: updated.id,
+        metadata: this.buildMetadata(context),
       });
 
       return updated;
@@ -493,7 +491,11 @@ export class CatalogService {
     }
   }
 
-  async removeCartItem(userId: string, productId: string) {
+  async removeCartItem(
+    userId: string,
+    productId: string,
+    context?: AuditContext,
+  ) {
     const existingCartItem = await this.prisma.cartItem.findUnique({
       where: {
         userId_productId: {
@@ -530,6 +532,7 @@ export class CatalogService {
         eventType: 'CartItemRemoved',
         userId,
         productId,
+        metadata: this.buildMetadata(context),
       });
 
       return {

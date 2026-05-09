@@ -6,8 +6,10 @@ import {
   Param,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { CatalogService } from './catalog.service';
 import {
   GatewayUserGuard,
@@ -16,6 +18,18 @@ import {
 import { UserId } from '../common/decorators/user-id.decorator';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
+
+type RequestWithContext = Request & {
+  requestId?: string;
+  kongRequestId?: string;
+};
+
+function getAuditContext(req: RequestWithContext) {
+  return {
+    requestId: req.requestId,
+    kongRequestId: req.kongRequestId,
+  };
+}
 
 @Controller('catalog')
 export class CatalogController {
@@ -47,9 +61,14 @@ export class CatalogController {
   @UseGuards(OptionalGatewayUserGuard)
   async getProductById(
     @Param('id') id: string,
-    @UserId() userId?: string,
+    @UserId() userId: string | undefined,
+    @Req() req: RequestWithContext,
   ) {
-    return this.catalogService.getProductByIdForViewer(id, userId);
+    return this.catalogService.getProductByIdForViewer(
+      id,
+      userId,
+      getAuditContext(req),
+    );
   }
 
   @Get('recently-viewed')
@@ -69,8 +88,13 @@ export class CatalogController {
   async addFavorite(
     @UserId() userId: string,
     @Param('productId') productId: string,
+    @Req() req: RequestWithContext,
   ) {
-    return this.catalogService.addFavorite(userId, productId);
+    return this.catalogService.addFavorite(
+      userId,
+      productId,
+      getAuditContext(req),
+    );
   }
 
   @Delete('favorites/:productId')
@@ -78,8 +102,13 @@ export class CatalogController {
   async removeFavorite(
     @UserId() userId: string,
     @Param('productId') productId: string,
+    @Req() req: RequestWithContext,
   ) {
-    return this.catalogService.removeFavorite(userId, productId);
+    return this.catalogService.removeFavorite(
+      userId,
+      productId,
+      getAuditContext(req),
+    );
   }
 
   @Get('cart')
@@ -94,8 +123,14 @@ export class CatalogController {
     @UserId() userId: string,
     @Param('productId') productId: string,
     @Body() body: AddCartItemDto,
+    @Req() req: RequestWithContext,
   ) {
-    return this.catalogService.addCartItem(userId, productId, body.quantity);
+    return this.catalogService.addCartItem(
+      userId,
+      productId,
+      body.quantity,
+      getAuditContext(req),
+    );
   }
 
   @Patch('cart/items/:productId')
@@ -104,8 +139,14 @@ export class CatalogController {
     @UserId() userId: string,
     @Param('productId') productId: string,
     @Body() body: UpdateCartItemDto,
+    @Req() req: RequestWithContext,
   ) {
-    return this.catalogService.updateCartItem(userId, productId, body.quantity);
+    return this.catalogService.updateCartItem(
+      userId,
+      productId,
+      body.quantity,
+      getAuditContext(req),
+    );
   }
 
   @Delete('cart/items/:productId')
@@ -113,7 +154,12 @@ export class CatalogController {
   async removeCartItem(
     @UserId() userId: string,
     @Param('productId') productId: string,
+    @Req() req: RequestWithContext,
   ) {
-    return this.catalogService.removeCartItem(userId, productId);
+    return this.catalogService.removeCartItem(
+      userId,
+      productId,
+      getAuditContext(req),
+    );
   }
 }
