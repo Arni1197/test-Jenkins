@@ -3,9 +3,9 @@ replicaCount: 1
 image:
   repository: ghcr.io/arni1197/user-service
   # 🏷️ Человеческая версия (удобно смотреть в UI/логах)
-  tag: sha-15e9b6ff71914d7e72aa0801e2675c09ead757b8
+  tag: sha-9e2b636577b142e3b7dde4a715e9ab563123a469
   # 🔒 Истина для деплоя (если chart настроен на digest)
-  digest: "sha256:36223bc73094e60845ac434721de61ae25eafa624506fe2aa186b262f2cb497c"
+  digest: "sha256:06fe265b906ccb4fa42bdc578fc11fa7ebd3fa0d111a5ac0176f6ffb8087b7ae"
   pullPolicy: IfNotPresent
 
 service:
