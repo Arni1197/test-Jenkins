@@ -6,6 +6,9 @@ loki:
   isDefault: false
   url: http://{{(include "loki.serviceName" .)}}:{{ .Values.loki.service.port }}
 
+  extraArgs:
+    - -config.expand-env=true
+
   nodeSelector:
     workload: observability
 
