@@ -69,11 +69,12 @@ affinity:
 
 resources:
   requests:
-    cpu: 128m
-    memory: 128Mi
+    cpu: 200m
+    memory: 192Mi
+
   limits:
     cpu: 500m
-    memory: 256Mi
+    memory: 384Mi
 
 readinessProbe:
   httpGet:
@@ -96,5 +97,5 @@ livenessProbe:
 autoscaling:
   enabled: true
   minReplicas: 2
-  maxReplicas: 5
+  maxReplicas: 6
   targetCPUUtilizationPercentage: 65
