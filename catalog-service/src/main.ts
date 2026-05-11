@@ -11,9 +11,11 @@ export let isShuttingDown = false;
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.useGlobalFilters(new AllExceptionsFilter());
   app.use(requestContextMiddleware);
+
   app.use(httpLoggerMiddleware('catalog-service'));
+  
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   app.setGlobalPrefix('api');
 
