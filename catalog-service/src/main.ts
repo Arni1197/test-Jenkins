@@ -5,11 +5,13 @@ import { AppModule } from './app.module';
 import { PrismaService } from './prisma/prisma.service';
 import { requestContextMiddleware } from './common/request-context.middleware';
 import { httpLoggerMiddleware } from './common/http-logger.middleware';
+import { AllExceptionsFilter } from './common/all-exceptions.filter';
 
 export let isShuttingDown = false;
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.useGlobalFilters(new AllExceptionsFilter());
   app.use(requestContextMiddleware);
   app.use(httpLoggerMiddleware('catalog-service'));
 
