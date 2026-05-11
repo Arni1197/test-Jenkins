@@ -2,8 +2,8 @@ replicaCount: 2
 
 image:
   repository: ghcr.io/arni1197/catalog-service
-  tag: sha-6159537ebed5dd5646f50496f9f6f7ac46d3ded6
-  digest: "sha256:1107ec4db8f26b882620c362b81242d7cd419fedf465fc3660833efb4a805bf8"
+  tag: sha-f0cb389e73c27141610d89677d44e97085eb4efd
+  digest: "sha256:bd5a63ef549c79eff8dfcb8e45c2810af548aafdc4b0bc184ed0b42b9dc3b5cc"
   pullPolicy: IfNotPresent
 
 service:
