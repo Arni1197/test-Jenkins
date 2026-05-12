@@ -9,10 +9,10 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - vault.90.156.210.86.nip.io
+        - vault-api.90.156.210.86.nip.io
       secretName: vault-external-tls
   rules:
-    - host: vault.90.156.210.86.nip.io
+    - host: vault-api.90.156.210.86.nip.io
       http:
         paths:
           - path: /
