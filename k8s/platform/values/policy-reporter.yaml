@@ -1,5 +1,5 @@
 # k8s/platform/values/policy-reporter.yaml
-replicaCount: 1
+replicaCount: 2
 
 resources:
   requests:
