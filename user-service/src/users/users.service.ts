@@ -1,3 +1,4 @@
+// user-service/src/users/users.service.ts
 import {
   BadRequestException,
   Injectable,
@@ -5,10 +6,14 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
+import { AuditEventsService } from '../audit/audit-events.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditEventsService: AuditEventsService,
+  ) {}
 
   async getOrCreateProfile(authUserId: string) {
     if (!authUserId) {
@@ -26,7 +31,14 @@ export class UsersService {
     });
   }
 
-  async updateMyProfile(authUserId: string, dto: UpdateUserProfileDto) {
+  async updateMyProfile(
+    authUserId: string,
+    dto: UpdateUserProfileDto,
+    context?: {
+      requestId?: string;
+      kongRequestId?: string;
+    },
+  ) {
     if (!authUserId) {
       throw new BadRequestException('authUserId is required');
     }
@@ -39,13 +51,28 @@ export class UsersService {
       throw new NotFoundException('Profile not found');
     }
 
-    return this.prisma.userProfile.update({
+    const updated = await this.prisma.userProfile.update({
       where: { authUserId },
       data: { ...dto },
     });
+
+    const changedFields = Object.keys(dto).filter(
+      (field) => dto[field as keyof UpdateUserProfileDto] !== undefined,
+    );
+
+    if (changedFields.length > 0) {
+      await this.auditEventsService.emitUserProfileUpdated({
+        userId: authUserId,
+        profileId: updated.id,
+        changedFields,
+        requestId: context?.requestId,
+        kongRequestId: context?.kongRequestId,
+      });
+    }
+
+    return updated;
   }
 
-  // 🔧 опционально: пригодится позже
   async getProfileOrThrow(authUserId: string) {
     if (!authUserId) {
       throw new BadRequestException('authUserId is required');
