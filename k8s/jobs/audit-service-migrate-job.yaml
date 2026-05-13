@@ -16,7 +16,7 @@ spec:
 
       containers:
         - name: audit-service-migrate
-          image: ghcr.io/arni1197/audit-service@sha256:c95b4499704fa889035948847ecebc309d0a2ff421d30542279463a4ed6d15e9
+          image: ghcr.io/arni1197/audit-service@sha256:502bda66543961b0038176ac7cf36b23b99d5d8c253b380d21d39948699bf2d9
           imagePullPolicy: IfNotPresent
 
           envFrom:
