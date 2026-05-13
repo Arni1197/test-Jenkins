@@ -96,7 +96,8 @@ prometheus:
         memory: 2Gi
 
     additionalScrapeConfigs:
-      # оставить как есть
+      name: additional-scrape-managed-kafka
+      key: additional-scrape-configs.yaml
 
 prometheusOperator:
   affinity:

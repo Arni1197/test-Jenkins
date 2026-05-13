@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-to-managed-kafka
+  namespace: staging
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values:
+          - user-service
+          - audit-service
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 192.168.0.16/32
+        - ipBlock:
+            cidr: 213.226.126.210/32
+      ports:
+        - protocol: TCP
+          port: 9092
