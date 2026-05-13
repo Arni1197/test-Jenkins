@@ -8,16 +8,29 @@ datasource db {
 }
 
 model AuditLog {
-  id         String   @id @default(uuid())
-  eventType  String
-  userId     String?
-  productId  String?
-  payload    Json?
-  emittedAt  DateTime?
-  createdAt  DateTime @default(now())
+  id              String   @id @default(uuid())
+  eventId         String?  @unique
+  eventType       String
+  userId          String?
+  productId       String?
+  requestId       String?
+  sourceService   String?
+  sourceTransport String?
+  topic           String?
+  entityType      String?
+  entityId        String?
+  payload         Json?
+  emittedAt       DateTime?
+  createdAt       DateTime @default(now())
 
   @@index([eventType])
   @@index([userId])
   @@index([productId])
+  @@index([requestId])
+  @@index([sourceService])
+  @@index([sourceTransport])
+  @@index([topic])
+  @@index([entityType])
+  @@index([entityId])
   @@index([createdAt])
 }

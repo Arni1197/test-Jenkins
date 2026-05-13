@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: audit-service-migrate
+  namespace: staging
+  labels:
+    app.kubernetes.io/name: audit-service-migrate
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: audit-service-migrate
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: audit-service-migrate
+          image: ghcr.io/arni1197/audit-service:sha-9d3103fce33cc17ee085fb86b48ea37d4455779e
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - secretRef:
+                name: secret-audit-service
+          command:
+            - sh
+            - -c
+            - |
+              echo "🚀 Running audit-service migrations..."
+              npx prisma migrate deploy
+              echo "✅ Migrations completed"
