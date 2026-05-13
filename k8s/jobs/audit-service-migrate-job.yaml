@@ -16,7 +16,7 @@ spec:
 
       containers:
         - name: audit-service-migrate
-          image: ghcr.io/arni1197/audit-service:sha-9d3103fce33cc17ee085fb86b48ea37d4455779e
+          image: ghcr.io/arni1197/audit-service@sha256:c95b4499704fa889035948847ecebc309d0a2ff421d30542279463a4ed6d15e9
           imagePullPolicy: IfNotPresent
 
           envFrom:
@@ -25,7 +25,7 @@ spec:
 
           command:
             - sh
-            - -c
+            - -ec
             - |
               echo "🚀 Running audit-service migrations..."
               npx prisma migrate deploy
