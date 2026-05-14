@@ -9,10 +9,10 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - prod-api.90.156.210.86.nip.io
+        - game.90.156.210.86.nip.io
       secretName: game
   rules:
-    - host: prod-api.90.156.210.86.nip.io
+    - host: game.90.156.210.86.nip.io
       http:
         paths:
           - path: /api
