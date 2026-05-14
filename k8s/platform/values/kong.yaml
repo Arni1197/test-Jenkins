@@ -34,7 +34,7 @@ dblessConfig:
     _format_version: "3.0"
 
     services:
-      - name: api-gateway-staging
+      - name: api-gateway-prod
         url: http://api-gateway.prod.svc.cluster.local:3000
         routes:
           - name: health-route
