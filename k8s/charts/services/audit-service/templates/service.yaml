@@ -5,9 +5,9 @@ metadata:
   labels:
     app.kubernetes.io/name: audit-service
 spec:
-  type: ClusterIP
+  type: {{ .Values.service.type }}
   selector:
-    app: audit-service
+    app.kubernetes.io/name: audit-service
   ports:
     - name: http
       port: {{ .Values.service.port }}
