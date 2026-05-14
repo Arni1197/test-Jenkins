@@ -9,7 +9,7 @@ image:
 service:
   type: ClusterIP
   port: 3003
-  targetPort: 3003
+  targetPort: 3000
 
 
 secrets:
