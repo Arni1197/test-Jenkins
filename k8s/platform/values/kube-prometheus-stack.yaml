@@ -95,9 +95,11 @@ prometheus:
         cpu: 1000m
         memory: 2Gi
 
-    additionalScrapeConfigs:
-      name: additional-scrape-managed-kafka
-      key: additional-scrape-configs.yaml
+    scrapeConfigSelector:
+      matchLabels:
+        release: kube-prometheus-stack
+
+    scrapeConfigNamespaceSelector: {}
 
 prometheusOperator:
   affinity:

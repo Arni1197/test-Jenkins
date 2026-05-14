@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: timeweb-kafka-auth
+  namespace: kube-prometheus-stack
+type: Opaque
+stringData:
+  username: "admin"
+  password: "~wW@NO3,LtZ,NW"
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: timeweb-managed-kafka
+  namespace: kube-prometheus-stack
+  labels:
+    release: kube-prometheus-stack
+spec:
+  jobName: timeweb-managed-kafka
+  scheme: HTTPS
+  metricsPath: /10207d2e-fa29-49e7-8902-38ef0757c031/service/metrics
+  staticConfigs:
+    - targets:
+        - dbs-exporter.timeweb.cloud:443
+  basicAuth:
+    username:
+      name: timeweb-kafka-auth
+      key: username
+    password:
+      name: timeweb-kafka-auth
+      key: password

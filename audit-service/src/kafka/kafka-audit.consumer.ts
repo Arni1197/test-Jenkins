@@ -65,7 +65,7 @@ export class KafkaAuditConsumer
     this.consumer = kafka.consumer({
       groupId: this.configService.get<string>(
         'KAFKA_AUDIT_GROUP_ID',
-        'audit-service-group',
+        'audit.events-group',
       ),
     });
   }
