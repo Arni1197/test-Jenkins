@@ -15,9 +15,18 @@ spec:
           address: http://kube-prometheus-stack-prometheus.kube-prometheus-stack.svc:9090
           query: |
             (
-              sum(rate(audit_service_http_requests_total{namespace="{{ .Release.Namespace }}",status=~"5.."}[5m]))
+              (
+                sum(rate(audit_service_http_requests_total{namespace="{{ .Release.Namespace }}",status=~"5..",route!="/metrics"}[5m]))
+                or vector(0)
+              )
               /
-              clamp_min(sum(rate(audit_service_http_requests_total{namespace="{{ .Release.Namespace }}"}[5m])), 0.0001)
+              clamp_min(
+                (
+                  sum(rate(audit_service_http_requests_total{namespace="{{ .Release.Namespace }}",route!="/metrics"}[5m]))
+                  or vector(0)
+                ),
+                0.0001
+              )
             )
 
     - name: audit-service-dlq-rate
@@ -29,7 +38,7 @@ spec:
         prometheus:
           address: http://kube-prometheus-stack-prometheus.kube-prometheus-stack.svc:9090
           query: |
-            sum(rate(audit_events_sent_to_dlq_total{namespace="{{ .Release.Namespace }}"}[5m]))
+            sum(rate(audit_events_sent_to_dlq_total{namespace="{{ .Release.Namespace }}"}[5m])) or vector(0)
 
     - name: audit-service-processing-failed-rate
       interval: 30s
@@ -40,5 +49,5 @@ spec:
         prometheus:
           address: http://kube-prometheus-stack-prometheus.kube-prometheus-stack.svc:9090
           query: |
-            sum(rate(audit_events_processing_failed_total{namespace="{{ .Release.Namespace }}"}[5m]))
+            sum(rate(audit_events_processing_failed_total{namespace="{{ .Release.Namespace }}"}[5m])) or vector(0)
 {{- end }}
