@@ -18,7 +18,8 @@ secrets:
 
 env:
   NODE_ENV: "development"
-
+rollout:
+  enabled: false
 automountServiceAccountToken: false
 
 terminationGracePeriodSeconds: 30

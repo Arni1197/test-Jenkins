@@ -17,6 +17,9 @@ automountServiceAccountToken: false
 secrets:
   envSecretName: secret-audit-service
 
+
+rollout:
+  enabled: false
 env:
   NODE_ENV: "staging"
 

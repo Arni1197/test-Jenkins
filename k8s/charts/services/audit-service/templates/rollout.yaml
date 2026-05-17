@@ -1,6 +1,6 @@
-{{- if not .Values.rollout.enabled }}
-apiVersion: apps/v1
-kind: Deployment
+{{- if .Values.rollout.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
   name: audit-service
   labels:
@@ -10,14 +10,18 @@ spec:
   replicas: {{ .Values.replicaCount }}
   {{- end }}
 
-  {{- with .Values.strategy }}
-  strategy:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+  revisionHistoryLimit: 3
 
   selector:
     matchLabels:
       app.kubernetes.io/name: audit-service
+
+  strategy:
+    canary:
+      maxSurge: {{ .Values.rollout.canary.maxSurge | default 1 }}
+      maxUnavailable: {{ .Values.rollout.canary.maxUnavailable | default 0 }}
+      steps:
+        {{- toYaml .Values.rollout.canary.steps | nindent 8 }}
 
   template:
     metadata:
