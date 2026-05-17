@@ -2,7 +2,7 @@ replicaCount: 3
 
 image:
   repository: ghcr.io/arni1197/catalog-service
-  tag: catalog-service-v1.0.0
+  tag: catalog-service-v1.0.4
   digest: "sha256:bd5a63ef549c79eff8dfcb8e45c2810af548aafdc4b0bc184ed0b42b9dc3b5cc"
   pullPolicy: IfNotPresent
 
