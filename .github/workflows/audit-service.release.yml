@@ -1,9 +1,17 @@
 name: audit-service | release (trivy -> retag & sign)
 
 on:
-  push:
-    tags:
-      - "audit-service-v*.*.*"
+  workflow_dispatch:
+    inputs:
+      source_tag:
+        description: "Existing staging image tag, e.g. sha-8375cb0..."
+        required: true
+        type: string
+
+      release_tag:
+        description: "Release tag, e.g. audit-service-v1.0.4"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -11,13 +19,14 @@ permissions:
   id-token: write
 
 concurrency:
-  group: release-audit-service-${{ github.ref }}
+  group: release-audit-service-${{ inputs.release_tag }}
   cancel-in-progress: true
 
 jobs:
   trivy_gate:
-    name: audit-service | Trivy gate (sha tag)
+    name: audit-service | Trivy gate (existing sha image)
     runs-on: ubuntu-latest
+
     permissions:
       contents: read
       packages: read
@@ -33,23 +42,28 @@ jobs:
       - name: Wait until sha image exists in registry
         run: |
           set -e
-          IMG="ghcr.io/arni1197/audit-service:sha-${{ github.sha }}"
+
+          IMG="ghcr.io/arni1197/audit-service:${{ inputs.source_tag }}"
+
           echo "Checking image exists: $IMG"
+
           for i in $(seq 1 30); do
             if docker manifest inspect "$IMG" >/dev/null 2>&1; then
               echo "✅ Found: $IMG"
               exit 0
             fi
+
             echo "⏳ Not found yet, retry $i/30..."
             sleep 5
           done
+
           echo "❌ Image not found after retries: $IMG"
           exit 1
 
       - name: Trivy scan (fail on HIGH/CRITICAL)
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ghcr.io/arni1197/audit-service:sha-${{ github.sha }}
+          image-ref: ghcr.io/arni1197/audit-service:${{ inputs.source_tag }}
           format: table
           exit-code: 1
           severity: CRITICAL,HIGH
@@ -57,12 +71,20 @@ jobs:
 
   retag_sign:
     name: audit-service | Retag & sign (release)
+
     needs: [trivy_gate]
+
     uses: ./.github/workflows/_lib-release-retag-sign.yml
+
     with:
       service_name: "audit-service"
+
       image: "ghcr.io/arni1197/audit-service"
-      source_tag: "sha-${{ github.sha }}"
-      release_tag: "${{ github.ref_name }}"
+
+      source_tag: "${{ inputs.source_tag }}"
+
+      release_tag: "${{ inputs.release_tag }}"
+
       registry: "ghcr.io"
+
       sign: true
