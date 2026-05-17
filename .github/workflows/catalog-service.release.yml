@@ -1,35 +1,36 @@
-name: catalog-service | release (trivy -> retag & sign)
+name: catalog-service | release (trivy -> retag & sign -> prod PR)
 
 on:
-  push:
-    tags:
-      - "catalog-service-v*.*.*"
+  workflow_dispatch:
+    inputs:
+      source_tag:
+        description: "Existing staging image tag, e.g. sha-abcdef..."
+        required: true
+        type: string
+      release_tag:
+        description: "Release tag, e.g. catalog-service-v1.0.4"
+        required: true
+        type: string
 
 permissions:
-  contents: read
+  contents: write
   packages: write
   id-token: write
+  pull-requests: write
 
 concurrency:
-  group: release-catalog-service-${{ github.ref }}
+  group: release-catalog-service-${{ inputs.release_tag }}
   cancel-in-progress: true
 
 jobs:
   trivy_gate:
-    name: catalog-service | Trivy gate (sha tag)
+    name: catalog-service | Trivy gate
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: read
-    outputs:
-      owner_lc: ${{ steps.vars.outputs.owner_lc }}
 
     steps:
-      - name: Normalize owner to lowercase
-        id: vars
-        shell: bash
-        run: echo "owner_lc=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
-
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
@@ -37,40 +38,76 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Wait until sha image exists in registry
-        shell: bash
+      - name: Check staging image exists
         run: |
-          set -euo pipefail
-          IMG="ghcr.io/${{ steps.vars.outputs.owner_lc }}/catalog-service:sha-${{ github.sha }}"
+          set -e
+          IMG="ghcr.io/arni1197/catalog-service:${{ inputs.source_tag }}"
           echo "Checking image exists: $IMG"
-          for i in $(seq 1 30); do
-            if docker manifest inspect "$IMG" >/dev/null 2>&1; then
-              echo "✅ Found: $IMG"
-              exit 0
-            fi
-            echo "⏳ Not found yet, retry $i/30..."
-            sleep 5
-          done
-          echo "❌ Image not found after retries: $IMG"
-          exit 1
+          docker manifest inspect "$IMG" >/dev/null
+          echo "Found: $IMG"
 
-      - name: Trivy scan (fail on CRITICAL)
+      - name: Trivy scan
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ghcr.io/${{ steps.vars.outputs.owner_lc }}/catalog-service:sha-${{ github.sha }}
+          image-ref: ghcr.io/arni1197/catalog-service:${{ inputs.source_tag }}
           format: table
           exit-code: 1
           severity: CRITICAL
           ignore-unfixed: true
 
-  release:
-    name: catalog-service | Retag & sign (release)
+  retag_sign:
+    name: catalog-service | Retag & sign
     needs: [trivy_gate]
     uses: ./.github/workflows/_lib-release-retag-sign.yml
     with:
       service_name: "catalog-service"
-      image: "ghcr.io/${{ needs.trivy_gate.outputs.owner_lc }}/catalog-service"
-      source_tag: "sha-${{ github.sha }}"
-      release_tag: "${{ github.ref_name }}"
+      image: "ghcr.io/arni1197/catalog-service"
+      source_tag: "${{ inputs.source_tag }}"
+      release_tag: "${{ inputs.release_tag }}"
       registry: "ghcr.io"
       sign: true
+
+  open_prod_pr:
+    name: catalog-service | Open prod promotion PR
+    needs: [retag_sign]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Update prod values
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          DIGEST: ${{ needs.retag_sign.outputs.digest }}
+        run: |
+          set -e
+          FILE="k8s/environments/production/values/services/catalog-service.yaml"
+
+          perl -0pi -e 's/^(\s*tag:\s*).*$/${1}$ENV{"RELEASE_TAG"}/m' "$FILE"
+          perl -0pi -e 's/^(\s*digest:\s*).*$/${1}"$ENV{"DIGEST"}"/m' "$FILE"
+
+          grep -n "repository:\|tag:\|digest:" "$FILE"
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: promote/catalog-service-${{ inputs.release_tag }}
+          title: "Promote catalog-service ${{ inputs.release_tag }} to prod"
+          commit-message: "promote catalog-service ${{ inputs.release_tag }} to prod"
+          body: |
+            Promote catalog-service to prod.
+
+            Source staging image:
+            `${{ inputs.source_tag }}`
+
+            Release image:
+            `${{ inputs.release_tag }}`
+
+            Digest:
+            `${{ needs.retag_sign.outputs.digest }}`
