@@ -94,7 +94,7 @@ jobs:
         run: |
           set -e
 
-          FILE="k8s/environments/prod/values/services/audit-service.yaml"
+          FILE="k8s/environments/production/values/services/audit-service.yaml"
 
           perl -0pi -e 's/^(\s*tag:\s*).*$/${1}$ENV{"RELEASE_TAG"}/m' "$FILE"
           perl -0pi -e 's/^(\s*digest:\s*).*$/${1}"$ENV{"DIGEST"}"/m' "$FILE"
