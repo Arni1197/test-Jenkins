@@ -1,0 +1,44 @@
+{{- if .Values.rollout.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: audit-service-prometheus-analysis
+spec:
+  metrics:
+    - name: audit-service-5xx-rate
+      interval: 30s
+      count: 2
+      successCondition: result[0] < 0.01
+      failureLimit: 1
+      provider:
+        prometheus:
+          address: http://kube-prometheus-stack-prometheus.kube-prometheus-stack.svc:9090
+          query: |
+            (
+              sum(rate(audit_service_http_requests_total{namespace="{{ .Release.Namespace }}",status=~"5.."}[5m]))
+              /
+              clamp_min(sum(rate(audit_service_http_requests_total{namespace="{{ .Release.Namespace }}"}[5m])), 0.0001)
+            )
+
+    - name: audit-service-dlq-rate
+      interval: 30s
+      count: 2
+      successCondition: result[0] == 0
+      failureLimit: 1
+      provider:
+        prometheus:
+          address: http://kube-prometheus-stack-prometheus.kube-prometheus-stack.svc:9090
+          query: |
+            sum(rate(audit_events_sent_to_dlq_total{namespace="{{ .Release.Namespace }}"}[5m]))
+
+    - name: audit-service-processing-failed-rate
+      interval: 30s
+      count: 2
+      successCondition: result[0] == 0
+      failureLimit: 1
+      provider:
+        prometheus:
+          address: http://kube-prometheus-stack-prometheus.kube-prometheus-stack.svc:9090
+          query: |
+            sum(rate(audit_events_processing_failed_total{namespace="{{ .Release.Namespace }}"}[5m]))
+{{- end }}

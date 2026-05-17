@@ -31,6 +31,7 @@ spec:
         app.kubernetes.io/name: audit-service
 
     spec:
+      automountServiceAccountToken: {{ .Values.automountServiceAccountToken | default false }}
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds | default 30 }}
 
       {{- with .Values.podSecurityContext }}

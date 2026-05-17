@@ -101,7 +101,6 @@ autoscaling:
   maxReplicas: 5
   targetCPUUtilizationPercentage: 70
 
-
 rollout:
   enabled: true
   canary:
@@ -111,7 +110,15 @@ rollout:
       - setWeight: 20
       - pause:
           duration: 120s
+      - analysis:
+          templates:
+            - templateName: audit-service-prometheus-analysis
+
       - setWeight: 50
       - pause:
           duration: 120s
+      - analysis:
+          templates:
+            - templateName: audit-service-prometheus-analysis
+
       - setWeight: 100
