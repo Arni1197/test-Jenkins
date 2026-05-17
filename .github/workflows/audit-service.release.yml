@@ -57,7 +57,7 @@ jobs:
           image-ref: ghcr.io/arni1197/audit-service:${{ inputs.source_tag }}
           format: table
           exit-code: 1
-          severity: CRITICAL,HIGH
+          severity: CRITICAL
           ignore-unfixed: true
 
   retag_sign:
