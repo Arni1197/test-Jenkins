@@ -7,15 +7,12 @@ on:
         required: true
         type: string
       image:
-        description: "Full image name without tag, e.g. ghcr.io/OWNER/auth-service"
         required: true
         type: string
       source_tag:
-        description: "Source tag that already exists, e.g. sha-abcdef0"
         required: true
         type: string
       release_tag:
-        description: "Release tag, e.g. auth-service-v1.2.3"
         required: true
         type: string
       registry:
@@ -23,15 +20,22 @@ on:
         type: string
         default: "ghcr.io"
       sign:
-        description: "Sign image with cosign (keyless)"
         required: false
         type: boolean
         default: true
+    outputs:
+      digest:
+        description: "Resolved image digest"
+        value: ${{ jobs.retag_sign.outputs.digest }}
 
 jobs:
   retag_sign:
     name: "${{ inputs.service_name }} | Retag & sign"
     runs-on: ubuntu-latest
+
+    outputs:
+      digest: ${{ steps.retag.outputs.digest }}
+
     permissions:
       contents: read
       packages: write
@@ -48,10 +52,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Retag by digest (no rebuild)
+      - name: Retag by digest no rebuild
         id: retag
         run: |
           set -e
+
           SRC="${{ inputs.image }}:${{ inputs.source_tag }}"
           DST="${{ inputs.image }}:${{ inputs.release_tag }}"
 
@@ -65,7 +70,7 @@ jobs:
           fi
 
           echo "Digest: $DIGEST"
-          echo "digest=$DIGEST" >> $GITHUB_OUTPUT
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
 
           echo "Creating release tag: $DST"
           docker buildx imagetools create -t "$DST" "${{ inputs.image }}@${DIGEST}"
@@ -74,7 +79,7 @@ jobs:
         if: ${{ inputs.sign }}
         uses: sigstore/cosign-installer@v3
 
-      - name: Cosign sign (digest, keyless)
+      - name: Cosign sign digest keyless
         if: ${{ inputs.sign }}
         env:
           COSIGN_EXPERIMENTAL: "true"
