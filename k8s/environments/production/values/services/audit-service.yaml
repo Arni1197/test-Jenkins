@@ -109,14 +109,14 @@ rollout:
     steps:
       - setWeight: 20
       - pause:
-          duration: 120s
+          duration: 300s
       - analysis:
           templates:
             - templateName: audit-service-prometheus-analysis
 
       - setWeight: 50
       - pause:
-          duration: 120s
+          duration: 600s
       - analysis:
           templates:
             - templateName: audit-service-prometheus-analysis
