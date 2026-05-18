@@ -20,6 +20,11 @@ export class MetricsService {
   readonly auditEventsSentToRetryTotal: Counter<string>;
   readonly auditEventsSentToDlqTotal: Counter<string>;
 
+  readonly auditEventsReceivedTotal: Counter<string>;
+  readonly auditEventsProcessingStartedTotal: Counter<string>;
+  readonly auditEventsProcessingFinishedTotal: Counter<string>;
+  readonly auditEventsAckTotal: Counter<string>;
+
   readonly auditEventsProcessingDurationSeconds: Histogram<string>;
 
   constructor() {
@@ -42,6 +47,34 @@ export class MetricsService {
       help: 'HTTP request duration in seconds',
       labelNames: ['method', 'route', 'status'],
       buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+      registers: [this.registry],
+    });
+
+    this.auditEventsReceivedTotal = new Counter({
+      name: 'audit_events_received_total',
+      help: 'Total audit events received from broker',
+      labelNames: ['source', 'service', 'event', 'transport', 'queue', 'topic'],
+      registers: [this.registry],
+    });
+
+    this.auditEventsProcessingStartedTotal = new Counter({
+      name: 'audit_events_processing_started_total',
+      help: 'Total audit events processing started',
+      labelNames: ['source', 'service', 'event', 'transport', 'queue', 'topic'],
+      registers: [this.registry],
+    });
+
+    this.auditEventsProcessingFinishedTotal = new Counter({
+      name: 'audit_events_processing_finished_total',
+      help: 'Total audit events processing finished',
+      labelNames: ['source', 'service', 'event', 'transport', 'queue', 'topic', 'result'],
+      registers: [this.registry],
+    });
+
+    this.auditEventsAckTotal = new Counter({
+      name: 'audit_events_ack_total',
+      help: 'Total audit events acknowledged to broker',
+      labelNames: ['source', 'service', 'event', 'transport', 'queue', 'topic'],
       registers: [this.registry],
     });
 
