@@ -93,6 +93,15 @@ export class KafkaProducer implements OnModuleInit, OnApplicationShutdown {
     if (
       message &&
       typeof message === 'object' &&
+      'eventType' in message &&
+      typeof (message as { eventType?: unknown }).eventType === 'string'
+    ) {
+      return (message as { eventType: string }).eventType;
+    }
+
+    if (
+      message &&
+      typeof message === 'object' &&
       'event' in message &&
       typeof (message as { event?: unknown }).event === 'string'
     ) {
