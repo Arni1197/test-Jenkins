@@ -6,6 +6,15 @@ import {
   Histogram,
 } from 'prom-client';
 
+type AuditMetricLabels = {
+  source: string;
+  source_service: string;
+  event: string;
+  transport: string;
+  queue: string;
+  topic: string;
+};
+
 @Injectable()
 export class MetricsService {
   private readonly registry: Registry;
@@ -13,17 +22,17 @@ export class MetricsService {
   readonly httpRequestsTotal: Counter<string>;
   readonly httpRequestDurationSeconds: Histogram<string>;
 
+  readonly auditEventsReceivedTotal: Counter<string>;
+  readonly auditEventsProcessingStartedTotal: Counter<string>;
+  readonly auditEventsProcessingFinishedTotal: Counter<string>;
+  readonly auditEventsAckTotal: Counter<string>;
+
   readonly auditEventsConsumedTotal: Counter<string>;
   readonly auditEventsPersistSuccessTotal: Counter<string>;
   readonly auditEventsPersistFailedTotal: Counter<string>;
   readonly auditEventsProcessingFailedTotal: Counter<string>;
   readonly auditEventsSentToRetryTotal: Counter<string>;
   readonly auditEventsSentToDlqTotal: Counter<string>;
-
-  readonly auditEventsReceivedTotal: Counter<string>;
-  readonly auditEventsProcessingStartedTotal: Counter<string>;
-  readonly auditEventsProcessingFinishedTotal: Counter<string>;
-  readonly auditEventsAckTotal: Counter<string>;
 
   readonly auditEventsProcessingDurationSeconds: Histogram<string>;
 
@@ -53,80 +62,128 @@ export class MetricsService {
     this.auditEventsReceivedTotal = new Counter({
       name: 'audit_events_received_total',
       help: 'Total audit events received from broker',
-      labelNames: ['source', 'service', 'event', 'transport', 'queue', 'topic'],
+      labelNames: ['source', 'source_service', 'event', 'transport', 'queue', 'topic'],
       registers: [this.registry],
     });
 
     this.auditEventsProcessingStartedTotal = new Counter({
       name: 'audit_events_processing_started_total',
       help: 'Total audit events processing started',
-      labelNames: ['source', 'service', 'event', 'transport', 'queue', 'topic'],
+      labelNames: ['source', 'source_service', 'event', 'transport', 'queue', 'topic'],
       registers: [this.registry],
     });
 
     this.auditEventsProcessingFinishedTotal = new Counter({
       name: 'audit_events_processing_finished_total',
       help: 'Total audit events processing finished',
-      labelNames: ['source', 'service', 'event', 'transport', 'queue', 'topic', 'result'],
+      labelNames: ['source', 'source_service', 'event', 'transport', 'queue', 'topic', 'result'],
       registers: [this.registry],
     });
 
     this.auditEventsAckTotal = new Counter({
       name: 'audit_events_ack_total',
       help: 'Total audit events acknowledged to broker',
-      labelNames: ['source', 'service', 'event', 'transport', 'queue', 'topic'],
+      labelNames: ['source', 'source_service', 'event', 'transport', 'queue', 'topic'],
       registers: [this.registry],
     });
 
     this.auditEventsConsumedTotal = new Counter({
       name: 'audit_events_consumed_total',
       help: 'Total consumed audit events',
-      labelNames: ['source', 'service', 'event', 'queue', 'topic'],
+      labelNames: ['source', 'source_service', 'event', 'transport', 'queue', 'topic'],
       registers: [this.registry],
     });
 
     this.auditEventsPersistSuccessTotal = new Counter({
       name: 'audit_events_persist_success_total',
       help: 'Total successfully persisted audit events',
-      labelNames: ['source', 'service', 'event', 'topic'],
+      labelNames: ['source', 'source_service', 'event', 'transport', 'queue', 'topic'],
       registers: [this.registry],
     });
 
     this.auditEventsPersistFailedTotal = new Counter({
       name: 'audit_events_persist_failed_total',
       help: 'Total failed audit event persistence operations',
-      labelNames: ['source', 'service', 'event', 'topic'],
+      labelNames: ['source', 'source_service', 'event', 'transport', 'queue', 'topic'],
       registers: [this.registry],
     });
 
     this.auditEventsProcessingFailedTotal = new Counter({
       name: 'audit_events_processing_failed_total',
       help: 'Total failed audit event processing operations',
-      labelNames: ['source', 'service', 'event', 'stage', 'topic'],
+      labelNames: ['source', 'source_service', 'event', 'transport', 'queue', 'topic', 'stage'],
       registers: [this.registry],
     });
 
     this.auditEventsSentToRetryTotal = new Counter({
       name: 'audit_events_sent_to_retry_total',
       help: 'Total audit events sent to retry queue',
-      labelNames: ['source', 'service', 'event', 'queue', 'topic'],
+      labelNames: ['source', 'source_service', 'event', 'transport', 'queue', 'topic'],
       registers: [this.registry],
     });
 
     this.auditEventsSentToDlqTotal = new Counter({
       name: 'audit_events_sent_to_dlq_total',
-      help: 'Total audit events sent to DLQ',
-      labelNames: ['source', 'service', 'event', 'queue', 'topic'],
+      help: 'Total audit events sent to dead letter queue',
+      labelNames: ['source', 'source_service', 'event', 'transport', 'queue', 'topic'],
       registers: [this.registry],
     });
 
     this.auditEventsProcessingDurationSeconds = new Histogram({
       name: 'audit_events_processing_duration_seconds',
       help: 'Audit event processing duration in seconds',
-      labelNames: ['source', 'service', 'event', 'result', 'topic'],
+      labelNames: ['source', 'source_service', 'event', 'transport', 'queue', 'topic', 'result'],
       buckets: [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
       registers: [this.registry],
     });
+  }
+
+  markAuditEventReceived(labels: AuditMetricLabels): void {
+    this.auditEventsReceivedTotal.inc(labels);
+    this.auditEventsConsumedTotal.inc(labels);
+  }
+
+  markAuditEventProcessingStarted(labels: AuditMetricLabels): void {
+    this.auditEventsProcessingStartedTotal.inc(labels);
+  }
+
+  markAuditEventPersistSuccess(labels: AuditMetricLabels): void {
+    this.auditEventsPersistSuccessTotal.inc(labels);
+  }
+
+  markAuditEventPersistFailed(labels: AuditMetricLabels): void {
+    this.auditEventsPersistFailedTotal.inc(labels);
+  }
+
+  markAuditEventProcessingFailed(
+    labels: AuditMetricLabels & { stage: string },
+  ): void {
+    this.auditEventsProcessingFailedTotal.inc(labels);
+  }
+
+  markAuditEventProcessingFinished(
+    labels: AuditMetricLabels & { result: 'success' | 'failed' },
+  ): void {
+    this.auditEventsProcessingFinishedTotal.inc(labels);
+  }
+
+  markAuditEventAck(labels: AuditMetricLabels): void {
+    this.auditEventsAckTotal.inc(labels);
+  }
+
+  markAuditEventSentToRetry(labels: AuditMetricLabels): void {
+    this.auditEventsSentToRetryTotal.inc(labels);
+  }
+
+  markAuditEventSentToDlq(labels: AuditMetricLabels): void {
+    this.auditEventsSentToDlqTotal.inc(labels);
+  }
+
+  observeAuditEventProcessingDuration(
+    labels: AuditMetricLabels & { result: 'success' | 'failed' },
+    durationSeconds: number,
+  ): void {
+    this.auditEventsProcessingDurationSeconds.observe(labels, durationSeconds);
   }
 
   getRegistry(): Registry {
