@@ -53,6 +53,13 @@ export class KafkaProducer implements OnModuleInit, OnApplicationShutdown {
   async emit(topic: string, message: unknown, key?: string) {
     const event = this.resolveEventName(message);
 
+    const labels = {
+      source: 'user-service',
+      service: 'user-service',
+      event,
+      topic,
+    };
+
     try {
       await this.producer.send({
         topic,
@@ -64,15 +71,9 @@ export class KafkaProducer implements OnModuleInit, OnApplicationShutdown {
         ],
       });
 
-      this.metricsService.userEventsPublishedTotal.inc({
-        event,
-        topic,
-      });
+      this.metricsService.userEventsPublishedTotal.inc(labels);
     } catch (error) {
-      this.metricsService.userEventsPublishFailedTotal.inc({
-        event,
-        topic,
-      });
+      this.metricsService.userEventsPublishFailedTotal.inc(labels);
 
       this.logger.error(
         `Failed to publish Kafka event. topic=${topic}, event=${event}`,
