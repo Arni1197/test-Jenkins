@@ -134,9 +134,14 @@ export class KafkaAuditConsumer
           );
 
           this.metricsService.auditEventsConsumedTotal.inc({
-            service: 'audit-service',
+            source: 'audit-service',
+            source_service:
+              payload.sourceService ?? 'user-service',
             event: eventType,
+            transport: 'kafka',
             queue: topic,
+            topic,
+            stage: 'consume',
           });
 
           await this.auditService.saveAuditLog(payload);
@@ -155,8 +160,13 @@ export class KafkaAuditConsumer
           );
         } catch (error) {
           this.metricsService.auditEventsProcessingFailedTotal.inc({
-            service: 'audit-service',
+            source: 'audit-service',
+            source_service:
+              payload?.sourceService ?? 'user-service',
             event: eventType,
+            transport: 'kafka',
+            queue: topic,
+            topic,
             stage: 'kafka_consume',
           });
 
