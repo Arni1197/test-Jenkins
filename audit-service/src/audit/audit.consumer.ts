@@ -158,6 +158,28 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
               ? payload.eventType
               : 'unknown';
 
+          /*
+           * EVENT RECEIVED
+           */
+
+          this.metricsService.auditEventsReceivedTotal.inc({
+            source: payload.sourceService ?? 'unknown',
+            service: 'audit-service',
+            event: eventType,
+            transport: payload.sourceTransport ?? 'rabbitmq',
+          });
+
+          /*
+           * PROCESSING STARTED
+           */
+
+          this.metricsService.auditEventsProcessingStartedTotal.inc({
+            source: payload.sourceService ?? 'unknown',
+            service: 'audit-service',
+            event: eventType,
+            transport: payload.sourceTransport ?? 'rabbitmq',
+          });
+
           this.logger.log(
             JSON.stringify({
               type: 'audit_event_received',
@@ -178,6 +200,28 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
           });
 
           await this.auditService.saveAuditLog(payload);
+
+          /*
+           * PROCESSING FINISHED
+           */
+
+          this.metricsService.auditEventsProcessingFinishedTotal.inc({
+            source: payload.sourceService ?? 'unknown',
+            service: 'audit-service',
+            event: eventType,
+            result: 'success',
+          });
+
+          /*
+           * ACK
+           */
+
+          this.metricsService.auditEventsAckTotal.inc({
+            source: payload.sourceService ?? 'unknown',
+            service: 'audit-service',
+            event: eventType,
+            transport: payload.sourceTransport ?? 'rabbitmq',
+          });
 
           this.channel.ack(msg);
 
@@ -212,6 +256,17 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
           if (payload && typeof payload.eventType === 'string') {
             eventType = payload.eventType;
           }
+
+          /*
+           * PROCESSING FAILED
+           */
+
+          this.metricsService.auditEventsProcessingFinishedTotal.inc({
+            source: payload?.sourceService ?? 'unknown',
+            service: 'audit-service',
+            event: eventType,
+            result: 'failed',
+          });
 
           this.logger.error(
             JSON.stringify({
@@ -300,20 +355,14 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
       if (this.channel && this.consumerTag) {
         await this.channel.cancel(this.consumerTag);
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
 
     try {
       await this.channel?.close();
-    } catch {
-      // ignore
-    }
+    } catch {}
 
     try {
       await this.connection?.close();
-    } catch {
-      // ignore
-    }
+    } catch {}
   }
 }
