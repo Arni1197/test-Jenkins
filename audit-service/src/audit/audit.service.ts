@@ -50,7 +50,9 @@ export class AuditService {
   }
 
   private inferEntityType(payload: AuditEventPayload): string | null {
-    if (this.getString(payload.entityType)) return this.getString(payload.entityType);
+    if (this.getString(payload.entityType)) {
+      return this.getString(payload.entityType);
+    }
 
     if (this.getString(payload.productId)) return 'Product';
 
@@ -121,6 +123,21 @@ export class AuditService {
     return null;
   }
 
+  private getMetricLabels(payload: AuditEventPayload, eventType: string) {
+    const sourceService = this.inferSourceService(payload) ?? 'unknown';
+    const sourceTransport = this.inferSourceTransport(payload) ?? 'unknown';
+    const topic = this.getString(payload.topic) ?? '';
+
+    return {
+      source: sourceService,
+      source_service: sourceService,
+      event: eventType,
+      transport: sourceTransport,
+      queue: topic,
+      topic,
+    };
+  }
+
   async saveAuditLog(payload: AuditEventPayload) {
     const eventType =
       typeof payload.eventType === 'string' ? payload.eventType : 'unknown';
@@ -146,10 +163,9 @@ export class AuditService {
         },
       });
 
-      this.metricsService.auditEventsPersistSuccessTotal.inc({
-        service: 'audit-service',
-        event: eventType,
-      });
+      this.metricsService.auditEventsPersistSuccessTotal.inc(
+        this.getMetricLabels(payload, eventType),
+      );
 
       this.logger.log(
         JSON.stringify({
@@ -173,14 +189,12 @@ export class AuditService {
 
       return result;
     } catch (error) {
-      this.metricsService.auditEventsPersistFailedTotal.inc({
-        service: 'audit-service',
-        event: eventType,
-      });
+      this.metricsService.auditEventsPersistFailedTotal.inc(
+        this.getMetricLabels(payload, eventType),
+      );
 
       this.metricsService.auditEventsProcessingFailedTotal.inc({
-        service: 'audit-service',
-        event: eventType,
+        ...this.getMetricLabels(payload, eventType),
         stage: 'persist',
       });
 
