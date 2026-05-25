@@ -1,5 +1,3 @@
-// audit-service/src/kafka/kafka-audit.consumer.ts
-
 import {
   Injectable,
   Logger,
@@ -16,7 +14,6 @@ export class KafkaAuditConsumer
   implements OnModuleInit, OnApplicationShutdown
 {
   private readonly logger = new Logger(KafkaAuditConsumer.name);
-
   private consumer: Consumer;
 
   constructor(
@@ -68,8 +65,7 @@ export class KafkaAuditConsumer
     );
 
     await this.consumer.connect();
-
-    this.logger.log(`Connected to Kafka`);
+    this.logger.log('Connected to Kafka');
 
     await this.consumer.subscribe({
       topic: auditTopic,
@@ -95,9 +91,11 @@ export class KafkaAuditConsumer
               ? parsed.eventType
               : 'unknown';
 
+          const sourceService = parsed.sourceService ?? 'user-service';
+
           payload = {
             ...parsed,
-            sourceService: parsed.sourceService ?? 'user-service',
+            sourceService,
             sourceTransport: parsed.sourceTransport ?? 'kafka',
             topic,
             metadata: {
@@ -126,11 +124,11 @@ export class KafkaAuditConsumer
           );
 
           this.metricsService.auditEventsConsumedTotal.inc({
-            source: payload.sourceService ?? 'user-service',
-            source_service: payload.sourceService ?? 'user-service',
+            source: sourceService,
+            source_service: sourceService,
             event: eventType,
             transport: 'kafka',
-            queue: '',
+            queue: topic,
             topic,
           });
 
@@ -149,12 +147,14 @@ export class KafkaAuditConsumer
             }),
           );
         } catch (error) {
+          const sourceService = payload?.sourceService ?? 'user-service';
+
           this.metricsService.auditEventsProcessingFailedTotal.inc({
-            source: payload?.sourceService ?? 'user-service',
-            source_service: payload?.sourceService ?? 'user-service',
+            source: sourceService,
+            source_service: sourceService,
             event: eventType,
             transport: 'kafka',
-            queue: '',
+            queue: topic,
             topic,
             stage: 'kafka_consume',
           });
@@ -181,7 +181,6 @@ export class KafkaAuditConsumer
 
   async onApplicationShutdown() {
     await this.consumer.disconnect();
-
     this.logger.log('Kafka audit consumer disconnected');
   }
 }
