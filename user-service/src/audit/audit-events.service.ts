@@ -1,8 +1,8 @@
-// user-service/src/audit/audit-events.service.ts
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 import { KafkaProducer } from '../kafka/kafka.producer';
+import { MetricsService } from '../metrics/metrics.service';
 
 type UserProfileUpdatedAuditEvent = {
   eventId: string;
@@ -25,6 +25,7 @@ export class AuditEventsService {
   constructor(
     private readonly kafkaProducer: KafkaProducer,
     private readonly configService: ConfigService,
+    private readonly metricsService: MetricsService,
   ) {}
 
   async emitUserProfileUpdated(params: {
@@ -53,18 +54,44 @@ export class AuditEventsService {
       emittedAt: new Date().toISOString(),
     };
 
-    await this.kafkaProducer.emit(topic, event, params.userId);
+    try {
+      await this.kafkaProducer.emit(topic, event, params.userId);
 
-    this.logger.log(
-      JSON.stringify({
-        type: 'audit_event_sent',
+      this.logger.log(
+        JSON.stringify({
+          type: 'audit_event_sent',
+          service: 'user-service',
+          topic,
+          eventType: event.eventType,
+          eventId: event.eventId,
+          userId: event.userId,
+          requestId: event.requestId,
+          result: 'success',
+        }),
+      );
+    } catch (error) {
+      this.metricsService.userEventsPublishFailedTotal.inc({
+        source: 'user-service',
         service: 'user-service',
+        event: event.eventType,
         topic,
-        eventType: event.eventType,
-        eventId: event.eventId,
-        userId: event.userId,
-        requestId: event.requestId,
-      }),
-    );
+      });
+
+      this.logger.error(
+        JSON.stringify({
+          type: 'audit_event_send_failed',
+          service: 'user-service',
+          topic,
+          eventType: event.eventType,
+          eventId: event.eventId,
+          userId: event.userId,
+          requestId: event.requestId,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+        error instanceof Error ? error.stack : undefined,
+      );
+
+      throw error;
+    }
   }
 }

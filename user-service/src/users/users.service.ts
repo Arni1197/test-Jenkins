@@ -1,4 +1,3 @@
-// user-service/src/users/users.service.ts
 import {
   BadRequestException,
   Injectable,
@@ -7,12 +6,14 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 import { AuditEventsService } from '../audit/audit-events.service';
+import { MetricsService } from '../metrics/metrics.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditEventsService: AuditEventsService,
+    private readonly metricsService: MetricsService,
   ) {}
 
   async getOrCreateProfile(authUserId: string) {
@@ -26,9 +27,27 @@ export class UsersService {
 
     if (existing) return existing;
 
-    return this.prisma.userProfile.create({
-      data: { authUserId },
-    });
+    try {
+      const created = await this.prisma.userProfile.create({
+        data: { authUserId },
+      });
+
+      this.metricsService.userDbWriteSuccessTotal.inc({
+        source: 'user-service',
+        service: 'user-service',
+        operation: 'create_profile',
+      });
+
+      return created;
+    } catch (error) {
+      this.metricsService.userDbWriteFailedTotal.inc({
+        source: 'user-service',
+        service: 'user-service',
+        operation: 'create_profile',
+      });
+
+      throw error;
+    }
   }
 
   async updateMyProfile(
@@ -51,10 +70,28 @@ export class UsersService {
       throw new NotFoundException('Profile not found');
     }
 
-    const updated = await this.prisma.userProfile.update({
-      where: { authUserId },
-      data: { ...dto },
-    });
+    let updated;
+
+    try {
+      updated = await this.prisma.userProfile.update({
+        where: { authUserId },
+        data: { ...dto },
+      });
+
+      this.metricsService.userDbWriteSuccessTotal.inc({
+        source: 'user-service',
+        service: 'user-service',
+        operation: 'update_profile',
+      });
+    } catch (error) {
+      this.metricsService.userDbWriteFailedTotal.inc({
+        source: 'user-service',
+        service: 'user-service',
+        operation: 'update_profile',
+      });
+
+      throw error;
+    }
 
     const changedFields = Object.keys(dto).filter(
       (field) => dto[field as keyof UpdateUserProfileDto] !== undefined,

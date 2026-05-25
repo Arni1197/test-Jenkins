@@ -29,36 +29,27 @@ export class KafkaAuditConsumer
       .split(',')
       .map((broker) => broker.trim());
 
-    const username =
-      this.configService.get<string>('KAFKA_USERNAME') ?? '';
-
-    const password =
-      this.configService.get<string>('KAFKA_PASSWORD') ?? '';
+    const username = this.configService.get<string>('KAFKA_USERNAME') ?? '';
+    const password = this.configService.get<string>('KAFKA_PASSWORD') ?? '';
 
     const kafka = new Kafka({
       clientId: this.configService.get<string>(
         'KAFKA_CLIENT_ID',
         'audit-service',
       ),
-
       brokers,
-
       ssl: false,
-
       sasl: {
         mechanism: 'scram-sha-512',
         username,
         password,
       },
-
       connectionTimeout: 10000,
       authenticationTimeout: 10000,
-
       retry: {
         initialRetryTime: 1000,
         retries: 8,
       },
-
       logLevel: logLevel.INFO,
     });
 
@@ -71,7 +62,7 @@ export class KafkaAuditConsumer
   }
 
   async onModuleInit() {
-    const topic = this.configService.get<string>(
+    const auditTopic = this.configService.get<string>(
       'KAFKA_AUDIT_TOPIC',
       'audit.events',
     );
@@ -81,11 +72,11 @@ export class KafkaAuditConsumer
     this.logger.log(`Connected to Kafka`);
 
     await this.consumer.subscribe({
-      topic,
+      topic: auditTopic,
       fromBeginning: false,
     });
 
-    this.logger.log(`Subscribed to Kafka topic=${topic}`);
+    this.logger.log(`Subscribed to Kafka topic=${auditTopic}`);
 
     await this.consumer.run({
       eachMessage: async ({ topic, partition, message }) => {
@@ -93,7 +84,7 @@ export class KafkaAuditConsumer
 
         if (!rawValue) return;
 
-        let payload: AuditEventPayload;
+        let payload: AuditEventPayload | undefined;
         let eventType = 'unknown';
 
         try {
@@ -106,13 +97,14 @@ export class KafkaAuditConsumer
 
           payload = {
             ...parsed,
-
+            sourceService: parsed.sourceService ?? 'user-service',
+            sourceTransport: parsed.sourceTransport ?? 'kafka',
+            topic,
             metadata: {
               ...(typeof parsed.metadata === 'object' &&
               parsed.metadata !== null
                 ? parsed.metadata
                 : {}),
-
               kafkaTopic: topic,
               kafkaPartition: partition,
               kafkaOffset: message.offset,
@@ -134,14 +126,12 @@ export class KafkaAuditConsumer
           );
 
           this.metricsService.auditEventsConsumedTotal.inc({
-            source: 'audit-service',
-            source_service:
-              payload.sourceService ?? 'user-service',
+            source: payload.sourceService ?? 'user-service',
+            source_service: payload.sourceService ?? 'user-service',
             event: eventType,
             transport: 'kafka',
-            queue: topic,
+            queue: '',
             topic,
-            stage: 'consume',
           });
 
           await this.auditService.saveAuditLog(payload);
@@ -160,12 +150,11 @@ export class KafkaAuditConsumer
           );
         } catch (error) {
           this.metricsService.auditEventsProcessingFailedTotal.inc({
-            source: 'audit-service',
-            source_service:
-              payload?.sourceService ?? 'user-service',
+            source: payload?.sourceService ?? 'user-service',
+            source_service: payload?.sourceService ?? 'user-service',
             event: eventType,
             transport: 'kafka',
-            queue: topic,
+            queue: '',
             topic,
             stage: 'kafka_consume',
           });
@@ -187,7 +176,7 @@ export class KafkaAuditConsumer
       },
     });
 
-    this.logger.log(`Kafka audit consumer started. topic=${topic}`);
+    this.logger.log(`Kafka audit consumer started. topic=${auditTopic}`);
   }
 
   async onApplicationShutdown() {

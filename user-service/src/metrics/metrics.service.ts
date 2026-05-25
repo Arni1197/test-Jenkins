@@ -13,6 +13,9 @@ export class MetricsService {
   readonly httpRequestsTotal: Counter<string>;
   readonly httpRequestDurationSeconds: Histogram<string>;
 
+  readonly userDbWriteSuccessTotal: Counter<string>;
+  readonly userDbWriteFailedTotal: Counter<string>;
+
   readonly userEventsPublishedTotal: Counter<string>;
   readonly userEventsPublishFailedTotal: Counter<string>;
 
@@ -36,6 +39,20 @@ export class MetricsService {
       help: 'HTTP request duration in seconds',
       labelNames: ['method', 'route', 'status'],
       buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+      registers: [this.registry],
+    });
+
+    this.userDbWriteSuccessTotal = new Counter({
+      name: 'user_db_write_success_total',
+      help: 'Total successful user-service DB write operations',
+      labelNames: ['source', 'service', 'operation'],
+      registers: [this.registry],
+    });
+
+    this.userDbWriteFailedTotal = new Counter({
+      name: 'user_db_write_failed_total',
+      help: 'Total failed user-service DB write operations',
+      labelNames: ['source', 'service', 'operation'],
       registers: [this.registry],
     });
 
@@ -66,7 +83,11 @@ export class MetricsService {
     return this.registry.contentType;
   }
 
-  startHttpRequestTimer(labels: { method: string; route: string; status?: string }) {
+  startHttpRequestTimer(labels: {
+    method: string;
+    route: string;
+    status?: string;
+  }) {
     return this.httpRequestDurationSeconds.startTimer(labels);
   }
 }
