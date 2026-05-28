@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 import { KafkaProducer } from '../kafka/kafka.producer';
-import { MetricsService } from '../metrics/metrics.service';
 
 type UserProfileUpdatedAuditEvent = {
   eventId: string;
@@ -25,7 +24,6 @@ export class AuditEventsService {
   constructor(
     private readonly kafkaProducer: KafkaProducer,
     private readonly configService: ConfigService,
-    private readonly metricsService: MetricsService,
   ) {}
 
   async emitUserProfileUpdated(params: {
@@ -55,7 +53,14 @@ export class AuditEventsService {
     };
 
     try {
-      await this.kafkaProducer.emit(topic, event, params.userId);
+      await this.kafkaProducer.emit(topic, event, params.userId, {
+        eventId: event.eventId,
+        eventType: event.eventType,
+        userId: event.userId,
+        requestId: event.requestId ?? '',
+        kongRequestId: event.kongRequestId ?? '',
+        sourceService: event.sourceService,
+      });
 
       this.logger.log(
         JSON.stringify({
@@ -66,26 +71,21 @@ export class AuditEventsService {
           eventId: event.eventId,
           userId: event.userId,
           requestId: event.requestId,
+          kongRequestId: event.kongRequestId,
           result: 'success',
         }),
       );
     } catch (error) {
-      this.metricsService.userEventsPublishFailedTotal.inc({
-        source: 'user-service',
-        service: 'user-service',
-        event: event.eventType,
-        topic,
-      });
-
       this.logger.error(
         JSON.stringify({
-          type: 'audit_event_send_failed',
+          type: 'audit_event_send_final_failed',
           service: 'user-service',
           topic,
           eventType: event.eventType,
           eventId: event.eventId,
           userId: event.userId,
           requestId: event.requestId,
+          kongRequestId: event.kongRequestId,
           error: error instanceof Error ? error.message : String(error),
         }),
         error instanceof Error ? error.stack : undefined,

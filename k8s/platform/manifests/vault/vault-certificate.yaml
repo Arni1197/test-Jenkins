@@ -6,8 +6,8 @@ metadata:
 spec:
   secretName: vault-server-tls
   issuerRef:
-    name: vault-selfsigned-issuer
-    kind: ClusterIssuer
+    name: vault-ca-issuer
+    kind: Issuer
   commonName: vault.vault.svc
   dnsNames:
     - vault
@@ -22,4 +22,3 @@ spec:
     - vault-2.vault-internal.vault.svc.cluster.local
   usages:
     - server auth
-    - client auth

@@ -1,0 +1,24 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: vault-ca
+  namespace: vault
+spec:
+  isCA: true
+  commonName: vault-ca
+  secretName: vault-ca-tls
+  issuerRef:
+    name: vault-selfsigned-issuer
+    kind: ClusterIssuer
+  usages:
+    - cert sign
+    - crl sign
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: vault-ca-issuer
+  namespace: vault
+spec:
+  ca:
+    secretName: vault-ca-tls

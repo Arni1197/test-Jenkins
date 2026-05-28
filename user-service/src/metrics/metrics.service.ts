@@ -19,6 +19,11 @@ export class MetricsService {
   readonly userEventsPublishedTotal: Counter<string>;
   readonly userEventsPublishFailedTotal: Counter<string>;
 
+  readonly userEventsPublishAttemptTotal: Counter<string>;
+  readonly userEventsPublishRetryTotal: Counter<string>;
+  readonly userEventsPublishRetrySuccessTotal: Counter<string>;
+  readonly userEventsPublishFinalFailedTotal: Counter<string>;
+
   constructor() {
     this.registry = new Registry();
 
@@ -66,6 +71,34 @@ export class MetricsService {
     this.userEventsPublishFailedTotal = new Counter({
       name: 'user_events_publish_failed_total',
       help: 'Total failed user event publish attempts to Kafka',
+      labelNames: ['source', 'service', 'event', 'topic'],
+      registers: [this.registry],
+    });
+
+    this.userEventsPublishAttemptTotal = new Counter({
+      name: 'user_events_publish_attempt_total',
+      help: 'Total user event publish attempts to Kafka including first attempt and retries',
+      labelNames: ['source', 'service', 'event', 'topic'],
+      registers: [this.registry],
+    });
+
+    this.userEventsPublishRetryTotal = new Counter({
+      name: 'user_events_publish_retry_total',
+      help: 'Total user event publish retry attempts to Kafka',
+      labelNames: ['source', 'service', 'event', 'topic'],
+      registers: [this.registry],
+    });
+
+    this.userEventsPublishRetrySuccessTotal = new Counter({
+      name: 'user_events_publish_retry_success_total',
+      help: 'Total user events successfully published to Kafka after retry',
+      labelNames: ['source', 'service', 'event', 'topic'],
+      registers: [this.registry],
+    });
+
+    this.userEventsPublishFinalFailedTotal = new Counter({
+      name: 'user_events_publish_final_failed_total',
+      help: 'Total user events that failed to publish to Kafka after all retries',
       labelNames: ['source', 'service', 'event', 'topic'],
       registers: [this.registry],
     });
