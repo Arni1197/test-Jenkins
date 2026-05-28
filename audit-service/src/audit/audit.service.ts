@@ -50,75 +50,46 @@ export class AuditService {
   }
 
   private inferEntityType(payload: AuditEventPayload): string | null {
-    if (this.getString(payload.entityType)) {
-      return this.getString(payload.entityType);
-    }
-
+    if (this.getString(payload.entityType)) return this.getString(payload.entityType);
     if (this.getString(payload.productId)) return 'Product';
 
-    if (
-      payload.eventType === 'CartItemAdded' ||
-      payload.eventType === 'CartItemRemoved'
-    ) {
+    if (payload.eventType === 'CartItemAdded' || payload.eventType === 'CartItemRemoved') {
       return 'Cart';
     }
 
-    if (
-      payload.eventType === 'FavoriteAdded' ||
-      payload.eventType === 'FavoriteRemoved'
-    ) {
+    if (payload.eventType === 'FavoriteAdded' || payload.eventType === 'FavoriteRemoved') {
       return 'Favorite';
     }
 
-    if (payload.eventType === 'UserProfileUpdated') {
-      return 'UserProfile';
-    }
+    if (payload.eventType === 'UserProfileUpdated') return 'UserProfile';
 
     return null;
   }
 
   private inferEntityId(payload: AuditEventPayload): string | null {
-    return (
-      this.getString(payload.entityId) ??
-      this.getString(payload.productId) ??
-      null
-    );
+    return this.getString(payload.entityId) ?? this.getString(payload.productId) ?? null;
   }
 
   private inferSourceService(payload: AuditEventPayload): string | null {
-    if (this.getString(payload.sourceService)) {
-      return this.getString(payload.sourceService);
-    }
+    if (this.getString(payload.sourceService)) return this.getString(payload.sourceService);
 
-    if (
-      payload.eventType === 'UserProfileUpdated' ||
-      this.getString(payload.topic)
-    ) {
+    if (payload.eventType === 'UserProfileUpdated' || this.getString(payload.topic)) {
       return 'user-service';
     }
 
-    if (this.getString(payload.productId)) {
-      return 'catalog-service';
-    }
+    if (this.getString(payload.productId)) return 'catalog-service';
 
     return null;
   }
 
   private inferSourceTransport(payload: AuditEventPayload): string | null {
-    if (this.getString(payload.sourceTransport)) {
-      return this.getString(payload.sourceTransport);
-    }
+    if (this.getString(payload.sourceTransport)) return this.getString(payload.sourceTransport);
 
-    if (
-      payload.eventType === 'UserProfileUpdated' ||
-      this.getString(payload.topic)
-    ) {
+    if (payload.eventType === 'UserProfileUpdated' || this.getString(payload.topic)) {
       return 'kafka';
     }
 
-    if (this.getString(payload.productId)) {
-      return 'rabbitmq';
-    }
+    if (this.getString(payload.productId)) return 'rabbitmq';
 
     return null;
   }
@@ -189,6 +160,33 @@ export class AuditService {
 
       return result;
     } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002' &&
+        payload.eventId
+      ) {
+        this.metricsService.auditEventsDuplicateTotal.inc(
+          this.getMetricLabels(payload, eventType),
+        );
+
+        this.logger.warn(
+          JSON.stringify({
+            type: 'audit_event_duplicate_ignored',
+            service: 'audit-service',
+            eventType,
+            eventId: payload.eventId,
+            requestId,
+            kongRequestId,
+            userId: payload.userId,
+            result: 'duplicate_ignored',
+          }),
+        );
+
+        return this.prisma.auditLog.findUnique({
+          where: { eventId: payload.eventId },
+        });
+      }
+
       this.metricsService.auditEventsPersistFailedTotal.inc(
         this.getMetricLabels(payload, eventType),
       );

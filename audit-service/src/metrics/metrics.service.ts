@@ -33,6 +33,7 @@ export class MetricsService {
   readonly auditEventsProcessingFailedTotal: Counter<string>;
   readonly auditEventsSentToRetryTotal: Counter<string>;
   readonly auditEventsSentToDlqTotal: Counter<string>;
+  readonly auditEventsDuplicateTotal: Counter<string>;
 
   readonly auditEventsProcessingDurationSeconds: Histogram<string>;
 
@@ -117,14 +118,21 @@ export class MetricsService {
 
     this.auditEventsSentToRetryTotal = new Counter({
       name: 'audit_events_sent_to_retry_total',
-      help: 'Total audit events sent to retry queue',
+      help: 'Total audit events sent to retry topic or queue',
       labelNames: ['source', 'source_service', 'event', 'transport', 'queue', 'topic'],
       registers: [this.registry],
     });
 
     this.auditEventsSentToDlqTotal = new Counter({
       name: 'audit_events_sent_to_dlq_total',
-      help: 'Total audit events sent to dead letter queue',
+      help: 'Total audit events sent to dead letter topic or queue',
+      labelNames: ['source', 'source_service', 'event', 'transport', 'queue', 'topic'],
+      registers: [this.registry],
+    });
+
+    this.auditEventsDuplicateTotal = new Counter({
+      name: 'audit_events_duplicate_total',
+      help: 'Total duplicate audit events ignored by eventId idempotency',
       labelNames: ['source', 'source_service', 'event', 'transport', 'queue', 'topic'],
       registers: [this.registry],
     });
@@ -136,54 +144,6 @@ export class MetricsService {
       buckets: [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
       registers: [this.registry],
     });
-  }
-
-  markAuditEventReceived(labels: AuditMetricLabels): void {
-    this.auditEventsReceivedTotal.inc(labels);
-    this.auditEventsConsumedTotal.inc(labels);
-  }
-
-  markAuditEventProcessingStarted(labels: AuditMetricLabels): void {
-    this.auditEventsProcessingStartedTotal.inc(labels);
-  }
-
-  markAuditEventPersistSuccess(labels: AuditMetricLabels): void {
-    this.auditEventsPersistSuccessTotal.inc(labels);
-  }
-
-  markAuditEventPersistFailed(labels: AuditMetricLabels): void {
-    this.auditEventsPersistFailedTotal.inc(labels);
-  }
-
-  markAuditEventProcessingFailed(
-    labels: AuditMetricLabels & { stage: string },
-  ): void {
-    this.auditEventsProcessingFailedTotal.inc(labels);
-  }
-
-  markAuditEventProcessingFinished(
-    labels: AuditMetricLabels & { result: 'success' | 'failed' },
-  ): void {
-    this.auditEventsProcessingFinishedTotal.inc(labels);
-  }
-
-  markAuditEventAck(labels: AuditMetricLabels): void {
-    this.auditEventsAckTotal.inc(labels);
-  }
-
-  markAuditEventSentToRetry(labels: AuditMetricLabels): void {
-    this.auditEventsSentToRetryTotal.inc(labels);
-  }
-
-  markAuditEventSentToDlq(labels: AuditMetricLabels): void {
-    this.auditEventsSentToDlqTotal.inc(labels);
-  }
-
-  observeAuditEventProcessingDuration(
-    labels: AuditMetricLabels & { result: 'success' | 'failed' },
-    durationSeconds: number,
-  ): void {
-    this.auditEventsProcessingDurationSeconds.observe(labels, durationSeconds);
   }
 
   getRegistry(): Registry {
