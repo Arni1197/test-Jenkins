@@ -16,6 +16,13 @@ containerPort: 3000
 secrets:
   envSecretName: secret-audit-service
 
+
+
+podAnnotations:
+  instrumentation.opentelemetry.io/inject-nodejs: jaeger/nodejs-instrumentation
+
+
+  
 env:
   NODE_ENV: "development"
 rollout:

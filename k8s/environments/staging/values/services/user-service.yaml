@@ -14,6 +14,10 @@ service:
 secrets:
   envSecretName: secret-user-service
 
+
+podAnnotations:
+  instrumentation.opentelemetry.io/inject-nodejs: jaeger/nodejs-instrumentation
+
 env:
   NODE_ENV: "production"
 

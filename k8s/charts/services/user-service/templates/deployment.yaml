@@ -23,6 +23,11 @@ spec:
       labels:
         app.kubernetes.io/name: user-service
 
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
     spec:
       automountServiceAccountToken: {{ .Values.automountServiceAccountToken | default false }}
 

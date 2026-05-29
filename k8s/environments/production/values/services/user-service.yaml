@@ -84,6 +84,9 @@ readinessProbe:
   timeoutSeconds: 2
   failureThreshold: 3
 
+podAnnotations:
+  instrumentation.opentelemetry.io/inject-nodejs: jaeger/nodejs-instrumentation
+
 livenessProbe:
   httpGet:
     path: /api/health
