@@ -2,7 +2,7 @@ replicaCount: 3
 
 image:
   repository: ghcr.io/arni1197/api-gateway
-  tag: api-gateway-v1.0.5
+  tag: api-gateway-v1.0.6
   digest: "sha256:0b59d85eacdd7d6aad34872c8364decc54bc35274824f8384a66b237ff720a51"
   pullPolicy: IfNotPresent
 
