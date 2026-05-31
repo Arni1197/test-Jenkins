@@ -15,7 +15,6 @@ secrets:
   envSecretName: secret-api-gateway
 
 
-automountServiceAccountToken: false
 
 affinity:
   nodeAffinity:
@@ -37,6 +36,12 @@ resources:
 
 env:
   NODE_ENV: "staging"
+
+serviceAccount:
+  create: true
+  name: api-gateway-sa
+
+
 
 terminationGracePeriodSeconds: 30
 
