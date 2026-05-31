@@ -12,7 +12,4 @@ spec:
   sampler:
     type: parentbased_traceidratio
     argument: "1"
-  nodejs:
-    env:
-      - name: OTEL_RESOURCE_ATTRIBUTES
-        value: "deployment.environment=dev,service.namespace=jaeger"
+  nodejs: {}
