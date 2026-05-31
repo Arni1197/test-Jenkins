@@ -68,9 +68,32 @@ extraVolumes:
   - name: tmp
     emptyDir: {}
 
+  - name: podinfo
+    downwardAPI:
+      items:
+        - path: pod-name
+          fieldRef:
+            fieldPath: metadata.name
+        - path: namespace
+          fieldRef:
+            fieldPath: metadata.namespace
+        - path: pod-ip
+          fieldRef:
+            fieldPath: status.podIP
+        - path: node-name
+          fieldRef:
+            fieldPath: spec.nodeName
+        - path: labels
+          fieldRef:
+            fieldPath: metadata.labels
+
 extraVolumeMounts:
   - name: tmp
     mountPath: /tmp
+
+  - name: podinfo
+    mountPath: /etc/podinfo
+    readOnly: true
 
 readinessProbe:
   httpGet:
