@@ -72,6 +72,18 @@ containerSecurityContext:
 extraVolumes:
   - name: tmp
     emptyDir: {}
+  - name: projected-demo
+    projected:
+
+      sources:
+
+        - configMap:
+
+            name: app-config
+
+        - configMap:
+
+            name: app-info
 
   - name: podinfo
     downwardAPI:
@@ -93,6 +105,11 @@ extraVolumeMounts:
   - name: tmp
     mountPath: /tmp
 
+  - name: projected-demo
+
+    mountPath: /etc/projected
+
+    readOnly: true
   - name: podinfo
     mountPath: /etc/podinfo
     readOnly: true
