@@ -77,15 +77,12 @@ extraVolumes:
         - path: namespace
           fieldRef:
             fieldPath: metadata.namespace
-        - path: pod-ip
-          fieldRef:
-            fieldPath: status.podIP
-        - path: node-name
-          fieldRef:
-            fieldPath: spec.nodeName
         - path: labels
           fieldRef:
             fieldPath: metadata.labels
+        - path: uid
+          fieldRef:
+            fieldPath: metadata.uid
 
 extraVolumeMounts:
   - name: tmp
