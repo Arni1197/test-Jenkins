@@ -1,0 +1,75 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: auth-service-migrate-prod
+  namespace: prod
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: auth-service-migrate
+          image: ghcr.io/arni1197/auth-service@sha256:83ced0368fc0ab71a94fe1c25e10346753eb384cff9d8bd35f2be491bc6bfbc4
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - secretRef:
+                name: secret-auth-service
+          command: ["sh", "-ec", "echo 'Running auth migrations...' && npx prisma migrate deploy && echo 'Done'"]
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: user-service-migrate-prod
+  namespace: prod
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: user-service-migrate
+          image: ghcr.io/arni1197/user-service@sha256:553d3d60df93a161c07cc22cd5b3a0e502486e2911d2d6744711c60620bda1de
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - secretRef:
+                name: secret-user-service
+          command: ["sh", "-ec", "echo 'Running user migrations...' && npx prisma migrate deploy && echo 'Done'"]
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: catalog-service-migrate-prod
+  namespace: prod
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: catalog-service-migrate
+          image: ghcr.io/arni1197/catalog-service@sha256:bd5a63ef549c79eff8dfcb8e45c2810af548aafdc4b0bc184ed0b42b9dc3b5cc
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - secretRef:
+                name: secret-catalog-service
+          command: ["sh", "-ec", "echo 'Running catalog migrations...' && npx prisma migrate deploy && echo 'Done'"]
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: audit-service-migrate-prod
+  namespace: prod
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: audit-service-migrate
+          image: ghcr.io/arni1197/audit-service@sha256:132d84cabbe05211f84078a1d9ef78119c32cf6dfed9f3378849b667e1469b66
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - secretRef:
+                name: secret-audit-service
+          command: ["sh", "-ec", "echo 'Running audit migrations...' && npx prisma migrate deploy && echo 'Done'"]

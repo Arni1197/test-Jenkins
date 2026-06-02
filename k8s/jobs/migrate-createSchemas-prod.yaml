@@ -1,0 +1,49 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: prod-db-bootstrap
+  namespace: prod
+  labels:
+    app.kubernetes.io/name: prod-db-bootstrap
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: prod-db-bootstrap
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: prod-db-bootstrap
+          image: postgres:17
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+
+              echo "Creating schemas in app-postres-prod..."
+              psql "$APP_DATABASE_URL" <<'SQL'
+              CREATE SCHEMA IF NOT EXISTS auth AUTHORIZATION app_user;
+              CREATE SCHEMA IF NOT EXISTS users AUTHORIZATION app_user;
+              CREATE SCHEMA IF NOT EXISTS catalog AUTHORIZATION app_user;
+
+              GRANT USAGE, CREATE ON SCHEMA auth TO app_user;
+              GRANT USAGE, CREATE ON SCHEMA users TO app_user;
+              GRANT USAGE, CREATE ON SCHEMA catalog TO app_user;
+              SQL
+
+              echo "Creating schema in audit-app-prod..."
+              psql "$AUDIT_DATABASE_URL" <<'SQL'
+              CREATE SCHEMA IF NOT EXISTS audit AUTHORIZATION gen_user;
+
+              GRANT USAGE, CREATE ON SCHEMA audit TO gen_user;
+              SQL
+
+              echo "Bootstrap completed"
+          env:
+            - name: APP_DATABASE_URL
+              value: "postgresql://app_user:Alisa123@192.168.0.8:5432/app-postres-prod?sslmode=require"
+            - name: AUDIT_DATABASE_URL
+              value: "postgresql://gen_user:Arnold123@192.168.0.15:5432/audit-app-prod?sslmode=require"
