@@ -112,8 +112,12 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
 
         const processingEnd =
           this.metricsService.auditEventsProcessingDurationSeconds.startTimer({
-            service: 'audit-service',
+            source: 'unknown',
+            source_service: 'audit-service',
             event: eventType,
+            transport: 'rabbitmq',
+            queue: this.mainQueue,
+            topic: '',
             result: 'unknown',
           });
 
@@ -242,8 +246,12 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
           );
 
           processingEnd({
-            service: 'audit-service',
+            source: payload.sourceService ?? 'unknown',
+            source_service: 'audit-service',
             event: eventType,
+            transport: payload.sourceTransport ?? 'rabbitmq',
+            queue: this.mainQueue,
+            topic: '',
             result: 'success',
           });
         } catch (error: any) {
@@ -318,8 +326,12 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
             this.channel.ack(msg);
 
             processingEnd({
-              service: 'audit-service',
+              source: payload?.sourceService ?? 'unknown',
+              source_service: 'audit-service',
               event: eventType,
+              transport: payload?.sourceTransport ?? 'rabbitmq',
+              queue: this.mainQueue,
+              topic: '',
               result: 'dlq',
             });
 
@@ -347,8 +359,12 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
           this.channel.ack(msg);
 
           processingEnd({
-            service: 'audit-service',
+            source: payload?.sourceService ?? 'unknown',
+            source_service: 'audit-service',
             event: eventType,
+            transport: payload?.sourceTransport ?? 'rabbitmq',
+            queue: this.mainQueue,
+            topic: '',
             result: 'retry',
           });
         }
