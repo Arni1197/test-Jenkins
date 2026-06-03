@@ -164,7 +164,7 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
 
           this.metricsService.auditEventsReceivedTotal.inc({
             source: payload.sourceService ?? 'unknown',
-            service: 'audit-service',
+            source_service: 'audit-service',
             event: eventType,
             transport: payload.sourceTransport ?? 'rabbitmq',
           });
@@ -175,7 +175,7 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
 
           this.metricsService.auditEventsProcessingStartedTotal.inc({
             source: payload.sourceService ?? 'unknown',
-            service: 'audit-service',
+            source_service: 'audit-service',
             event: eventType,
             transport: payload.sourceTransport ?? 'rabbitmq',
           });
@@ -207,7 +207,7 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
 
           this.metricsService.auditEventsProcessingFinishedTotal.inc({
             source: payload.sourceService ?? 'unknown',
-            service: 'audit-service',
+            source_service: 'audit-service',
             event: eventType,
             result: 'success',
           });
@@ -218,7 +218,7 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
 
           this.metricsService.auditEventsAckTotal.inc({
             source: payload.sourceService ?? 'unknown',
-            service: 'audit-service',
+            source_service: 'audit-service',
             event: eventType,
             transport: payload.sourceTransport ?? 'rabbitmq',
           });
@@ -263,7 +263,7 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
 
           this.metricsService.auditEventsProcessingFinishedTotal.inc({
             source: payload?.sourceService ?? 'unknown',
-            service: 'audit-service',
+            source_service: 'audit-service',
             event: eventType,
             result: 'failed',
           });
