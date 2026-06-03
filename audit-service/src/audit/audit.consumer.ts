@@ -194,9 +194,12 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
           );
 
           this.metricsService.auditEventsConsumedTotal.inc({
-            service: 'audit-service',
+            source: payload.sourceService ?? 'unknown',
+            source_service: 'audit-service',
             event: eventType,
+            transport: payload.sourceTransport ?? 'rabbitmq',
             queue: this.mainQueue,
+            topic: '',
           });
 
           await this.auditService.saveAuditLog(payload);
@@ -283,8 +286,12 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
           );
 
           this.metricsService.auditEventsProcessingFailedTotal.inc({
-            service: 'audit-service',
+            source: payload?.sourceService ?? 'unknown',
+            source_service: 'audit-service',
             event: eventType,
+            transport: payload?.sourceTransport ?? 'rabbitmq',
+            queue: this.mainQueue,
+            topic: '',
             stage: retryCount >= this.maxRetries ? 'final_failure' : 'consume',
           });
 
@@ -300,9 +307,12 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
             });
 
             this.metricsService.auditEventsSentToDlqTotal.inc({
-              service: 'audit-service',
+              source: payload?.sourceService ?? 'unknown',
+              source_service: 'audit-service',
               event: eventType,
+              transport: payload?.sourceTransport ?? 'rabbitmq',
               queue: this.dlqQueue,
+              topic: '',
             });
 
             this.channel.ack(msg);
@@ -326,9 +336,12 @@ export class AuditConsumer implements OnModuleInit, OnModuleDestroy {
           });
 
           this.metricsService.auditEventsSentToRetryTotal.inc({
-            service: 'audit-service',
+            source: payload?.sourceService ?? 'unknown',
+            source_service: 'audit-service',
             event: eventType,
+            transport: payload?.sourceTransport ?? 'rabbitmq',
             queue: this.retryQueue,
+            topic: '',
           });
 
           this.channel.ack(msg);
