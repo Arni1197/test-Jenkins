@@ -95,7 +95,7 @@ spec:
                 - Pod
               namespaces:
                 - staging
-                - production
+                - prod
       validate:
         failureAction: Audit
         failureActionOverrides:
