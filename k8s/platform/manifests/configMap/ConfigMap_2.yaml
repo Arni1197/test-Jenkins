@@ -1,8 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: app-info
-  namespace: staging
-data:
-  info.txt: |
-    Hello Kubernetes
