@@ -9,7 +9,7 @@ spec:
   source:
     repoURL: https://github.com/Arni1197/test-Jenkins.git
     targetRevision: main
-    path: k8s/platform/manifests/cert-manager/issuers
+    path: k8s/platform/manifests/cert-manager
 
   destination:
     server: https://kubernetes.default.svc
