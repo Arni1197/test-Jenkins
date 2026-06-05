@@ -15,11 +15,32 @@ export type AuditContext = {
 
 @Injectable()
 export class CatalogService {
+  private readonly dbWriteOperations = [
+    'add_recently_viewed',
+    'add_favorite',
+    'remove_favorite',
+    'increase_cart_item_quantity',
+    'add_cart_item',
+    'update_cart_item',
+    'remove_cart_item',
+  ] as const;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventsPublisher: CatalogEventsPublisher,
     private readonly metricsService: MetricsService,
-  ) {}
+  ) {
+    for (const operation of this.dbWriteOperations) {
+      this.metricsService.catalogDbWriteSuccessTotal.labels(
+        'catalog-service',
+        operation,
+      );
+      this.metricsService.catalogDbWriteFailedTotal.labels(
+        'catalog-service',
+        operation,
+      );
+    }
+  }
 
   private readonly productSelect = {
     id: true,
