@@ -74,7 +74,7 @@ resources:
 autoscaling:
   enabled: true
   minReplicas: 3
-  maxReplicas: 5
+  maxReplicas: 8
   targetCPUUtilizationPercentage: 70
 
 readinessProbe:

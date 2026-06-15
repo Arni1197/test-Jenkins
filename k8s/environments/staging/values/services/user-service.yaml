@@ -96,5 +96,5 @@ livenessProbe:
 autoscaling:
   enabled: true
   minReplicas: 2
-  maxReplicas: 6
+  maxReplicas: 8
   targetCPUUtilizationPercentage: 70
