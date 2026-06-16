@@ -1,4 +1,4 @@
-replicaCount: 3
+replicaCount: 1
 
 image:
   repository: ghcr.io/arni1197/auth-service
@@ -65,16 +65,16 @@ affinity:
 
 resources:
   requests:
-    cpu: 180m
+    cpu: 70m
     memory: 128Mi
   limits:
-    cpu: 800m
+    cpu: 100m
     memory: 256Mi
 
 autoscaling:
   enabled: true
-  minReplicas: 3
-  maxReplicas: 8
+  minReplicas: 1
+  maxReplicas: 2
   targetCPUUtilizationPercentage: 70
 
 readinessProbe:
