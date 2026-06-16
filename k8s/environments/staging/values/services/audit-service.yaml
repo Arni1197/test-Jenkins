@@ -69,10 +69,10 @@ affinity:
 
 resources:
   requests:
-    cpu: 128m
+    cpu: 80m
     memory: 256Mi
   limits:
-    cpu: 800m
+    cpu: 110m
     memory: 512Mi
 
 autoscaling:

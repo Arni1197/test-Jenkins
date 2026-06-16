@@ -28,10 +28,10 @@ affinity:
 
 resources:
   requests:
-    cpu: 350m
+    cpu: 80m
     memory: 256Mi
   limits:
-    cpu: 500m
+    cpu: 100m
     memory: 500Mi
 
 env:
