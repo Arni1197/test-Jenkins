@@ -87,8 +87,8 @@ readinessProbe:
     port: 3000
   initialDelaySeconds: 40
   periodSeconds: 20
-  timeoutSeconds: 2
-  failureThreshold: 3
+  timeoutSeconds: 6
+  failureThreshold: 6
 
 livenessProbe:
   httpGet:
@@ -96,5 +96,5 @@ livenessProbe:
     port: 3000
   initialDelaySeconds: 90
   periodSeconds: 20
-  timeoutSeconds: 2
-  failureThreshold: 3
+  timeoutSeconds: 6
+  failureThreshold: 6
